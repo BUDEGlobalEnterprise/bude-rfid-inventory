@@ -117,3 +117,49 @@ app.*.symbols
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 !/dev/ci/**/Gemfile.lock
+
+# ----- Python (Frappe API layer) -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+htmlcov/
+.coverage
+.coverage.*
+venv/
+.venv/
+env/
+
+# ----- Environment / secrets -----
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+
+# ----- IDE / editor -----
+.idea/
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.example.json
+*.iml
+*.sublime-*
+.history/
+
+# ----- OS -----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ----- Project-specific -----
+/.frappe-bench/
+/sites/
+
+# ----- Local tool config -----
+.claude/

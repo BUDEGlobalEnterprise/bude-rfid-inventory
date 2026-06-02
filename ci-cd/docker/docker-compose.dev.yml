@@ -1,0 +1,26 @@
+# Phase 1 placeholder — not yet runnable.
+# Local dev stack for Frappe + MariaDB + Redis.
+
+version: '3.8'
+
+services:
+  # mariadb:
+  #   image: mariadb:10.6
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: changeme
+  #   volumes:
+  #     - mariadb-data:/var/lib/mysql
+
+  # redis:
+  #   image: redis:7-alpine
+
+  # frappe:
+  #   build:
+  #     context: ../..
+  #     dockerfile: ci-cd/docker/Dockerfile.backend
+  #   depends_on: [mariadb, redis]
+  #   ports:
+  #     - "8000:8000"
+
+# volumes:
+#   mariadb-data:

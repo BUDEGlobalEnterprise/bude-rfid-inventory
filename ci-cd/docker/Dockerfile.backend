@@ -1,0 +1,6 @@
+# Phase 1 placeholder — not yet runnable.
+# Will build a Frappe bench image with the bude_api app installed.
+
+# FROM frappe/erpnext:v15
+# COPY ../../backend/frappe_api_layer /home/frappe/frappe-bench/apps/bude_api
+# RUN bench --site <site> install-app bude_api

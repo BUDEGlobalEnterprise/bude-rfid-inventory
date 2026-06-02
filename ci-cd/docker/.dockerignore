@@ -1,0 +1,8 @@
+.git
+.github
+mobile-app/flutter_app/build
+mobile-app/flutter_app/.dart_tool
+**/__pycache__
+**/*.pyc
+.env
+*.log
