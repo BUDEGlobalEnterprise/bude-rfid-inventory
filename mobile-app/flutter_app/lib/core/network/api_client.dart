@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../config/app_config.dart';
+import 'auth_interceptor.dart';
 
 class ApiClient {
   final Dio _dio;
@@ -23,11 +24,20 @@ class ApiClient {
 
   Dio get dio => _dio;
 
+  void setBaseUrl(String baseUrl) {
+    _dio.options.baseUrl = baseUrl;
+  }
+
   void setAuthToken(String token) {
     _dio.options.headers['Authorization'] = 'token $token';
   }
 
   void clearAuthToken() {
     _dio.options.headers.remove('Authorization');
+  }
+
+  void installAuthInterceptor(AuthInterceptor interceptor) {
+    _dio.interceptors.removeWhere((i) => i is AuthInterceptor);
+    _dio.interceptors.add(interceptor);
   }
 }

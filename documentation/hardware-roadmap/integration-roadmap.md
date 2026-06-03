@@ -36,7 +36,7 @@ Each implementation is selected at runtime via dependency injection — the rest
 
 ## ERP abstraction
 
-`backend/frappe_api_layer/services/erpnext_client.py` is the first implementation of an `ErpClient` interface. When SAP B1, Zoho, NetSuite, or Dynamics 365 connectors are added, they will live alongside `erpnext_client.py` and conform to the same interface. The mobile client stays unchanged.
+`backend/bude_api/services/erpnext_client.py` is the first implementation of an `ErpClient` interface. When SAP B1, Zoho, NetSuite, or Dynamics 365 connectors are added, they will live alongside `erpnext_client.py` and conform to the same interface. The mobile client stays unchanged.
 
 ## Out of scope (Phase 1)
 

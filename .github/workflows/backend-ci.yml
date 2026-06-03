@@ -31,7 +31,7 @@ jobs:
         run: ruff check backend/
 
       - name: Mypy
-        run: mypy backend/frappe_api_layer --ignore-missing-imports
+        run: mypy backend/bude_api --ignore-missing-imports
 
       - name: Pytest
         working-directory: backend
