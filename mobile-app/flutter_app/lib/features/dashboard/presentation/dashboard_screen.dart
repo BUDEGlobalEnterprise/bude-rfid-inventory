@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/sync/providers.dart';
 import '../../authentication/presentation/providers/auth_notifier.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -10,13 +11,16 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(authNotifierProvider);
-    final fullName =
-        state is Authenticated ? (state.session.fullName ?? state.session.username) : '';
+    final fullName = state is Authenticated
+        ? (state.session.fullName ?? state.session.username)
+        : '';
+    final pendingCount = ref.watch(unresolvedOpCountProvider).valueOrNull ?? 0;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bude Inventory'),
         actions: [
+          _SyncBadgeButton(count: pendingCount),
           IconButton(
             tooltip: 'Logout',
             icon: const Icon(Icons.logout),
@@ -65,6 +69,24 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SyncBadgeButton extends StatelessWidget {
+  final int count;
+  const _SyncBadgeButton({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: count == 0 ? 'Sync (none pending)' : 'Sync ($count pending)',
+      icon: Badge(
+        label: count > 0 ? Text('$count') : null,
+        isLabelVisible: count > 0,
+        child: const Icon(Icons.sync),
+      ),
+      onPressed: () => context.push('/sync'),
     );
   }
 }

@@ -9,6 +9,7 @@ import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/inventory/presentation/item_detail_screen.dart';
 import '../../features/inventory/presentation/item_search_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/sync/presentation/pending_queue_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
@@ -55,6 +56,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/sync',
+        builder: (context, state) => const PendingQueueScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

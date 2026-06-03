@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/constants/app_strings.dart';
 import 'core/network/auth_interceptor.dart';
 import 'core/router/app_router.dart';
+import 'core/sync/providers.dart';
 import 'features/authentication/presentation/providers/auth_notifier.dart';
 import 'features/settings/presentation/providers/settings_notifier.dart';
 
@@ -29,6 +30,9 @@ class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
       // Settings first — sets the API base URL before any auth request fires.
       await ref.read(settingsNotifierProvider.notifier).bootstrap();
       await ref.read(authNotifierProvider.notifier).bootstrap();
+      // Sync engine drains the offline queue when network returns.
+      // Submitters are registered by their owning features (e.g. transfer in Slice 2).
+      await ref.read(syncEngineProvider).start();
     });
   }
 
