@@ -1,96 +1,170 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
-import '../../../core/config/app_config.dart';
-import 'providers/settings_notifier.dart';
+import '../../authentication/presentation/providers/auth_notifier.dart';
+import '../../tenant/presentation/providers/tenant_notifier.dart';
 
-class SettingsScreen extends ConsumerStatefulWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tenantState = ref.watch(tenantNotifierProvider);
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _urlCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    final current = ref.read(settingsNotifierProvider).apiBaseUrl;
-    _urlCtrl = TextEditingController(text: current ?? '');
-  }
-
-  @override
-  void dispose() {
-    _urlCtrl.dispose();
-    super.dispose();
-  }
-
-  String? _validateUrl(String? v) {
-    final value = (v ?? '').trim();
-    if (value.isEmpty) return null;
-    final uri = Uri.tryParse(value);
-    if (uri == null || !uri.hasScheme || (uri.scheme != 'http' && uri.scheme != 'https')) {
-      return 'Must be a valid http(s) URL';
-    }
-    if (uri.host.isEmpty) return 'Host is required';
-    return null;
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    final value = _urlCtrl.text.trim();
-    await ref
-        .read(settingsNotifierProvider.notifier)
-        .setApiBaseUrl(value.isEmpty ? null : value);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Settings saved')),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
+        child: switch (tenantState) {
+          TenantActive(:final tenant) => _ActiveTenantView(tenant: tenant),
+          TenantAbsent() => const _NoTenantView(),
+          _ => const Center(child: CircularProgressIndicator()),
+        },
+      ),
+    );
+  }
+}
+
+class _ActiveTenantView extends ConsumerWidget {
+  final dynamic tenant; // Tenant — kept dynamic to avoid an extra import
+  const _ActiveTenantView({required this.tenant});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fmt = DateFormat.yMMMd();
+    final branding = tenant.branding as Map<String, dynamic>?;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Current connection',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'ERPNext server',
-                  style: Theme.of(context).textTheme.titleMedium,
+                _InfoRow(label: 'Company', value: tenant.companyName as String),
+                _InfoRow(label: 'ERP URL', value: tenant.erpUrl as String),
+                _InfoRow(
+                  label: 'Connected since',
+                  value: fmt.format((tenant.createdAt as DateTime).toLocal()),
                 ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _urlCtrl,
-                  keyboardType: TextInputType.url,
-                  decoration: InputDecoration(
-                    labelText: 'API base URL',
-                    hintText: 'https://erp.example.com',
-                    border: const OutlineInputBorder(),
-                    helperText:
-                        'Leave empty to use default: ${AppConfig.env.apiBaseUrl}',
-                  ),
-                  validator: _validateUrl,
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: _save,
-                  child: const Text('Save'),
-                ),
-                const Divider(height: 40),
-                Text('Current effective URL: ${AppConfig.apiBaseUrl}'),
+                if (branding != null) ...[
+                  const Divider(),
+                  if (branding['erpnext_version'] != null)
+                    _InfoRow(
+                      label: 'ERPNext',
+                      value: branding['erpnext_version'].toString(),
+                    ),
+                  if (branding['bude_api_version'] != null)
+                    _InfoRow(
+                      label: 'bude_api',
+                      value: branding['bude_api_version'].toString(),
+                    ),
+                ],
               ],
             ),
           ),
         ),
+        const SizedBox(height: 24),
+        FilledButton.tonalIcon(
+          icon: const Icon(Icons.logout),
+          label: const Text('Sign out'),
+          onPressed: () =>
+              ref.read(authNotifierProvider.notifier).logout(),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.link_off),
+          label: const Text('Reset connection'),
+          onPressed: () => _confirmReset(context, ref),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmReset(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset connection?'),
+        content: const Text(
+          'This signs you out and removes the saved server. You will be sent back to setup.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    await ref.read(authNotifierProvider.notifier).logout();
+    await ref.read(tenantNotifierProvider.notifier).clearActive();
+    if (!context.mounted) return;
+    context.go('/onboarding');
+  }
+}
+
+class _NoTenantView extends StatelessWidget {
+  const _NoTenantView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('No connection configured.'),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () =>
+                  GoRouter.of(context).go('/onboarding'),
+              child: const Text('Set up now'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+          ),
+        ],
       ),
     );
   }

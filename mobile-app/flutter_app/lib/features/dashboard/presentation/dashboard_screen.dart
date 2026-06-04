@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/sync/providers.dart';
 import '../../authentication/presentation/providers/auth_notifier.dart';
+import '../../tenant/presentation/providers/tenant_notifier.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -15,10 +16,30 @@ class DashboardScreen extends ConsumerWidget {
         ? (state.session.fullName ?? state.session.username)
         : '';
     final pendingCount = ref.watch(unresolvedOpCountProvider).valueOrNull ?? 0;
+    final branding = ref.watch(currentBrandingProvider);
+    final tenantState = ref.watch(tenantNotifierProvider);
+    final tenantUrl =
+        tenantState is TenantActive ? tenantState.tenant.erpUrl : null;
+    final logoUrl = branding?.logoUrl(tenantUrl);
+    final title = branding?.companyName ?? 'Bude Inventory';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bude Inventory'),
+        leading: logoUrl != null
+            ? Padding(
+                padding: const EdgeInsets.all(8),
+                child: ClipOval(
+                  child: Image.network(
+                    logoUrl,
+                    width: 32,
+                    height: 32,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.inventory_2),
+                  ),
+                ),
+              )
+            : null,
+        title: Text(title),
         actions: [
           _SyncBadgeButton(count: pendingCount),
           IconButton(

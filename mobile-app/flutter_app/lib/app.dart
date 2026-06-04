@@ -6,7 +6,7 @@ import 'core/network/auth_interceptor.dart';
 import 'core/router/app_router.dart';
 import 'core/sync/providers.dart';
 import 'features/authentication/presentation/providers/auth_notifier.dart';
-import 'features/settings/presentation/providers/settings_notifier.dart';
+import 'features/tenant/presentation/providers/tenant_notifier.dart';
 
 class BudeInventoryApp extends ConsumerStatefulWidget {
   const BudeInventoryApp({super.key});
@@ -16,10 +16,14 @@ class BudeInventoryApp extends ConsumerStatefulWidget {
 }
 
 class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
+  ProviderSubscription<AuthState>? _authSub;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Install the 401 interceptor immediately — safe to do before bootstrap
+      // because the interceptor only fires on actual auth-failed responses.
       final apiClient = ref.read(apiClientProvider);
       apiClient.installAuthInterceptor(
         AuthInterceptor(
@@ -27,13 +31,29 @@ class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
               ref.read(authNotifierProvider.notifier).logout(),
         ),
       );
-      // Settings first — sets the API base URL before any auth request fires.
-      await ref.read(settingsNotifierProvider.notifier).bootstrap();
-      await ref.read(authNotifierProvider.notifier).bootstrap();
-      // Sync engine drains the offline queue when network returns.
-      // Submitters are registered by their owning features (e.g. transfer in Slice 2).
-      await ref.read(syncEngineProvider).start();
+
+      // Start the sync engine once. SplashScreen drives tenant + auth bootstrap.
+      ref.read(syncEngineProvider).start();
+
+      // On any successful login, mark the active tenant as used and refresh
+      // its cached branding so the dashboard reflects the current customer.
+      _authSub = ref.listenManual<AuthState>(authNotifierProvider, (
+        prev,
+        next,
+      ) {
+        if (next is Authenticated && prev is! Authenticated) {
+          final tenantNotifier = ref.read(tenantNotifierProvider.notifier);
+          tenantNotifier.markUsed();
+          tenantNotifier.refreshBranding();
+        }
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _authSub?.close();
+    super.dispose();
   }
 
   @override

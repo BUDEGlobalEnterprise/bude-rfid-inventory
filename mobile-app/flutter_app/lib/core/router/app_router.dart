@@ -8,29 +8,52 @@ import '../../features/barcode/presentation/scanner_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/inventory/presentation/item_detail_screen.dart';
 import '../../features/inventory/presentation/item_search_screen.dart';
+import '../../features/onboarding/presentation/company_setup_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/sync/presentation/pending_queue_screen.dart';
+import '../../features/tenant/presentation/providers/tenant_notifier.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
 
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/splash',
     refreshListenable: notifier,
     redirect: (context, state) {
+      final tenantState = ref.read(tenantNotifierProvider);
       final authState = ref.read(authNotifierProvider);
-      final loggedIn = authState is Authenticated;
       final location = state.matchedLocation;
-      final publicRoute = location == '/login' || location == '/settings';
 
-      if (authState is AuthInitial || authState is AuthLoading) {
+      // Splash + onboarding are always reachable.
+      if (location == '/splash' || location == '/onboarding') return null;
+
+      // Until the tenant is resolved, don't redirect anywhere — splash drives.
+      if (tenantState is TenantInitial || tenantState is TenantLoading) {
         return null;
       }
+
+      // No tenant configured → must go through onboarding.
+      if (tenantState is TenantAbsent) return '/onboarding';
+
+      // Tenant exists. Login + settings are the only pre-auth public routes.
+      final loggedIn = authState is Authenticated;
+      final publicRoute = location == '/login' || location == '/settings';
+
+      if (authState is AuthInitial || authState is AuthLoading) return null;
       if (!loggedIn && !publicRoute) return '/login';
       if (loggedIn && location == '/login') return '/';
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const CompanySetupScreen(),
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
@@ -72,6 +95,10 @@ class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(Ref ref) {
     ref.listen<AuthState>(
       authNotifierProvider,
+      (_, __) => notifyListeners(),
+    );
+    ref.listen<TenantState>(
+      tenantNotifierProvider,
       (_, __) => notifyListeners(),
     );
   }
