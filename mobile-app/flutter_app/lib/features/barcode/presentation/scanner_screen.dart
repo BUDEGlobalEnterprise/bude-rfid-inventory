@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-import '../domain/scan_event.dart';
+import '../../../core/hardware/entities/scan_event.dart';
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});

@@ -2,15 +2,21 @@ import 'dart:async';
 
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-import '../domain/scan_event.dart';
-import '../domain/scanner.dart';
+import '../adapters/barcode_adapter.dart';
+import '../entities/scan_event.dart';
 
-class CameraScanner implements Scanner {
+/// Camera-backed [BarcodeAdapter] using the `mobile_scanner` package.
+/// Always available as a fallback when no vendor scanner is detected.
+class CameraBarcodeAdapter implements BarcodeAdapter {
+  @override
+  final String vendor = 'camera';
+
   final MobileScannerController controller;
   final _controller = StreamController<ScanEvent>.broadcast();
   StreamSubscription<BarcodeCapture>? _sub;
+  bool _running = false;
 
-  CameraScanner({MobileScannerController? controller})
+  CameraBarcodeAdapter({MobileScannerController? controller})
       : controller = controller ??
             MobileScannerController(
               detectionSpeed: DetectionSpeed.normal,
@@ -21,7 +27,11 @@ class CameraScanner implements Scanner {
   Stream<ScanEvent> get events => _controller.stream;
 
   @override
-  Future<void> start() async {
+  bool get supportsContinuousScan => true;
+
+  @override
+  Future<void> startScan() async {
+    if (_running) return;
     await controller.start();
     _sub ??= controller.barcodes.listen((capture) {
       for (final barcode in capture.barcodes) {
@@ -32,19 +42,38 @@ class CameraScanner implements Scanner {
         );
       }
     });
+    _running = true;
   }
 
   @override
-  Future<void> stop() async {
+  Future<void> stopScan() async {
+    if (!_running) return;
     await _sub?.cancel();
     _sub = null;
     await controller.stop();
+    _running = false;
+  }
+
+  @override
+  Future<ScanEvent?> scanSingle({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    await startScan();
+    try {
+      return await events.first.timeout(timeout, onTimeout: () => throw _Timeout());
+    } on _Timeout {
+      return null;
+    } finally {
+      await stopScan();
+    }
   }
 
   @override
   Future<void> dispose() async {
-    await stop();
+    await stopScan();
     await _controller.close();
     await controller.dispose();
   }
 }
+
+class _Timeout implements Exception {}

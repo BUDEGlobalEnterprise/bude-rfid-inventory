@@ -4,6 +4,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'app.dart';
 import 'core/config/app_config.dart';
+import 'core/hardware/providers.dart';
+import 'core/hardware/vendors/registered_plugins.dart';
 import 'core/sync/providers.dart';
 import 'core/sync/sync_queue.dart';
 import 'features/tenant/data/tenant_repository_impl.dart';
@@ -20,12 +22,19 @@ Future<void> main() async {
   final activeTenantBox =
       await Hive.openBox<String>(TenantRepositoryImpl.activeBoxName);
 
+  // Register all known vendor plugins, then bootstrap the manager (probes the
+  // device + selects adapters). Camera scanner is wired in as the fallback so
+  // unknown devices still work.
+  registerBuiltInHardwarePlugins();
+  final hardwareManager = await bootstrapHardwareManager();
+
   runApp(
     ProviderScope(
       overrides: [
         syncBoxProvider.overrideWithValue(syncBox),
         tenantBoxProvider.overrideWithValue(tenantBox),
         activeTenantBoxProvider.overrideWithValue(activeTenantBox),
+        hardwareManagerProvider.overrideWithValue(hardwareManager),
       ],
       child: const BudeInventoryApp(),
     ),

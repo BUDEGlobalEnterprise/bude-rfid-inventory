@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../barcode/domain/scan_event.dart';
+import '../../../core/hardware/entities/scan_event.dart';
 import '../domain/entities/item.dart';
 import 'providers/item_search_notifier.dart';
 

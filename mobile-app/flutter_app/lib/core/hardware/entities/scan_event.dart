@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+/// One barcode read from any [BarcodeAdapter] — camera, Honeywell, Zebra, etc.
+/// Identical shape regardless of vendor.
 class ScanEvent extends Equatable {
   final String barcode;
   final String? format;
