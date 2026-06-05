@@ -13,6 +13,7 @@ import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/sync/presentation/pending_queue_screen.dart';
 import '../../features/tenant/presentation/providers/tenant_notifier.dart';
+import '../../features/transfer/presentation/transfer_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
@@ -83,6 +84,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/sync',
         builder: (context, state) => const PendingQueueScreen(),
+      ),
+      GoRoute(
+        path: '/transfer',
+        builder: (context, state) => const TransferScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

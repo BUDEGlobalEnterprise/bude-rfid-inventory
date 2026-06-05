@@ -75,9 +75,10 @@ class DashboardScreen extends ConsumerWidget {
                     label: 'Search Items',
                     onTap: () => context.push('/items'),
                   ),
-                  const _NavCard(
-                    icon: Icons.warehouse,
-                    label: 'Warehouses',
+                  _NavCard(
+                    icon: Icons.swap_horiz,
+                    label: 'Transfer',
+                    onTap: () => context.push('/transfer'),
                   ),
                   _NavCard(
                     icon: Icons.settings,
