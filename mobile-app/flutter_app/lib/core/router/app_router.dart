@@ -10,6 +10,7 @@ import '../../features/inventory/presentation/item_detail_screen.dart';
 import '../../features/inventory/presentation/item_search_screen.dart';
 import '../../features/onboarding/presentation/company_setup_screen.dart';
 import '../../features/receipt/presentation/receipt_screen.dart';
+import '../../features/reconciliation/presentation/reconciliation_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/sync/presentation/pending_queue_screen.dart';
@@ -93,6 +94,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/receipt',
         builder: (context, state) => const ReceiptScreen(),
+      ),
+      GoRoute(
+        path: '/reconcile',
+        builder: (context, state) => const ReconciliationScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

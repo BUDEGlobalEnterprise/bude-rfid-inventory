@@ -8,6 +8,7 @@ import 'core/sync/providers.dart';
 import 'features/authentication/presentation/providers/auth_notifier.dart';
 import 'features/tenant/presentation/providers/tenant_notifier.dart';
 import 'features/receipt/data/receipt_op_submitter.dart';
+import 'features/reconciliation/data/reconciliation_op_submitter.dart';
 import 'features/transfer/data/transfer_op_submitter.dart';
 
 class BudeInventoryApp extends ConsumerStatefulWidget {
@@ -39,6 +40,7 @@ class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
       final engine = ref.read(syncEngineProvider);
       engine.registerSubmitter(TransferOpSubmitter(apiClient.dio));
       engine.registerSubmitter(ReceiptOpSubmitter(apiClient.dio));
+      engine.registerSubmitter(ReconciliationOpSubmitter(apiClient.dio));
       engine.start();
 
       // On any successful login, mark the active tenant as used and refresh

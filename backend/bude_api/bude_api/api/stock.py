@@ -1,11 +1,12 @@
 """Stock write endpoints.
 
-    POST /api/method/bude_api.api.stock.create_transfer   (auth required)
-    POST /api/method/bude_api.api.stock.create_receipt    (auth required)
+    POST /api/method/bude_api.api.stock.create_transfer        (auth required)
+    POST /api/method/bude_api.api.stock.create_receipt         (auth required)
+    POST /api/method/bude_api.api.stock.create_reconciliation  (auth required)
 
-Slice 4 (Stock Reconciliation) lands in a separate function in this same
-module. All writes go through standard ERPNext DocTypes (Stock Entry,
-Purchase Receipt, Warehouse, Item, Purchase Order) — no custom DocTypes.
+All writes go through standard ERPNext DocTypes (Stock Entry, Purchase
+Receipt, Stock Reconciliation, Warehouse, Item, Purchase Order) — no
+custom DocTypes.
 """
 
 from typing import Optional
@@ -153,19 +154,17 @@ def _missing_items(codes: list) -> list:
 def create_receipt(
     items: list,
     target_warehouse: str,
-    supplier: Optional[str] = None,
     against_po: Optional[str] = None,
     posting_date: Optional[str] = None,
 ) -> dict:
     """Receive stock into [target_warehouse].
 
     If [against_po] is provided: creates a Purchase Receipt linked to the PO.
-    Each item must match a line on that PO (by item_code) — extras are
-    rejected with VALIDATION_PO_LINE_MISMATCH.
+    The supplier is resolved from the PO. Each item must match a line on
+    that PO (by item_code) — extras are rejected with
+    VALIDATION_PO_LINE_MISMATCH.
 
-    Otherwise: creates a Stock Entry of type Material Receipt. [supplier] is
-    informational only (not persisted on Material Receipt) and currently
-    ignored to keep the wire shape consistent with Purchase Receipt mode.
+    Otherwise: creates a Stock Entry of type Material Receipt.
 
     Returns {name, docstatus} on success.
     """
@@ -291,3 +290,91 @@ def _create_purchase_receipt(items, target_warehouse, against_po, posting_date) 
     pr.insert(ignore_permissions=False)
     pr.submit()
     return success({"name": pr.name, "docstatus": pr.docstatus})
+
+
+# ---------------------------------------------------------------------------
+# create_reconciliation — Stock Reconciliation (count adjustment)
+# ---------------------------------------------------------------------------
+
+
+@_whitelist()
+def create_reconciliation(
+    counts: list,
+    warehouse: str,
+    posting_date: Optional[str] = None,
+) -> dict:
+    """Submit a Stock Reconciliation that snapshots actual counted quantities.
+
+    [counts] is a list of {item_code: str, qty: number} representing what the
+    operator physically counted. Each row becomes a Stock Reconciliation item
+    that sets the actual on-hand to that qty (positive or zero — negatives
+    are rejected because counting cannot legitimately produce a negative).
+
+    Per ERPNext convention, current_qty is left for the server to compute at
+    submit time from the latest Bin balance.
+
+    Returns {name, docstatus} on success.
+    """
+    error = _validate_reconciliation_inputs(counts, warehouse)
+    if error is not None:
+        return error
+
+    if frappe is None:
+        return failure("Frappe not available.", code="ENV_NO_FRAPPE")
+
+    if not _warehouse_exists(warehouse):
+        return failure(
+            f"Warehouse '{warehouse}' does not exist.",
+            code="VALIDATION_UNKNOWN_WAREHOUSE",
+        )
+
+    missing = _missing_items([row["item_code"] for row in counts])
+    if missing:
+        return failure(
+            f"Unknown item(s): {', '.join(missing)}",
+            code="VALIDATION_UNKNOWN_ITEM",
+        )
+
+    doc = frappe.get_doc({
+        "doctype": "Stock Reconciliation",
+        "purpose": "Stock Reconciliation",
+        "posting_date": posting_date,
+        "items": [
+            {
+                "item_code": row["item_code"],
+                "warehouse": warehouse,
+                "qty": row["qty"],
+            }
+            for row in counts
+        ],
+    })
+    doc.insert(ignore_permissions=False)
+    doc.submit()
+    return success({"name": doc.name, "docstatus": doc.docstatus})
+
+
+def _validate_reconciliation_inputs(counts, warehouse) -> Optional[dict]:
+    if not warehouse or not warehouse.strip():
+        return failure("warehouse is required.", code="VALIDATION_REQUIRED")
+    if not counts:
+        return failure("At least one count is required.", code="VALIDATION_REQUIRED")
+    for row in counts:
+        if not isinstance(row, dict):
+            return failure("Each count must be an object.", code="VALIDATION_BAD_SHAPE")
+        if "item_code" not in row or not row["item_code"]:
+            return failure("Each count needs an item_code.", code="VALIDATION_REQUIRED")
+        if "qty" not in row:
+            return failure("Each count needs a qty.", code="VALIDATION_REQUIRED")
+        try:
+            qty = float(row["qty"])
+        except (TypeError, ValueError):
+            return failure(
+                f"Invalid qty for {row.get('item_code')}.",
+                code="VALIDATION_BAD_QTY",
+            )
+        if qty < 0:
+            return failure(
+                f"qty cannot be negative for {row['item_code']}.",
+                code="VALIDATION_BAD_QTY",
+            )
+    return None

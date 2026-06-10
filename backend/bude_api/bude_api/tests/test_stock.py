@@ -338,3 +338,121 @@ def test_create_receipt_against_po_happy_path(mock_frappe):
         "purchase_order_item": "PO-001-1",
     }
     pr.submit.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# create_reconciliation
+# ---------------------------------------------------------------------------
+
+
+def test_create_reconciliation_requires_warehouse():
+    result = stock_api.create_reconciliation(
+        counts=[{"item_code": "A", "qty": 5}],
+        warehouse="",
+    )
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_REQUIRED"
+
+
+def test_create_reconciliation_requires_counts():
+    result = stock_api.create_reconciliation(
+        counts=[],
+        warehouse="Stores - X",
+    )
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_REQUIRED"
+
+
+def test_create_reconciliation_rejects_negative_qty():
+    # 0 is allowed (item present in system but counted as missing).
+    # Negative is not.
+    result = stock_api.create_reconciliation(
+        counts=[{"item_code": "A", "qty": -1}],
+        warehouse="Stores - X",
+    )
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_BAD_QTY"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_reconciliation_allows_zero_qty(mock_frappe):
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [{"name": "Stores - X"}]
+        if doctype == "Item":
+            return [{"item_code": "A"}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+    doc = MagicMock()
+    doc.name = "RECON-2026-00001"
+    doc.docstatus = 1
+    mock_frappe.get_doc.return_value = doc
+
+    # Counted zero on hand — legitimate after a full count showing nothing.
+    result = stock_api.create_reconciliation(
+        counts=[{"item_code": "A", "qty": 0}],
+        warehouse="Stores - X",
+    )
+
+    assert result["ok"] is True
+    assert result["data"]["name"] == "RECON-2026-00001"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_reconciliation_rejects_unknown_item(mock_frappe):
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [{"name": "Stores - X"}]
+        if doctype == "Item":
+            return [{"item_code": "A"}]  # B missing
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+
+    result = stock_api.create_reconciliation(
+        counts=[
+            {"item_code": "A", "qty": 10},
+            {"item_code": "B", "qty": 5},
+        ],
+        warehouse="Stores - X",
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_UNKNOWN_ITEM"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_reconciliation_happy_path_assembles_doc(mock_frappe):
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [{"name": "Stores - X"}]
+        if doctype == "Item":
+            return [{"item_code": "A"}, {"item_code": "B"}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+    doc = MagicMock()
+    doc.name = "RECON-2026-00002"
+    doc.docstatus = 1
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_reconciliation(
+        counts=[
+            {"item_code": "A", "qty": 12},
+            {"item_code": "B", "qty": 0},
+        ],
+        warehouse="Stores - X",
+        posting_date="2026-06-10",
+    )
+
+    assert result["ok"] is True
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert payload["doctype"] == "Stock Reconciliation"
+    assert payload["purpose"] == "Stock Reconciliation"
+    assert payload["posting_date"] == "2026-06-10"
+    assert payload["items"] == [
+        {"item_code": "A", "warehouse": "Stores - X", "qty": 12},
+        {"item_code": "B", "warehouse": "Stores - X", "qty": 0},
+    ]
+    doc.submit.assert_called_once()

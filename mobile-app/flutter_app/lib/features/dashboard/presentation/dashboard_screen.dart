@@ -86,6 +86,11 @@ class DashboardScreen extends ConsumerWidget {
                     onTap: () => context.push('/receipt'),
                   ),
                   _NavCard(
+                    icon: Icons.fact_check,
+                    label: 'Count',
+                    onTap: () => context.push('/reconcile'),
+                  ),
+                  _NavCard(
                     icon: Icons.settings,
                     label: 'Settings',
                     onTap: () => context.push('/settings'),
