@@ -163,3 +163,178 @@ def test_create_transfer_submits_stock_entry_on_happy_path(mock_frappe):
     }
     doc.insert.assert_called_once()
     doc.submit.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# create_receipt
+# ---------------------------------------------------------------------------
+
+
+def test_create_receipt_requires_target_warehouse():
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 1}],
+        target_warehouse="",
+    )
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_REQUIRED"
+
+
+def test_create_receipt_requires_items():
+    result = stock_api.create_receipt(items=[], target_warehouse="Stores - X")
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_REQUIRED"
+
+
+def test_create_receipt_rejects_bad_qty():
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": -1}],
+        target_warehouse="Stores - X",
+    )
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_BAD_QTY"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_receipt_rejects_unknown_warehouse(mock_frappe):
+    mock_frappe.get_list.return_value = []  # no warehouse, no items
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 1}],
+        target_warehouse="Nope - X",
+    )
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_UNKNOWN_WAREHOUSE"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_receipt_material_receipt_happy_path(mock_frappe):
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [{"name": "Tgt - X"}]
+        if doctype == "Item":
+            return [{"item_code": "A"}, {"item_code": "B"}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+    doc = MagicMock()
+    doc.name = "STE-MR-2026-00001"
+    doc.docstatus = 1
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_receipt(
+        items=[
+            {"item_code": "A", "qty": 5},
+            {"item_code": "B", "qty": 2.5},
+        ],
+        target_warehouse="Tgt - X",
+        posting_date="2026-06-10",
+    )
+
+    assert result["ok"] is True
+    assert result["data"]["name"] == "STE-MR-2026-00001"
+
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert payload["doctype"] == "Stock Entry"
+    assert payload["stock_entry_type"] == "Material Receipt"
+    assert payload["posting_date"] == "2026-06-10"
+    assert payload["items"][0] == {
+        "item_code": "A",
+        "qty": 5,
+        "t_warehouse": "Tgt - X",
+    }
+    doc.submit.assert_called_once()
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_receipt_against_po_rejects_unknown_po(mock_frappe):
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [{"name": "Tgt - X"}]
+        if doctype == "Item":
+            return [{"item_code": "A"}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+    mock_frappe.db.get_value.return_value = None
+
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 1}],
+        target_warehouse="Tgt - X",
+        against_po="PO-MISSING",
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_UNKNOWN_PO"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_receipt_against_po_rejects_line_mismatch(mock_frappe):
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [{"name": "Tgt - X"}]
+        if doctype == "Item":
+            return [{"item_code": "A"}, {"item_code": "B"}]
+        if doctype == "Purchase Order Item":
+            return [{"name": "PO-001-1", "item_code": "A", "qty": 10}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+    mock_frappe.db.get_value.return_value = {
+        "name": "PO-001",
+        "supplier": "Acme Supplies",
+    }
+
+    result = stock_api.create_receipt(
+        items=[
+            {"item_code": "A", "qty": 5},
+            {"item_code": "B", "qty": 1},  # not on PO
+        ],
+        target_warehouse="Tgt - X",
+        against_po="PO-001",
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_PO_LINE_MISMATCH"
+    assert "B" in result["message"]
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_receipt_against_po_happy_path(mock_frappe):
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [{"name": "Tgt - X"}]
+        if doctype == "Item":
+            return [{"item_code": "A"}]
+        if doctype == "Purchase Order Item":
+            return [{"name": "PO-001-1", "item_code": "A", "qty": 10}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+    mock_frappe.db.get_value.return_value = {
+        "name": "PO-001",
+        "supplier": "Acme Supplies",
+    }
+    pr = MagicMock()
+    pr.name = "PREC-2026-00001"
+    pr.docstatus = 1
+    mock_frappe.get_doc.return_value = pr
+
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 5}],
+        target_warehouse="Tgt - X",
+        against_po="PO-001",
+    )
+
+    assert result["ok"] is True
+    assert result["data"]["name"] == "PREC-2026-00001"
+
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert payload["doctype"] == "Purchase Receipt"
+    assert payload["supplier"] == "Acme Supplies"
+    assert payload["items"][0] == {
+        "item_code": "A",
+        "qty": 5,
+        "warehouse": "Tgt - X",
+        "purchase_order": "PO-001",
+        "purchase_order_item": "PO-001-1",
+    }
+    pr.submit.assert_called_once()

@@ -7,6 +7,7 @@ import 'core/router/app_router.dart';
 import 'core/sync/providers.dart';
 import 'features/authentication/presentation/providers/auth_notifier.dart';
 import 'features/tenant/presentation/providers/tenant_notifier.dart';
+import 'features/receipt/data/receipt_op_submitter.dart';
 import 'features/transfer/data/transfer_op_submitter.dart';
 
 class BudeInventoryApp extends ConsumerStatefulWidget {
@@ -37,6 +38,7 @@ class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
       // starting it. New write features add their submitter here.
       final engine = ref.read(syncEngineProvider);
       engine.registerSubmitter(TransferOpSubmitter(apiClient.dio));
+      engine.registerSubmitter(ReceiptOpSubmitter(apiClient.dio));
       engine.start();
 
       // On any successful login, mark the active tenant as used and refresh
