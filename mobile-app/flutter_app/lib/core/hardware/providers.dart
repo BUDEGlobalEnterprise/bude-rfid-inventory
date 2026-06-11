@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'adapters/barcode_adapter.dart';
@@ -6,6 +7,7 @@ import 'camera/camera_barcode_adapter.dart';
 import 'device_probe.dart';
 import 'hardware_manager.dart';
 import 'hardware_registry.dart';
+import 'probes/android_device_probe.dart';
 
 /// Override in `main.dart` after `HardwareManager.initialize()` has run, so
 /// consumers always get an initialized instance.
@@ -26,12 +28,20 @@ final rfidAdapterProvider = Provider<RfidAdapter?>((ref) {
 });
 
 /// Build + initialize the manager. Called once from `main.dart`.
+///
+/// When [probe] is omitted, picks `AndroidDeviceProbe` on Android (so
+/// vendor detection works on real devices) and `DefaultDeviceProbe`
+/// everywhere else. Tests can override by passing a fixed probe.
 Future<HardwareManager> bootstrapHardwareManager({
-  DeviceProbe probe = const DefaultDeviceProbe(),
+  DeviceProbe? probe,
 }) async {
+  final effectiveProbe = probe ??
+      (defaultTargetPlatform == TargetPlatform.android
+          ? AndroidDeviceProbe()
+          : const DefaultDeviceProbe());
   final manager = HardwareManager(
     registry: HardwareRegistry.instance,
-    probe: probe,
+    probe: effectiveProbe,
     fallbackBarcode: CameraBarcodeAdapter(),
   );
   await manager.initialize();
