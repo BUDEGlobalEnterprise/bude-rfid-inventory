@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/ui/error_banner.dart';
 import 'providers/auth_notifier.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -68,21 +69,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 32),
-                    if (errorMessage != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.shade200),
-                        ),
-                        child: Text(
-                          errorMessage,
-                          style: TextStyle(color: Colors.red.shade900),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOut,
+                      child: errorMessage == null
+                          ? const SizedBox.shrink()
+                          : Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: ErrorBanner(message: errorMessage),
+                            ),
+                    ),
                     TextFormField(
                       controller: _userCtrl,
                       autofillHints: const [AutofillHints.username],

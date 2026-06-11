@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/hardware/entities/scan_event.dart';
 import '../../../core/sync/providers.dart';
+import '../../../core/ui/error_banner.dart';
 import '../domain/transfer_draft.dart';
 import 'providers/transfer_providers.dart';
 
@@ -91,10 +92,7 @@ class _TransferBody extends ConsumerWidget {
         ),
         if (sameWarehouseError) ...[
           const SizedBox(height: 8),
-          Text(
-            'Source and target must differ.',
-            style: TextStyle(color: Colors.red.shade700),
-          ),
+          const ErrorText('Source and target must differ.'),
         ],
         const Divider(height: 32),
         Row(

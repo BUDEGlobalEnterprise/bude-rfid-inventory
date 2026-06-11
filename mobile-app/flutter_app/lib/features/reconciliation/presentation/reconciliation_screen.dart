@@ -165,15 +165,17 @@ class _CountTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
     final variance = line.variance;
     String? subtitle;
     Color? subtitleColor;
     if (line.expectedQty != null) {
       subtitle = 'Expected ${_fmt(line.expectedQty!)} · Variance ${_fmt(variance!)}';
       if (variance > 0) {
-        subtitleColor = Colors.green.shade700;
+        // Tertiary is Material 3's "success/accent" slot.
+        subtitleColor = scheme.tertiary;
       } else if (variance < 0) {
-        subtitleColor = Colors.red.shade700;
+        subtitleColor = scheme.error;
       }
     }
     return ListTile(

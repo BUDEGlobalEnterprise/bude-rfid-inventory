@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/hardware/entities/scan_event.dart';
 import '../../../core/sync/providers.dart';
+import '../../../core/ui/error_banner.dart';
 import '../domain/receipt_draft.dart';
 import 'providers/receipt_providers.dart';
 
@@ -86,10 +87,7 @@ class _ReceiptBody extends ConsumerWidget {
         const SizedBox(height: 12),
         poAsync.when(
           loading: () => const LinearProgressIndicator(),
-          error: (e, _) => Text(
-            'Could not load POs: $e',
-            style: TextStyle(color: Colors.red.shade700),
-          ),
+          error: (e, _) => ErrorText('Could not load POs: $e'),
           data: (pos) => _Dropdown(
             label: 'Against PO (optional)',
             value: draft.againstPo,

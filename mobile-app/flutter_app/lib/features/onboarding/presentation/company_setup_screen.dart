@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/ui/error_banner.dart';
 import '../domain/connection_check_result.dart';
 import 'providers/onboarding_notifier.dart';
 
@@ -157,32 +158,15 @@ class _ValidationStatusBanner extends StatelessWidget {
     final check = state.lastCheck;
     if (check == null) return const SizedBox.shrink();
     return switch (check) {
-      ConnectionOk(:final erpnextVersion, :final budeApiVersion) => Text(
-          'ERPNext $erpnextVersion · bude_api $budeApiVersion',
-          style: TextStyle(color: Colors.green.shade800),
-        ),
+      ConnectionOk(:final erpnextVersion, :final budeApiVersion) =>
+        SuccessText('ERPNext $erpnextVersion · bude_api $budeApiVersion'),
       ConnectionUnreachable(:final reason) =>
-        _ErrorText('Unreachable: $reason'),
+        ErrorText('Unreachable: $reason'),
       ConnectionNotErpNext(:final reason) =>
-        _ErrorText('Not an ERPNext server: $reason'),
-      ConnectionBudeApiMissing(:final reason) => _ErrorText(reason),
-      ConnectionUnknown(:final reason) => _ErrorText(reason),
+        ErrorText('Not an ERPNext server: $reason'),
+      ConnectionBudeApiMissing(:final reason) => ErrorText(reason),
+      ConnectionUnknown(:final reason) => ErrorText(reason),
     };
-  }
-}
-
-class _ErrorText extends StatelessWidget {
-  final String text;
-  const _ErrorText(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(color: Colors.red.shade800),
-      overflow: TextOverflow.ellipsis,
-      maxLines: 2,
-    );
   }
 }
 
@@ -218,7 +202,7 @@ class _CredentialsStep extends StatelessWidget {
         ),
         if (state.submitError != null) ...[
           const SizedBox(height: 12),
-          _ErrorText(state.submitError!),
+          ErrorText(state.submitError!),
         ],
       ],
     );

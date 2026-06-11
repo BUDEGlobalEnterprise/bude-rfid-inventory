@@ -52,7 +52,7 @@ class _DetailBody extends StatelessWidget {
         Text(
           item.itemCode,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey.shade700,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
         ),
         if (item.description != null && item.description!.isNotEmpty) ...[

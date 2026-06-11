@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/sync/pending_operation.dart';
 import '../../../core/sync/providers.dart';
+import '../../../core/ui/error_banner.dart';
 
 class PendingQueueScreen extends ConsumerWidget {
   const PendingQueueScreen({super.key});
@@ -61,13 +62,7 @@ class _OpTile extends ConsumerWidget {
         children: [
           Text('Created ${fmt.format(op.createdAt.toLocal())}'),
           if (op.attempts > 0) Text('Attempts: ${op.attempts}'),
-          if (op.lastError != null)
-            Text(
-              op.lastError!,
-              style: TextStyle(color: Colors.red.shade700),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+          if (op.lastError != null) ErrorText(op.lastError!),
         ],
       ),
       isThreeLine: op.lastError != null,
@@ -97,17 +92,18 @@ class _StatusIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return switch (status) {
-      OpStatus.pending =>
-        const Icon(Icons.schedule, color: Colors.orange),
+      // Pending uses the muted variant slot — it's "neutral, waiting"
+      // rather than "alert, attention".
+      OpStatus.pending => Icon(Icons.schedule, color: scheme.outline),
       OpStatus.inflight => const SizedBox(
           width: 24,
           height: 24,
           child: CircularProgressIndicator(strokeWidth: 2),
         ),
-      OpStatus.failed => Icon(Icons.error, color: Colors.red.shade700),
-      OpStatus.succeeded =>
-        const Icon(Icons.check_circle, color: Colors.green),
+      OpStatus.failed => Icon(Icons.error, color: scheme.error),
+      OpStatus.succeeded => Icon(Icons.check_circle, color: scheme.tertiary),
     };
   }
 }

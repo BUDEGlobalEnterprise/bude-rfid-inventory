@@ -132,20 +132,48 @@ class _NavCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final disabled = onTap == null;
+    final iconColor = disabled ? scheme.outline : scheme.primary;
+    final labelColor = disabled ? scheme.outline : scheme.onSurface;
+
     return Card(
-      elevation: disabled ? 0 : 2,
+      elevation: 0,
+      color: disabled
+          ? scheme.surfaceContainerLowest
+          : scheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
+        splashColor: scheme.primary.withValues(alpha: 0.12),
+        highlightColor: scheme.primary.withValues(alpha: 0.05),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 48, color: disabled ? Colors.grey : null),
-              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: disabled
+                      ? Colors.transparent
+                      : scheme.primaryContainer.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 32, color: iconColor),
+              ),
+              const SizedBox(height: 12),
               Text(
                 label,
-                style: TextStyle(color: disabled ? Colors.grey : null),
+                style: TextStyle(
+                  color: labelColor,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ],
           ),
