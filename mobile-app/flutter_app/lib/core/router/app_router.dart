@@ -28,24 +28,33 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authNotifierProvider);
       final location = state.matchedLocation;
 
-      // Splash + onboarding are always reachable.
-      if (location == '/splash' || location == '/onboarding') return null;
-
       // Until the tenant is resolved, don't redirect anywhere — splash drives.
       if (tenantState is TenantInitial || tenantState is TenantLoading) {
         return null;
       }
 
       // No tenant configured → must go through onboarding.
-      if (tenantState is TenantAbsent) return '/onboarding';
+      if (tenantState is TenantAbsent) {
+        if (location == '/splash' || location == '/onboarding') return null;
+        return '/onboarding';
+      }
 
-      // Tenant exists. Login + settings are the only pre-auth public routes.
+      // Tenant exists.
       final loggedIn = authState is Authenticated;
-      final publicRoute = location == '/login' || location == '/settings';
+      
+      // If fully logged in, bounce them off splash, onboarding, and login.
+      if (loggedIn) {
+        if (location == '/splash' || location == '/onboarding' || location == '/login') {
+          return '/';
+        }
+        return null;
+      }
 
+      // Not logged in (tenant exists).
+      final publicRoute = location == '/login' || location == '/settings';
       if (authState is AuthInitial || authState is AuthLoading) return null;
-      if (!loggedIn && !publicRoute) return '/login';
-      if (loggedIn && location == '/login') return '/';
+      if (!publicRoute) return '/login';
+      
       return null;
     },
     routes: [

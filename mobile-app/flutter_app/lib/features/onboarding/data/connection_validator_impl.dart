@@ -35,10 +35,15 @@ class ConnectionValidatorImpl implements ConnectionValidator {
 
     // Step 1: Frappe version probe.
     final versionsResult = await _probeVersions(dio);
-    if (versionsResult is! _VersionsOk) {
-      return versionsResult.toResult();
+    String? erpnextVersion;
+    if (versionsResult is _VersionsOk) {
+      erpnextVersion = versionsResult.erpnextVersion;
+    } else {
+      // Frappe v15 blocks get_versions for guests (returns 403).
+      // Fallback to checking the bude_api ping directly.
+      erpnextVersion = 'Unknown';
     }
-    final erpnextVersion = versionsResult.erpnextVersion;
+
     if (erpnextVersion == null) {
       return const ConnectionNotErpNext(
         'Server responded but ERPNext is not installed.',

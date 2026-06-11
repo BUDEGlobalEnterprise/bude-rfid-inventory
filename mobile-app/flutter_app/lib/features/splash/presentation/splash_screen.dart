@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/app_version.dart';
 import '../../authentication/presentation/providers/auth_notifier.dart';
 import '../../tenant/presentation/providers/tenant_notifier.dart';
 
@@ -64,33 +65,69 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: scheme.surface,
-      body: Center(
-        child: FadeTransition(
-          opacity: CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ScaleTransition(
-                scale: Tween<double>(begin: 0.92, end: 1.0).animate(
-                  CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack),
-                ),
-                child: Icon(
-                  Icons.inventory_2,
-                  size: 72,
-                  color: scheme.primary,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: FadeTransition(
+                  opacity: CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ScaleTransition(
+                        scale: Tween<double>(begin: 0.92, end: 1.0).animate(
+                          CurvedAnimation(
+                            parent: _ctrl,
+                            curve: Curves.easeOutBack,
+                          ),
+                        ),
+                        child: Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            color: scheme.primaryContainer,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.inventory_2,
+                            size: 48,
+                            color: scheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'Bude Inventory',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: scheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: scheme.primary,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(
+                AppVersion.footer,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontSize: 12,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
