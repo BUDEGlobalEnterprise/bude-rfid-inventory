@@ -86,17 +86,21 @@ class SyncEngine {
       final submitter = _submitters[op.type];
       if (submitter == null) {
         appLogger.w('No submitter registered for op type "${op.type}".');
-        await queue.update(op.copyWith(
-          status: OpStatus.failed,
-          lastError: 'Unsupported op type "${op.type}"',
-        ));
+        await queue.update(
+          op.copyWith(
+            status: OpStatus.failed,
+            lastError: 'Unsupported op type "${op.type}"',
+          ),
+        );
         continue;
       }
 
-      await queue.update(op.copyWith(
-        status: OpStatus.inflight,
-        clearError: true,
-      ));
+      await queue.update(
+        op.copyWith(
+          status: OpStatus.inflight,
+          clearError: true,
+        ),
+      );
 
       final result = await _safeSubmit(submitter, op);
       await _applyResult(op, result);
@@ -118,39 +122,47 @@ class SyncEngine {
   Future<void> _applyResult(PendingOperation op, SubmitResult result) async {
     switch (result) {
       case SubmitSuccess(:final serverRef):
-        await queue.update(op.copyWith(
-          status: OpStatus.succeeded,
-          serverRef: serverRef,
-          clearError: true,
-          clearNextRetry: true,
-        ));
+        await queue.update(
+          op.copyWith(
+            status: OpStatus.succeeded,
+            serverRef: serverRef,
+            clearError: true,
+            clearNextRetry: true,
+          ),
+        );
 
       case SubmitFatal(:final error):
-        await queue.update(op.copyWith(
-          status: OpStatus.failed,
-          lastError: error,
-          clearNextRetry: true,
-        ));
+        await queue.update(
+          op.copyWith(
+            status: OpStatus.failed,
+            lastError: error,
+            clearNextRetry: true,
+          ),
+        );
 
       case SubmitRetryable(:final error):
         final nextAttempts = op.attempts + 1;
         if (nextAttempts >= _maxAttempts) {
-          await queue.update(op.copyWith(
-            status: OpStatus.failed,
-            attempts: nextAttempts,
-            lastError: 'After $_maxAttempts attempts: $error',
-            clearNextRetry: true,
-          ));
+          await queue.update(
+            op.copyWith(
+              status: OpStatus.failed,
+              attempts: nextAttempts,
+              lastError: 'After $_maxAttempts attempts: $error',
+              clearNextRetry: true,
+            ),
+          );
         } else {
           final backoffSec = math.min(300, math.pow(2, nextAttempts).toInt());
-          await queue.update(op.copyWith(
-            status: OpStatus.pending,
-            attempts: nextAttempts,
-            lastError: error,
-            nextRetryAt: DateTime.now().toUtc().add(
-                  Duration(seconds: backoffSec),
-                ),
-          ));
+          await queue.update(
+            op.copyWith(
+              status: OpStatus.pending,
+              attempts: nextAttempts,
+              lastError: error,
+              nextRetryAt: DateTime.now()
+                  .toUtc()
+                  .add(Duration(seconds: backoffSec)),
+            ),
+          );
         }
     }
   }

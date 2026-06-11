@@ -58,20 +58,40 @@ class SyncQueue {
   int unresolvedCount() =>
       all().where((o) => o.status != OpStatus.succeeded).length;
 
-  /// Stream of `unresolvedCount()` — emits whenever the box mutates.
-  Stream<int> unresolvedCountStream() async* {
-    yield unresolvedCount();
-    await for (final _ in _changes.stream) {
-      yield unresolvedCount();
-    }
-  }
+  /// Stream of `unresolvedCount()` — emits the current value on subscribe,
+  /// then again whenever the box mutates.
+  Stream<int> unresolvedCountStream() => _withInitial(
+        () => unresolvedCount(),
+        _changes.stream.map((_) => unresolvedCount()),
+      );
 
   /// Stream of all operations — emits whenever the box mutates.
-  Stream<List<PendingOperation>> watchAll() async* {
-    yield all();
-    await for (final _ in _changes.stream) {
-      yield all();
-    }
+  Stream<List<PendingOperation>> watchAll() => _withInitial(
+        () => all(),
+        _changes.stream.map((_) => all()),
+      );
+
+  /// Helper: emit an initial value synchronously on subscribe, then
+  /// proxy events from [updates]. Avoids `async*` + broadcast-stream races
+  /// and gives subscribers a deterministic first event.
+  static Stream<T> _withInitial<T>(
+    T Function() initial,
+    Stream<T> updates,
+  ) {
+    late StreamController<T> ctrl;
+    StreamSubscription<T>? sub;
+    ctrl = StreamController<T>(
+      onListen: () {
+        ctrl.add(initial());
+        sub = updates.listen(
+          ctrl.add,
+          onError: ctrl.addError,
+          onDone: ctrl.close,
+        );
+      },
+      onCancel: () => sub?.cancel(),
+    );
+    return ctrl.stream;
   }
 
   /// Pick the next pending op whose [PendingOperation.nextRetryAt] (if any)
@@ -99,12 +119,14 @@ class SyncQueue {
   Future<void> retry(String id) async {
     final op = getById(id);
     if (op == null) return;
-    await update(op.copyWith(
-      status: OpStatus.pending,
-      attempts: 0,
-      clearError: true,
-      clearNextRetry: true,
-    ));
+    await update(
+      op.copyWith(
+        status: OpStatus.pending,
+        attempts: 0,
+        clearError: true,
+        clearNextRetry: true,
+      ),
+    );
   }
 
   Future<void> dispose() async {
