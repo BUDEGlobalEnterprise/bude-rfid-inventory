@@ -33,28 +33,23 @@ class ConnectionValidatorImpl implements ConnectionValidator {
 
     final dio = dioFactory(cleaned);
 
-    // Step 1: Frappe version probe.
-    final versionsResult = await _probeVersions(dio);
-    String? erpnextVersion;
-    if (versionsResult is _VersionsOk) {
-      erpnextVersion = versionsResult.erpnextVersion;
-    } else {
-      // Frappe v15 blocks get_versions for guests (returns 403).
-      // Fallback to checking the bude_api ping directly.
-      erpnextVersion = 'Unknown';
+    // Step 1: frappe.ping — genuinely allow_guest. Confirms the host is a
+    // reachable Frappe server without hitting the guest-blocked version endpoint.
+    final frappeResult = await _probeFrappe(dio);
+    if (frappeResult != _FrappeOk.instance) {
+      return switch (frappeResult) {
+        _FrappeUnreachable(:final reason) => ConnectionUnreachable(reason),
+        _FrappeNotErpNext(:final reason) => ConnectionNotErpNext(reason),
+        _ => const ConnectionUnknown('Unexpected Frappe probe result.'),
+      };
     }
 
-    if (erpnextVersion == null) {
-      return const ConnectionNotErpNext(
-        'Server responded but ERPNext is not installed.',
-      );
-    }
-
-    // Step 2: bude_api capability probe.
+    // Step 2: bude_api health ping — provides budeApiVersion and erpnextVersion
+    // (resolved server-side so guests can receive it).
     final pingResult = await _probePing(dio);
     return switch (pingResult) {
-      _PingOk(:final budeApiVersion) => ConnectionOk(
-          erpnextVersion: erpnextVersion,
+      _PingOk(:final budeApiVersion, :final erpnextVersion) => ConnectionOk(
+          erpnextVersion: erpnextVersion ?? 'unknown',
           budeApiVersion: budeApiVersion,
         ),
       _PingMissing() => const ConnectionBudeApiMissing(
@@ -64,27 +59,35 @@ class ConnectionValidatorImpl implements ConnectionValidator {
     };
   }
 
-  Future<_VersionsResult> _probeVersions(Dio dio) async {
+  Future<_FrappeResult> _probeFrappe(Dio dio) async {
     try {
       final response = await dio.get<Map<String, dynamic>>(
-        '/api/method/frappe.utils.change_log.get_versions',
+        '/api/method/frappe.ping',
       );
-      final body = response.data;
-      if (body == null) {
-        return const _VersionsUnknown('Empty response from version probe.');
+      final message = response.data?['message'];
+      if (message != 'pong') {
+        return const _FrappeNotErpNext('Server responded but is not Frappe.');
       }
-      // Frappe wraps method results in {"message": {...}}.
-      final message = body['message'];
-      if (message is! Map) {
-        return const _VersionsNotErpNext('Unexpected version response shape.');
-      }
-      final erpnext = message['erpnext'];
-      final version = erpnext is Map ? erpnext['version'] as String? : null;
-      return _VersionsOk(version);
+      return _FrappeOk.instance;
     } on DioException catch (e) {
-      return _mapDioToVersions(e);
+      final status = e.response?.statusCode;
+      if (status == 404) {
+        return const _FrappeNotErpNext(
+          'Server reachable but Frappe API not found.',
+        );
+      }
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        return _FrappeUnreachable(e.message ?? 'Connection failed.');
+      }
+      if (status != null && status >= 500) {
+        return _FrappeUnknown('Server error ($status).');
+      }
+      return _FrappeUnknown(e.message ?? 'Unknown error.');
     } catch (e) {
-      return _VersionsUnknown(e.toString());
+      return _FrappeUnknown(e.toString());
     }
   }
 
@@ -94,7 +97,7 @@ class ConnectionValidatorImpl implements ConnectionValidator {
         '/api/method/bude_api.api.health.ping',
       );
       final body = response.data;
-      // health.ping returns its dict directly, Frappe wraps in {"message": ...}.
+      // health.ping returns its dict directly; Frappe wraps it in {"message": ...}.
       final message = body?['message'];
       if (message is! Map) {
         return const _PingUnknown('Unexpected ping response shape.');
@@ -103,10 +106,11 @@ class ConnectionValidatorImpl implements ConnectionValidator {
       if (version == null) {
         return const _PingUnknown('bude_api responded without a version.');
       }
-      return _PingOk(version);
+      final erpnextVersion = message['erpnext_version'] as String?;
+      return _PingOk(budeApiVersion: version, erpnextVersion: erpnextVersion);
     } on DioException catch (e) {
       final status = e.response?.statusCode;
-      if (status == 404 || status == 500) {
+      if (status == 403 || status == 404 || status == 500) {
         return const _PingMissing();
       }
       return _PingUnknown(e.message ?? 'Network error during capability probe.');
@@ -114,59 +118,32 @@ class ConnectionValidatorImpl implements ConnectionValidator {
       return _PingUnknown(e.toString());
     }
   }
-
-  _VersionsResult _mapDioToVersions(DioException e) {
-    final status = e.response?.statusCode;
-    if (status == 404) {
-      // Frappe-style 404 means the method isn't there → likely not Frappe.
-      return const _VersionsNotErpNext(
-        'Server reachable but Frappe API not found.',
-      );
-    }
-    if (e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.connectionError ||
-        e.type == DioExceptionType.receiveTimeout ||
-        e.type == DioExceptionType.sendTimeout) {
-      return _VersionsUnreachable(e.message ?? 'Connection failed.');
-    }
-    if (status != null && status >= 500) {
-      return _VersionsUnknown('Server error ($status).');
-    }
-    return _VersionsUnknown(e.message ?? 'Unknown error.');
-  }
 }
 
 // --- internal result helpers ---
 
-sealed class _VersionsResult {
-  const _VersionsResult();
-  ConnectionCheckResult toResult() => switch (this) {
-        _VersionsOk() => throw StateError('toResult on OK is unused'),
-        _VersionsUnreachable(:final reason) =>
-          ConnectionUnreachable(reason),
-        _VersionsNotErpNext(:final reason) => ConnectionNotErpNext(reason),
-        _VersionsUnknown(:final reason) => ConnectionUnknown(reason),
-      };
+sealed class _FrappeResult {
+  const _FrappeResult();
 }
 
-class _VersionsOk extends _VersionsResult {
-  final String? erpnextVersion;
-  const _VersionsOk(this.erpnextVersion);
+class _FrappeOk extends _FrappeResult {
+  const _FrappeOk._();
+  static const instance = _FrappeOk._();
 }
 
-class _VersionsUnreachable extends _VersionsResult {
+class _FrappeUnreachable extends _FrappeResult {
   final String reason;
-  const _VersionsUnreachable(this.reason);
+  const _FrappeUnreachable(this.reason);
 }
 
-class _VersionsNotErpNext extends _VersionsResult {
+class _FrappeNotErpNext extends _FrappeResult {
   final String reason;
-  const _VersionsNotErpNext(this.reason);
+  const _FrappeNotErpNext(this.reason);
 }
 
-class _VersionsUnknown extends _VersionsResult {
+class _FrappeUnknown extends _FrappeResult {
   final String reason;
-  const _VersionsUnknown(this.reason);
+  const _FrappeUnknown(this.reason);
 }
 
 sealed class _PingResult {
@@ -175,7 +152,8 @@ sealed class _PingResult {
 
 class _PingOk extends _PingResult {
   final String budeApiVersion;
-  const _PingOk(this.budeApiVersion);
+  final String? erpnextVersion;
+  const _PingOk({required this.budeApiVersion, this.erpnextVersion});
 }
 
 class _PingMissing extends _PingResult {

@@ -30,13 +30,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         data: {'usr': username, 'pwd': password},
       );
 
-      final body = response.data;
-      if (body == null || body['ok'] != true) {
-        final message = body?['message'] as String? ?? 'Login failed.';
-        throw AuthException(message);
+      // Frappe wraps every /api/method return value under "message".
+      final body = _unwrapEnvelope(response.data);
+      if (body['ok'] != true) {
+        throw AuthException(
+          (body['message'] as String?) ?? 'Login failed.',
+        );
       }
 
-      return AuthSessionModel.fromJson(body['data'] as Map<String, dynamic>);
+      return AuthSessionModel.fromJson(
+        (body['data'] as Map).cast<String, dynamic>(),
+      );
     } on DioException catch (e) {
       throw _mapDioError(e);
     }
@@ -58,14 +62,25 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         '/api/method/bude_api.api.auth.session_info',
       );
 
-      final body = response.data;
-      if (body == null || body['ok'] != true) {
+      final body = _unwrapEnvelope(response.data);
+      if (body['ok'] != true) {
         throw const AuthException('No active session.');
       }
-      return body['data'] as Map<String, dynamic>;
+      return (body['data'] as Map).cast<String, dynamic>();
     } on DioException catch (e) {
       throw _mapDioError(e);
     }
+  }
+
+  /// Frappe wraps the return value of every /api/method/* call under a
+  /// top-level "message" key. Returns the unwrapped bude_api envelope
+  /// ({ok, data, message, code}).
+  Map<String, dynamic> _unwrapEnvelope(Map<String, dynamic>? raw) {
+    final envelope = raw?['message'];
+    if (envelope is! Map) {
+      throw const AuthException('Unexpected response shape from server.');
+    }
+    return envelope.cast<String, dynamic>();
   }
 
   Exception _mapDioError(DioException e) {

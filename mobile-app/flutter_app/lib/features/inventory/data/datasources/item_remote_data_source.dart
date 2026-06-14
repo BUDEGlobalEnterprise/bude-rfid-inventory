@@ -55,10 +55,12 @@ class ItemRemoteDataSourceImpl implements ItemRemoteDataSource {
   }) async {
     try {
       final response = await dio.post<Map<String, dynamic>>(path, data: data);
-      final body = response.data;
-      if (body == null) {
-        throw const ServerException('Empty response.');
+      // Frappe wraps every /api/method return value under "message".
+      final envelope = response.data?['message'];
+      if (envelope is! Map) {
+        throw const ServerException('Unexpected response shape from server.');
       }
+      final body = envelope.cast<String, dynamic>();
       if (body['ok'] != true) {
         final message = body['message'] as String? ?? 'Request failed.';
         final code = body['code'] as String?;
