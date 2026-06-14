@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../core/hardware/entities/scan_event.dart';
+import '../../../core/utils/locale_ext.dart';
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
@@ -40,7 +41,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan barcode'),
+        title: Text(context.l10n.scan),
         actions: [
           IconButton(
             icon: const Icon(Icons.flash_on),

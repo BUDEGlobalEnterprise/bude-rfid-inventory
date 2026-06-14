@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # State management
   flutter_riverpod: ^2.5.1
@@ -27,7 +29,7 @@ dependencies:
   go_router: ^14.0.0
 
   # Utilities
-  intl: ^0.19.0
+  intl: ^0.20.2
   logger: ^2.2.0
   equatable: ^2.0.5
   uuid: ^4.5.1
@@ -35,6 +37,10 @@ dependencies:
 
   # Functional error handling (Either / Result types)
   dartz: ^0.10.1
+
+  # UI enhancements
+  google_fonts: ^6.2.0
+  shimmer: ^3.0.0
 
   # Barcode scanning (camera-based for Phase 1)
   mobile_scanner: ^5.0.0
@@ -48,6 +54,7 @@ dev_dependencies:
   mocktail: ^1.0.3
 
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - assets/images/

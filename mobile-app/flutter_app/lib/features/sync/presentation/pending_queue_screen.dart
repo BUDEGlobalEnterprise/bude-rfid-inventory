@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/sync/pending_operation.dart';
 import '../../../core/sync/providers.dart';
 import '../../../core/ui/error_banner.dart';
+import '../../../core/utils/locale_ext.dart';
 
 class PendingQueueScreen extends ConsumerWidget {
   const PendingQueueScreen({super.key});
@@ -15,7 +16,7 @@ class PendingQueueScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pending sync'),
+        title: Text(context.l10n.syncAndOffline),
         actions: [
           IconButton(
             tooltip: 'Sync now',
@@ -32,8 +33,8 @@ class PendingQueueScreen extends ConsumerWidget {
               .where((o) => o.status != OpStatus.succeeded)
               .toList();
           if (unresolved.isEmpty) {
-            return const Center(
-              child: Text('Nothing pending — all caught up.'),
+            return Center(
+              child: Text(context.l10n.emptyQueue),
             );
           }
           return ListView.separated(

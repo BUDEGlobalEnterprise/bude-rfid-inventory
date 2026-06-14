@@ -1,0 +1,293 @@
+{
+  "@@locale": "en",
+  "appName": "Bude Inventory",
+  "@appName": {},
+  "dashboard": "Dashboard",
+  "@dashboard": {},
+  "welcome": "Welcome, {name}",
+  "@welcome": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "scan": "Scan",
+  "@scan": {},
+  "searchItems": "Search Items",
+  "@searchItems": {},
+  "transfer": "Transfer",
+  "@transfer": {},
+  "receive": "Receive",
+  "@receive": {},
+  "count": "Count",
+  "@count": {},
+  "settings": "Settings",
+  "@settings": {},
+  "stockTransfer": "Stock transfer",
+  "@stockTransfer": {},
+  "receiveStock": "Receive stock",
+  "@receiveStock": {},
+  "stockCount": "Stock count",
+  "@stockCount": {},
+  "sourceWarehouse": "Source warehouse",
+  "@sourceWarehouse": {},
+  "targetWarehouse": "Target warehouse",
+  "@targetWarehouse": {},
+  "warehouse": "Warehouse",
+  "@warehouse": {},
+  "scanToAdd": "Scan to add",
+  "@scanToAdd": {},
+  "queueTransfer": "Queue transfer",
+  "@queueTransfer": {},
+  "queueReceipt": "Queue receipt",
+  "@queueReceipt": {},
+  "queueCount": "Queue count",
+  "@queueCount": {},
+  "againstPo": "Against PO (optional)",
+  "@againstPo": {},
+  "noItemsYet": "No items yet — scan or add manually.",
+  "@noItemsYet": {},
+  "scanItemsToCount": "Scan items to start counting.",
+  "@scanItemsToCount": {},
+  "pickWarehouseFirst": "Pick a warehouse first.",
+  "@pickWarehouseFirst": {},
+  "countedItems": "Counted items ({count})",
+  "@countedItems": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "items": "Items ({count})",
+  "@items": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "itemNotFound": "No item found for this barcode",
+  "@itemNotFound": {},
+  "transferQueued": "Transfer queued (op {id}). Watch /sync for status.",
+  "@transferQueued": {
+    "placeholders": {
+      "id": { "type": "String" }
+    }
+  },
+  "receiptQueued": "Receipt queued (op {id}). Watch /sync for status.",
+  "@receiptQueued": {
+    "placeholders": {
+      "id": { "type": "String" }
+    }
+  },
+  "countQueued": "Count queued (op {id}). Watch /sync for status.",
+  "@countQueued": {
+    "placeholders": {
+      "id": { "type": "String" }
+    }
+  },
+  "openSync": "Open sync",
+  "@openSync": {},
+  "sourceTargetMustDiffer": "Source and target must differ.",
+  "@sourceTargetMustDiffer": {},
+  "changingWarehouseClearsCount": "Changing this clears the current count.",
+  "@changingWarehouseClearsCount": {},
+  "failedToLoadWarehouses": "Failed to load warehouses: {error}",
+  "@failedToLoadWarehouses": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "couldNotLoadPOs": "Could not load POs: {error}",
+  "@couldNotLoadPOs": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "offline": "Offline",
+  "@offline": {},
+  "offlineMessage": "You're offline — changes will sync when connected",
+  "@offlineMessage": {},
+  "syncing": "Syncing…",
+  "@syncing": {},
+  "syncComplete": "Synced",
+  "@syncComplete": {},
+  "pendingOps": "{count,plural, =0{No pending operations} =1{1 pending operation} other{{count} pending operations}}",
+  "@pendingOps": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "syncNonePending": "Sync (none pending)",
+  "@syncNonePending": {},
+  "syncPending": "Sync ({count} pending)",
+  "@syncPending": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "logout": "Logout",
+  "@logout": {},
+  "signOut": "Sign out",
+  "@signOut": {},
+  "resetConnection": "Reset connection",
+  "@resetConnection": {},
+  "resetConnectionTitle": "Reset connection?",
+  "@resetConnectionTitle": {},
+  "resetConnectionMessage": "This signs you out and removes the saved server. You will be sent back to setup.",
+  "@resetConnectionMessage": {},
+  "cancel": "Cancel",
+  "@cancel": {},
+  "reset": "Reset",
+  "@reset": {},
+  "appearance": "Appearance",
+  "@appearance": {},
+  "language": "Language",
+  "@language": {},
+  "themeLight": "Light",
+  "@themeLight": {},
+  "themeDark": "Dark",
+  "@themeDark": {},
+  "themeSystem": "System",
+  "@themeSystem": {},
+  "textSize": "Text size",
+  "@textSize": {},
+  "textSizeSmall": "S",
+  "@textSizeSmall": {},
+  "textSizeMedium": "M",
+  "@textSizeMedium": {},
+  "textSizeLarge": "L",
+  "@textSizeLarge": {},
+  "highContrast": "High contrast",
+  "@highContrast": {},
+  "connection": "Connection",
+  "@connection": {},
+  "company": "Company",
+  "@company": {},
+  "erpUrl": "ERP URL",
+  "@erpUrl": {},
+  "connectedSince": "Connected since",
+  "@connectedSince": {},
+  "erpnextVersion": "ERPNext",
+  "@erpnextVersion": {},
+  "budeApiVersion": "bude_api",
+  "@budeApiVersion": {},
+  "defaults": "Defaults",
+  "@defaults": {},
+  "defaultSourceWarehouse": "Default source warehouse",
+  "@defaultSourceWarehouse": {},
+  "defaultTargetWarehouse": "Default target warehouse",
+  "@defaultTargetWarehouse": {},
+  "noneSelected": "— none —",
+  "@noneSelected": {},
+  "scanning": "Scanning",
+  "@scanning": {},
+  "scanSound": "Scan sound",
+  "@scanSound": {},
+  "scanVibration": "Scan vibration",
+  "@scanVibration": {},
+  "continuousScanMode": "Continuous scan mode",
+  "@continuousScanMode": {},
+  "syncAndOffline": "Sync & Offline",
+  "@syncAndOffline": {},
+  "syncInterval": "Sync interval",
+  "@syncInterval": {},
+  "syncIntervalMinutes": "{minutes} min",
+  "@syncIntervalMinutes": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "wifiOnlySync": "Sync on Wi-Fi only",
+  "@wifiOnlySync": {},
+  "forceFullResync": "Force full resync",
+  "@forceFullResync": {},
+  "diagnostics": "Diagnostics",
+  "@diagnostics": {},
+  "appVersion": "App version",
+  "@appVersion": {},
+  "account": "Account",
+  "@account": {},
+  "currentConnection": "Current connection",
+  "@currentConnection": {},
+  "noConnectionConfigured": "No connection configured.",
+  "@noConnectionConfigured": {},
+  "setUpNow": "Set up now",
+  "@setUpNow": {},
+  "emptyQueue": "No pending operations",
+  "@emptyQueue": {},
+  "emptyQueueSubtitle": "All changes have been synced.",
+  "@emptyQueueSubtitle": {},
+  "noItemsFound": "No items found",
+  "@noItemsFound": {},
+  "tryScanningBarcode": "Try scanning a barcode or enter a different search term.",
+  "@tryScanningBarcode": {},
+  "recentlyUsed": "Recently used",
+  "@recentlyUsed": {},
+  "autoLogoutDisabled": "Disabled",
+  "@autoLogoutDisabled": {},
+  "autoLogoutMinutes": "Auto-logout: {minutes} min",
+  "@autoLogoutMinutes": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "stockTab": "Stock",
+  "@stockTab": {},
+  "historyTab": "History",
+  "@historyTab": {},
+  "movementHistory": "Movement history",
+  "@movementHistory": {},
+  "noMovementHistory": "No movement history",
+  "@noMovementHistory": {},
+  "noMovementHistorySubtitle": "Transactions will appear here once this item has been moved.",
+  "@noMovementHistorySubtitle": {},
+  "balanceAfter": "Balance after: {qty}",
+  "@balanceAfter": {
+    "placeholders": {
+      "qty": { "type": "String" }
+    }
+  },
+  "warehouses": "Warehouses",
+  "@warehouses": {},
+  "warehouseStock": "Warehouse stock",
+  "@warehouseStock": {},
+  "noWarehousesFound": "No warehouses found",
+  "@noWarehousesFound": {},
+  "noWarehousesFoundSubtitle": "Check your ERPNext connection or add warehouses in ERPNext.",
+  "@noWarehousesFoundSubtitle": {},
+  "noStockInWarehouse": "No stock in this warehouse",
+  "@noStockInWarehouse": {},
+  "noStockInWarehouseSubtitle": "Items will appear here once stock has been received.",
+  "@noStockInWarehouseSubtitle": {},
+  "totalItems": "Total items: {count}",
+  "@totalItems": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "actualQty": "Actual",
+  "@actualQty": {},
+  "reservedQty": "Reserved",
+  "@reservedQty": {},
+  "projectedQty": "Projected",
+  "@projectedQty": {},
+  "scanSession": "Scan session",
+  "@scanSession": {},
+  "startScanSession": "Start scan session",
+  "@startScanSession": {},
+  "useNItems": "Use {count} items",
+  "@useNItems": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "scanningActive": "Scanning…",
+  "@scanningActive": {},
+  "resolving": "Resolving…",
+  "@resolving": {},
+  "itemAdded": "Added: {name}",
+  "@itemAdded": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "barcodeNotFound": "Barcode not found",
+  "@barcodeNotFound": {}
+}

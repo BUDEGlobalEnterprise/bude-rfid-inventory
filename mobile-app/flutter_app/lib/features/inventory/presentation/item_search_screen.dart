@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/hardware/entities/scan_event.dart';
+import '../../../core/utils/locale_ext.dart';
 import '../domain/entities/item.dart';
 import 'providers/item_search_notifier.dart';
 
@@ -43,7 +44,7 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
     final state = ref.watch(itemSearchNotifierProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Search items')),
+      appBar: AppBar(title: Text(context.l10n.searchItems)),
       floatingActionButton: FloatingActionButton(
         onPressed: _openScanner,
         tooltip: 'Scan barcode',

@@ -6,6 +6,7 @@ class Branding extends Equatable {
   final String? address;
   final String? erpnextVersion;
   final String? budeApiVersion;
+  final Map<String, bool> featureFlags;
 
   const Branding({
     this.companyName,
@@ -13,6 +14,7 @@ class Branding extends Equatable {
     this.address,
     this.erpnextVersion,
     this.budeApiVersion,
+    this.featureFlags = const {},
   });
 
   /// Absolute URL for the logo given the active ERP base URL, or null if no
@@ -34,19 +36,28 @@ class Branding extends Equatable {
         'company_address': address,
         'erpnext_version': erpnextVersion,
         'bude_api_version': budeApiVersion,
+        'feature_flags': featureFlags,
       };
 
   static Branding fromJson(Map<String, dynamic> json) {
+    final rawFlags = json['feature_flags'];
+    final flags = <String, bool>{};
+    if (rawFlags is Map) {
+      rawFlags.forEach((k, v) {
+        if (k is String && v is bool) flags[k] = v;
+      });
+    }
     return Branding(
       companyName: json['company_name'] as String?,
       logoPath: json['company_logo'] as String?,
       address: json['company_address'] as String?,
       erpnextVersion: json['erpnext_version'] as String?,
       budeApiVersion: json['bude_api_version'] as String?,
+      featureFlags: flags,
     );
   }
 
   @override
   List<Object?> get props =>
-      [companyName, logoPath, address, erpnextVersion, budeApiVersion];
+      [companyName, logoPath, address, erpnextVersion, budeApiVersion, featureFlags];
 }
