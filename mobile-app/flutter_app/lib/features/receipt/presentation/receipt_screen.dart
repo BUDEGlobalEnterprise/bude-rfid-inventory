@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/hardware/entities/scan_event.dart';
 import '../../../core/sync/providers.dart';
 import '../../../core/ui/error_banner.dart';
+import '../../inventory/presentation/providers/item_search_notifier.dart';
 import '../domain/receipt_draft.dart';
 import 'providers/receipt_providers.dart';
 
@@ -60,7 +61,7 @@ class ReceiptScreen extends ConsumerWidget {
   }
 }
 
-class _ReceiptBody extends ConsumerWidget {
+class _ReceiptBody extends ConsumerStatefulWidget {
   final ReceiptDraft draft;
   final List<String> warehouses;
   final AsyncValue<List<String>> poAsync;
@@ -72,7 +73,14 @@ class _ReceiptBody extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ReceiptBody> createState() => _ReceiptBodyState();
+}
+
+class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
+  bool _resolving = false;
+
+  @override
+  Widget build(BuildContext context) {
     final notifier = ref.read(receiptDraftProvider.notifier);
 
     return ListView(
@@ -80,17 +88,17 @@ class _ReceiptBody extends ConsumerWidget {
       children: [
         _Dropdown(
           label: 'Target warehouse',
-          value: draft.targetWarehouse,
-          options: warehouses,
+          value: widget.draft.targetWarehouse,
+          options: widget.warehouses,
           onChanged: notifier.setTarget,
         ),
         const SizedBox(height: 12),
-        poAsync.when(
+        widget.poAsync.when(
           loading: () => const LinearProgressIndicator(),
           error: (e, _) => ErrorText('Could not load POs: $e'),
           data: (pos) => _Dropdown(
             label: 'Against PO (optional)',
-            value: draft.againstPo,
+            value: widget.draft.againstPo,
             options: pos,
             allowClear: true,
             onChanged: notifier.setAgainstPo,
@@ -100,25 +108,31 @@ class _ReceiptBody extends ConsumerWidget {
         Row(
           children: [
             Text(
-              'Items (${draft.lines.length})',
+              'Items (${widget.draft.lines.length})',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const Spacer(),
             OutlinedButton.icon(
-              icon: const Icon(Icons.qr_code_scanner),
+              icon: _resolving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.qr_code_scanner),
               label: const Text('Scan to add'),
-              onPressed: () => _scanAndAdd(context, ref),
+              onPressed: _resolving ? null : () => _scanAndAdd(context),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        if (draft.lines.isEmpty)
+        if (widget.draft.lines.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Text('No items yet — scan or add manually.'),
           )
         else
-          ...draft.lines.map(
+          ...widget.draft.lines.map(
             (line) => _LineTile(
               line: line,
               onQtyChanged: (q) => notifier.updateQty(line.itemCode, q),
@@ -129,12 +143,32 @@ class _ReceiptBody extends ConsumerWidget {
     );
   }
 
-  Future<void> _scanAndAdd(BuildContext context, WidgetRef ref) async {
+  Future<void> _scanAndAdd(BuildContext context) async {
     final result = await context.push<ScanEvent>('/scan');
     if (result == null || !context.mounted) return;
-    ref.read(receiptDraftProvider.notifier).addLine(
-          ReceiptLine(itemCode: result.barcode, qty: 1),
+
+    setState(() => _resolving = true);
+    final useCase = ref.read(getItemByBarcodeUseCaseProvider);
+    final either = await useCase(result.barcode);
+    if (!mounted) return;
+    setState(() => _resolving = false);
+
+    either.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(failure.message)),
         );
+      },
+      (item) {
+        ref.read(receiptDraftProvider.notifier).addLine(
+              ReceiptLine(
+                itemCode: item.itemCode,
+                itemName: item.itemName,
+                qty: 1,
+              ),
+            );
+      },
+    );
   }
 }
 

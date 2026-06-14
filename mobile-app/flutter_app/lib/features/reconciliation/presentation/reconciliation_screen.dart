@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/hardware/entities/scan_event.dart';
 import '../../../core/sync/providers.dart';
+import '../../inventory/presentation/providers/item_search_notifier.dart';
 import '../domain/reconciliation_draft.dart';
 import 'providers/reconciliation_providers.dart';
 
@@ -61,28 +62,35 @@ class ReconciliationScreen extends ConsumerWidget {
   }
 }
 
-class _Body extends ConsumerWidget {
+class _Body extends ConsumerStatefulWidget {
   final ReconciliationDraft draft;
   final List<String> warehouses;
 
   const _Body({required this.draft, required this.warehouses});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_Body> createState() => _BodyState();
+}
+
+class _BodyState extends ConsumerState<_Body> {
+  bool _resolving = false;
+
+  @override
+  Widget build(BuildContext context) {
     final notifier = ref.read(reconciliationDraftProvider.notifier);
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         DropdownButtonFormField<String>(
-          key: ValueKey('warehouse-${draft.warehouse}'),
-          initialValue: draft.warehouse,
+          key: ValueKey('warehouse-${widget.draft.warehouse}'),
+          initialValue: widget.draft.warehouse,
           decoration: const InputDecoration(
             labelText: 'Warehouse',
             border: OutlineInputBorder(),
             helperText: 'Changing this clears the current count.',
           ),
-          items: warehouses
+          items: widget.warehouses
               .map((w) => DropdownMenuItem(value: w, child: Text(w)))
               .toList(),
           onChanged: notifier.setWarehouse,
@@ -91,34 +99,40 @@ class _Body extends ConsumerWidget {
         Row(
           children: [
             Text(
-              'Counted items (${draft.lines.length})',
+              'Counted items (${widget.draft.lines.length})',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const Spacer(),
             OutlinedButton.icon(
-              icon: const Icon(Icons.qr_code_scanner),
+              icon: _resolving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.qr_code_scanner),
               label: const Text('Scan'),
-              onPressed: draft.warehouse == null
+              onPressed: (widget.draft.warehouse == null || _resolving)
                   ? null
-                  : () => _scanAndAdd(context, ref, draft.warehouse!),
+                  : () => _scanAndAdd(context, widget.draft.warehouse!),
             ),
           ],
         ),
-        if (draft.warehouse == null)
+        if (widget.draft.warehouse == null)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Text('Pick a warehouse first.'),
           )
-        else if (draft.lines.isEmpty)
+        else if (widget.draft.lines.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Text('Scan items to start counting.'),
           )
         else
-          ...draft.lines.map(
+          ...widget.draft.lines.map(
             (line) => _CountTile(
               line: line,
-              warehouse: draft.warehouse!,
+              warehouse: widget.draft.warehouse!,
               onCountChanged: (q) => notifier.setCount(line.itemCode, q),
               onRemove: () => notifier.removeLine(line.itemCode),
             ),
@@ -127,25 +141,36 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  Future<void> _scanAndAdd(
-    BuildContext context,
-    WidgetRef ref,
-    String warehouse,
-  ) async {
+  Future<void> _scanAndAdd(BuildContext context, String warehouse) async {
     final result = await context.push<ScanEvent>('/scan');
     if (result == null || !context.mounted) return;
-    final notifier = ref.read(reconciliationDraftProvider.notifier);
-    // Best-effort expected-qty prefetch (background) so the tile shows it
-    // when the future resolves. Fire-and-forget — UI tolerates null.
-    final expected = await ref.read(
-      expectedQtyProvider(BinKey(result.barcode, warehouse)).future,
-    );
-    notifier.addLine(
-      CountLine(
-        itemCode: result.barcode,
-        countedQty: 1,
-        expectedQty: expected,
-      ),
+
+    setState(() => _resolving = true);
+    // Run item name lookup and expected qty prefetch concurrently.
+    final useCase = ref.read(getItemByBarcodeUseCaseProvider);
+    final (either, expected) = await (
+      useCase(result.barcode),
+      ref.read(expectedQtyProvider(BinKey(result.barcode, warehouse)).future),
+    ).wait;
+    if (!mounted) return;
+    setState(() => _resolving = false);
+
+    either.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(failure.message)),
+        );
+      },
+      (item) {
+        ref.read(reconciliationDraftProvider.notifier).addLine(
+              CountLine(
+                itemCode: item.itemCode,
+                itemName: item.itemName,
+                countedQty: 1,
+                expectedQty: expected,
+              ),
+            );
+      },
     );
   }
 }
@@ -169,10 +194,18 @@ class _CountTile extends ConsumerWidget {
     final variance = line.variance;
     String? subtitle;
     Color? subtitleColor;
-    if (line.expectedQty != null) {
+    if (line.itemName != null && line.expectedQty != null) {
+      subtitle = '${line.itemName} · Expected ${_fmt(line.expectedQty!)} · Variance ${_fmt(variance!)}';
+      if (variance > 0) {
+        subtitleColor = scheme.tertiary;
+      } else if (variance < 0) {
+        subtitleColor = scheme.error;
+      }
+    } else if (line.itemName != null) {
+      subtitle = line.itemName;
+    } else if (line.expectedQty != null) {
       subtitle = 'Expected ${_fmt(line.expectedQty!)} · Variance ${_fmt(variance!)}';
       if (variance > 0) {
-        // Tertiary is Material 3's "success/accent" slot.
         subtitleColor = scheme.tertiary;
       } else if (variance < 0) {
         subtitleColor = scheme.error;

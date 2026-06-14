@@ -2,8 +2,6 @@ import 'package:dio/dio.dart';
 
 import '../../../core/errors/exceptions.dart';
 
-/// Lightweight warehouse list — reads ERPNext's standard Warehouse list
-/// endpoint directly, no `bude_api` indirection needed for read-only lookups.
 class WarehouseRemoteDataSource {
   final Dio dio;
   WarehouseRemoteDataSource(this.dio);
@@ -11,22 +9,25 @@ class WarehouseRemoteDataSource {
   Future<List<String>> list({int limit = 100}) async {
     try {
       final response = await dio.get<Map<String, dynamic>>(
-        '/api/resource/Warehouse',
-        queryParameters: {
-          'fields': '["name"]',
-          'filters': '[["disabled","=",0]]',
-          'limit_page_length': limit,
-          'order_by': 'name asc',
-        },
+        '/api/method/bude_api.api.warehouses.list',
+        queryParameters: {'limit': limit},
       );
-      final raw = response.data?['data'];
+      // Frappe wraps method results in {"message": {...}}.
+      final envelope = response.data?['message'];
+      if (envelope is! Map) {
+        throw const ServerException('Unexpected warehouse list response.');
+      }
+      final body = envelope.cast<String, dynamic>();
+      if (body['ok'] != true) {
+        throw ServerException(
+          (body['message'] as String?) ?? 'Failed to load warehouses.',
+        );
+      }
+      final raw = body['data'];
       if (raw is! List) {
         throw const ServerException('Unexpected warehouse list response.');
       }
-      return raw
-          .cast<Map<String, dynamic>>()
-          .map((row) => row['name'] as String)
-          .toList();
+      return raw.cast<String>();
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       if (status == 401 || status == 403) {
