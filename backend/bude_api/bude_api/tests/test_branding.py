@@ -32,6 +32,7 @@ def test_get_returns_full_payload_when_company_and_address_present(
         return []
 
     mock_frappe.get_list.side_effect = get_list
+    mock_frappe.get_installed_apps.return_value = ["frappe", "erpnext"]
     mock_get_versions.return_value = {"erpnext": {"version": "15.0.0"}}
 
     result = branding_api.get()
@@ -44,6 +45,8 @@ def test_get_returns_full_payload_when_company_and_address_present(
     assert data["bude_api_version"]
     assert "1 Main St" in data["company_address"]
     assert "Springfield" in data["company_address"]
+    assert data["feature_flags"]["transfer"] is True
+    assert data["feature_flags"]["receipt"] is True
 
 
 @patch("bude_api.api.branding.frappe")
@@ -68,6 +71,7 @@ def test_get_falls_back_to_first_company_when_no_default(
         return []
 
     mock_frappe.get_list.side_effect = get_list
+    mock_frappe.get_installed_apps.return_value = ["frappe", "erpnext"]
     mock_get_versions.return_value = {"erpnext": {"version": "15.0.0"}}
 
     result = branding_api.get()
@@ -83,6 +87,7 @@ def test_get_falls_back_to_first_company_when_no_default(
 def test_get_handles_no_company_at_all(mock_get_versions, mock_frappe):
     mock_frappe.db.get_default.return_value = None
     mock_frappe.get_list.return_value = []
+    mock_frappe.get_installed_apps.return_value = ["frappe", "erpnext"]
     mock_get_versions.return_value = {"erpnext": {"version": "15.0.0"}}
 
     result = branding_api.get()
@@ -99,9 +104,29 @@ def test_get_handles_no_company_at_all(mock_get_versions, mock_frappe):
 def test_get_tolerates_versions_helper_raising(mock_get_versions, mock_frappe):
     mock_frappe.db.get_default.return_value = None
     mock_frappe.get_list.return_value = []
+    mock_frappe.get_installed_apps.return_value = ["frappe", "erpnext"]
     mock_get_versions.side_effect = RuntimeError("boom")
 
     result = branding_api.get()
 
     assert result["ok"] is True
     assert result["data"]["erpnext_version"] is None
+
+
+@patch("bude_api.api.branding.frappe")
+@patch("bude_api.api.branding.get_versions")
+def test_feature_flags_disabled_when_erpnext_not_installed(
+    mock_get_versions, mock_frappe,
+):
+    mock_frappe.db.get_default.return_value = None
+    mock_frappe.get_list.return_value = []
+    mock_frappe.get_installed_apps.return_value = ["frappe"]  # no erpnext
+    mock_get_versions.return_value = {}
+
+    result = branding_api.get()
+
+    assert result["ok"] is True
+    flags = result["data"]["feature_flags"]
+    assert flags["transfer"] is False
+    assert flags["receipt"] is False
+    assert flags["reconciliation"] is False

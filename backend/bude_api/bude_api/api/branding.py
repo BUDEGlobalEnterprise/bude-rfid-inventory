@@ -38,6 +38,7 @@ def get() -> dict:
             "company_address": None,
             "erpnext_version": None,
             "bude_api_version": __version__,
+            "feature_flags": {"transfer": True, "receipt": True, "reconciliation": True},
         })
 
     company_name = _resolve_company_name()
@@ -49,6 +50,7 @@ def get() -> dict:
         "company_address": _resolve_address(company),
         "erpnext_version": _resolve_erpnext_version(),
         "bude_api_version": __version__,
+        "feature_flags": _resolve_feature_flags(),
     })
 
 
@@ -100,6 +102,25 @@ def _resolve_address(company: Optional[dict]) -> Optional[str]:
     parts = [a.get("address_line1"), a.get("address_line2"), a.get("city"),
              a.get("state"), a.get("country"), a.get("pincode")]
     return ", ".join(p for p in parts if p)
+
+
+def _resolve_feature_flags() -> dict:
+    """Return a map of feature → enabled based on installed apps / permissions."""
+    flags = {
+        "transfer": True,
+        "receipt": True,
+        "reconciliation": True,
+    }
+    try:
+        installed = frappe.get_installed_apps()
+        # If erpnext isn't installed, disable stock operations.
+        if "erpnext" not in installed:
+            flags["transfer"] = False
+            flags["receipt"] = False
+            flags["reconciliation"] = False
+    except Exception:
+        pass
+    return flags
 
 
 def _resolve_erpnext_version() -> Optional[str]:
