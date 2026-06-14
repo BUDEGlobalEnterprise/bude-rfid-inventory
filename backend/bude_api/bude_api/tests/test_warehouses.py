@@ -36,3 +36,61 @@ def test_list_respects_limit(mock_frappe):
     warehouses_api.list(limit=25)
     _, kwargs = mock_frappe.get_list.call_args
     assert kwargs["limit_page_length"] == 25
+
+
+# ── get_stock ─────────────────────────────────────────────────────────────────
+
+@patch("bude_api.api.warehouses.frappe")
+def test_get_stock_returns_bin_rows(mock_frappe):
+    mock_frappe.get_list.return_value = [
+        {
+            "item_code": "ITEM-A",
+            "item_name": "Widget A",
+            "actual_qty": 20.0,
+            "reserved_qty": 2.0,
+            "ordered_qty": 0.0,
+            "projected_qty": 18.0,
+            "stock_uom": "Nos",
+        },
+        {
+            "item_code": "ITEM-B",
+            "item_name": "Widget B",
+            "actual_qty": 5.0,
+            "reserved_qty": 0.0,
+            "ordered_qty": 10.0,
+            "projected_qty": 15.0,
+            "stock_uom": "Nos",
+        },
+    ]
+    result = warehouses_api.get_stock("Stores - X")
+    assert result["ok"] is True
+    assert len(result["data"]) == 2
+    assert result["data"][0]["item_code"] == "ITEM-A"
+    assert result["data"][1]["actual_qty"] == 5.0
+
+
+def test_get_stock_requires_warehouse():
+    result = warehouses_api.get_stock("   ")
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_REQUIRED"
+
+
+@patch("bude_api.api.warehouses.frappe")
+def test_get_stock_filters_by_warehouse(mock_frappe):
+    mock_frappe.get_list.return_value = []
+    warehouses_api.get_stock("Stores - X")
+    _, kwargs = mock_frappe.get_list.call_args
+    assert kwargs["filters"] == [["warehouse", "=", "Stores - X"]]
+
+
+@patch("bude_api.api.warehouses.frappe")
+def test_get_stock_respects_limit_bounds(mock_frappe):
+    mock_frappe.get_list.return_value = []
+
+    warehouses_api.get_stock("Stores - X", limit=9999)
+    _, kwargs = mock_frappe.get_list.call_args
+    assert kwargs["limit_page_length"] == 500
+
+    warehouses_api.get_stock("Stores - X", limit=0)
+    _, kwargs = mock_frappe.get_list.call_args
+    assert kwargs["limit_page_length"] == 1

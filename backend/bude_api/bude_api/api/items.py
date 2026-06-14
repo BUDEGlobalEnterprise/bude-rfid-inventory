@@ -126,6 +126,45 @@ def get_by_barcode(barcode: str) -> dict:
 
 
 @_whitelist()
+def get_ledger(
+    item_code: str, warehouse: Optional[str] = None, limit: int = 50
+) -> dict:
+    """Return Stock Ledger Entry rows for an item, newest first.
+
+    GET /api/method/bude_api.api.items.get_ledger
+    """
+    item_code = (item_code or "").strip()
+    if not item_code:
+        return failure("item_code is required.", code="VALIDATION_REQUIRED")
+    if frappe is None:
+        return failure("Frappe not available.", code="ENV_NO_FRAPPE")
+
+    limit = max(1, min(int(limit), 200))
+    filters: list = [["item_code", "=", item_code], ["is_cancelled", "=", 0]]
+    if warehouse:
+        filters.append(["warehouse", "=", warehouse])
+
+    rows = frappe.get_list(
+        "Stock Ledger Entry",
+        filters=filters,
+        fields=[
+            "posting_date",
+            "posting_time",
+            "voucher_type",
+            "voucher_no",
+            "warehouse",
+            "actual_qty",
+            "qty_after_transaction",
+            "valuation_rate",
+            "stock_value_difference",
+        ],
+        order_by="posting_date desc, posting_time desc",
+        limit_page_length=limit,
+    )
+    return success(rows)
+
+
+@_whitelist()
 def get_stock(item_code: str, warehouse: Optional[str] = None) -> dict:
     item_code = (item_code or "").strip()
     if not item_code:

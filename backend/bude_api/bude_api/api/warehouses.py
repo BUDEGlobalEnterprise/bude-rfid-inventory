@@ -23,6 +23,37 @@ def _whitelist(allow_guest: bool = False):
 
 
 @_whitelist()
+def get_stock(warehouse: str, limit: int = 100) -> dict:
+    """Return Bin rows for a warehouse (items in stock), ordered by item_code.
+
+    GET /api/method/bude_api.api.warehouses.get_stock
+    """
+    warehouse = (warehouse or "").strip()
+    if not warehouse:
+        return failure("warehouse is required.", code="VALIDATION_REQUIRED")
+    if frappe is None:
+        return failure("Frappe not available.", code="ENV_NO_FRAPPE")
+
+    limit = max(1, min(int(limit), 500))
+    rows = frappe.get_list(
+        "Bin",
+        filters=[["warehouse", "=", warehouse]],
+        fields=[
+            "item_code",
+            "item_name",
+            "actual_qty",
+            "reserved_qty",
+            "ordered_qty",
+            "projected_qty",
+            "stock_uom",
+        ],
+        order_by="item_code asc",
+        limit_page_length=limit,
+    )
+    return success(rows)
+
+
+@_whitelist()
 def list(limit: int = 100) -> dict:
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
