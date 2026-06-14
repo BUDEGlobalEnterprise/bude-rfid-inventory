@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/hardware/entities/scan_event.dart';
 import '../../../core/sync/providers.dart';
 import '../../../core/ui/error_banner.dart';
-import '../../inventory/presentation/providers/item_search_notifier.dart';
+import '../../../core/utils/locale_ext.dart';
+import '../../scan_session/domain/scanned_item.dart';
 import '../domain/transfer_draft.dart';
 import 'providers/transfer_providers.dart';
 
@@ -18,10 +18,11 @@ class TransferScreen extends ConsumerWidget {
     final warehousesAsync = ref.watch(warehousesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Stock transfer')),
+      appBar: AppBar(title: Text(context.l10n.stockTransfer)),
       body: warehousesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _ErrorView(message: 'Failed to load warehouses: $e'),
+        error: (e, _) =>
+            _ErrorView(message: context.l10n.failedToLoadWarehouses(e.toString())),
         data: (warehouses) => _TransferBody(
           draft: draft,
           warehouses: warehouses,
@@ -31,7 +32,7 @@ class TransferScreen extends ConsumerWidget {
           ? null
           : FloatingActionButton.extended(
               icon: const Icon(Icons.send),
-              label: const Text('Queue transfer'),
+              label: Text(context.l10n.queueTransfer),
               onPressed: draft.isSubmittable
                   ? () => _submit(context, ref, draft)
                   : null,
@@ -50,9 +51,9 @@ class TransferScreen extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Transfer queued (op $id). Watch /sync for status.'),
+        content: Text(context.l10n.transferQueued(id)),
         action: SnackBarAction(
-          label: 'Open sync',
+          label: context.l10n.openSync,
           onPressed: () => context.push('/sync'),
         ),
       ),
@@ -72,7 +73,6 @@ class _TransferBody extends ConsumerStatefulWidget {
 }
 
 class _TransferBodyState extends ConsumerState<_TransferBody> {
-  bool _resolving = false;
 
   @override
   Widget build(BuildContext context) {
@@ -84,48 +84,42 @@ class _TransferBodyState extends ConsumerState<_TransferBody> {
       padding: const EdgeInsets.all(16),
       children: [
         _WarehouseDropdown(
-          label: 'Source warehouse',
+          label: context.l10n.sourceWarehouse,
           value: widget.draft.sourceWarehouse,
           options: widget.warehouses,
           onChanged: notifier.setSource,
         ),
         const SizedBox(height: 12),
         _WarehouseDropdown(
-          label: 'Target warehouse',
+          label: context.l10n.targetWarehouse,
           value: widget.draft.targetWarehouse,
           options: widget.warehouses,
           onChanged: notifier.setTarget,
         ),
         if (sameWarehouseError) ...[
           const SizedBox(height: 8),
-          const ErrorText('Source and target must differ.'),
+          ErrorText(context.l10n.sourceTargetMustDiffer),
         ],
         const Divider(height: 32),
         Row(
           children: [
             Text(
-              'Items (${widget.draft.lines.length})',
+              context.l10n.items(widget.draft.lines.length),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const Spacer(),
             OutlinedButton.icon(
-              icon: _resolving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.qr_code_scanner),
-              label: const Text('Scan to add'),
-              onPressed: _resolving ? null : () => _scanAndAdd(context),
+              icon: const Icon(Icons.qr_code_scanner),
+              label: Text(context.l10n.startScanSession),
+              onPressed: () => _startScanSession(context),
             ),
           ],
         ),
         const SizedBox(height: 8),
         if (widget.draft.lines.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Text('No items yet — scan or add manually.'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Text(context.l10n.noItemsYet),
           )
         else
           ...widget.draft.lines.map(
@@ -139,32 +133,18 @@ class _TransferBodyState extends ConsumerState<_TransferBody> {
     );
   }
 
-  Future<void> _scanAndAdd(BuildContext context) async {
-    final result = await context.push<ScanEvent>('/scan');
-    if (result == null || !context.mounted) return;
-
-    setState(() => _resolving = true);
-    final useCase = ref.read(getItemByBarcodeUseCaseProvider);
-    final either = await useCase(result.barcode);
-    if (!mounted) return;
-    setState(() => _resolving = false);
-
-    either.fold(
-      (failure) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(failure.message)),
-        );
-      },
-      (item) {
-        ref.read(transferDraftProvider.notifier).addLine(
-              TransferLine(
-                itemCode: item.itemCode,
-                itemName: item.itemName,
-                qty: 1,
-              ),
-            );
-      },
-    );
+  Future<void> _startScanSession(BuildContext context) async {
+    final result =
+        await context.push<List<ScannedItem>>('/scan-session?mode=transfer');
+    if (result == null || result.isEmpty || !context.mounted) return;
+    final notifier = ref.read(transferDraftProvider.notifier);
+    for (final scanned in result) {
+      notifier.addLine(TransferLine(
+        itemCode: scanned.item.itemCode,
+        itemName: scanned.item.itemName,
+        qty: scanned.qty,
+      ),);
+    }
   }
 }
 

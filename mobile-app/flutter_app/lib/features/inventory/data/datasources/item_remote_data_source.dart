@@ -3,11 +3,17 @@ import 'package:dio/dio.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../models/item_model.dart';
 import '../models/item_stock_model.dart';
+import '../models/stock_ledger_entry_model.dart';
 
 abstract class ItemRemoteDataSource {
   Future<List<ItemModel>> search(String query, {int limit});
   Future<ItemModel> getByBarcode(String barcode);
   Future<List<ItemStockModel>> getStock(String itemCode, {String? warehouse});
+  Future<List<StockLedgerEntryModel>> getLedger(
+    String itemCode, {
+    String? warehouse,
+    int limit,
+  });
 }
 
 class ItemRemoteDataSourceImpl implements ItemRemoteDataSource {
@@ -47,6 +53,24 @@ class ItemRemoteDataSourceImpl implements ItemRemoteDataSource {
     );
     final list = (body['data'] as List).cast<Map<String, dynamic>>();
     return list.map(ItemStockModel.fromJson).toList();
+  }
+
+  @override
+  Future<List<StockLedgerEntryModel>> getLedger(
+    String itemCode, {
+    String? warehouse,
+    int limit = 50,
+  }) async {
+    final body = await _call(
+      '/api/method/bude_api.api.items.get_ledger',
+      data: {
+        'item_code': itemCode,
+        if (warehouse != null) 'warehouse': warehouse,
+        'limit': limit,
+      },
+    );
+    final list = (body['data'] as List).cast<Map<String, dynamic>>();
+    return list.map(StockLedgerEntryModel.fromJson).toList();
   }
 
   Future<Map<String, dynamic>> _call(

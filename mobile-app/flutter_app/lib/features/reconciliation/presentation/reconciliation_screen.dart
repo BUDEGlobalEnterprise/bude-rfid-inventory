@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/hardware/entities/scan_event.dart';
 import '../../../core/sync/providers.dart';
-import '../../inventory/presentation/providers/item_search_notifier.dart';
+import '../../../core/utils/locale_ext.dart';
+import '../../scan_session/domain/scanned_item.dart';
 import '../domain/reconciliation_draft.dart';
 import 'providers/reconciliation_providers.dart';
 
@@ -17,13 +17,13 @@ class ReconciliationScreen extends ConsumerWidget {
     final warehousesAsync = ref.watch(warehousesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Stock count')),
+      appBar: AppBar(title: Text(context.l10n.stockCount)),
       body: warehousesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Text('Failed to load warehouses: $e'),
+            child: Text(context.l10n.failedToLoadWarehouses(e.toString())),
           ),
         ),
         data: (warehouses) =>
@@ -33,7 +33,7 @@ class ReconciliationScreen extends ConsumerWidget {
           ? null
           : FloatingActionButton.extended(
               icon: const Icon(Icons.send),
-              label: const Text('Queue count'),
+              label: Text(context.l10n.queueCount),
               onPressed:
                   draft.isSubmittable ? () => _submit(context, ref, draft) : null,
             ),
@@ -52,9 +52,9 @@ class ReconciliationScreen extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Count queued (op $id). Watch /sync for status.'),
+        content: Text(context.l10n.countQueued(id)),
         action: SnackBarAction(
-          label: 'Open sync',
+          label: context.l10n.openSync,
           onPressed: () => context.push('/sync'),
         ),
       ),
@@ -73,7 +73,6 @@ class _Body extends ConsumerStatefulWidget {
 }
 
 class _BodyState extends ConsumerState<_Body> {
-  bool _resolving = false;
 
   @override
   Widget build(BuildContext context) {
@@ -85,10 +84,10 @@ class _BodyState extends ConsumerState<_Body> {
         DropdownButtonFormField<String>(
           key: ValueKey('warehouse-${widget.draft.warehouse}'),
           initialValue: widget.draft.warehouse,
-          decoration: const InputDecoration(
-            labelText: 'Warehouse',
-            border: OutlineInputBorder(),
-            helperText: 'Changing this clears the current count.',
+          decoration: InputDecoration(
+            labelText: context.l10n.warehouse,
+            border: const OutlineInputBorder(),
+            helperText: context.l10n.changingWarehouseClearsCount,
           ),
           items: widget.warehouses
               .map((w) => DropdownMenuItem(value: w, child: Text(w)))
@@ -99,34 +98,28 @@ class _BodyState extends ConsumerState<_Body> {
         Row(
           children: [
             Text(
-              'Counted items (${widget.draft.lines.length})',
+              context.l10n.countedItems(widget.draft.lines.length),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const Spacer(),
             OutlinedButton.icon(
-              icon: _resolving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.qr_code_scanner),
-              label: const Text('Scan'),
-              onPressed: (widget.draft.warehouse == null || _resolving)
+              icon: const Icon(Icons.qr_code_scanner),
+              label: Text(context.l10n.startScanSession),
+              onPressed: widget.draft.warehouse == null
                   ? null
-                  : () => _scanAndAdd(context, widget.draft.warehouse!),
+                  : () => _startScanSession(context, widget.draft.warehouse!),
             ),
           ],
         ),
         if (widget.draft.warehouse == null)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Text('Pick a warehouse first.'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Text(context.l10n.pickWarehouseFirst),
           )
         else if (widget.draft.lines.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Text('Scan items to start counting.'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Text(context.l10n.scanItemsToCount),
           )
         else
           ...widget.draft.lines.map(
@@ -141,37 +134,33 @@ class _BodyState extends ConsumerState<_Body> {
     );
   }
 
-  Future<void> _scanAndAdd(BuildContext context, String warehouse) async {
-    final result = await context.push<ScanEvent>('/scan');
-    if (result == null || !context.mounted) return;
+  Future<void> _startScanSession(
+    BuildContext context,
+    String warehouse,
+  ) async {
+    final result = await context
+        .push<List<ScannedItem>>('/scan-session?mode=reconcile');
+    if (result == null || result.isEmpty || !context.mounted) return;
 
-    setState(() => _resolving = true);
-    // Run item name lookup and expected qty prefetch concurrently.
-    final useCase = ref.read(getItemByBarcodeUseCaseProvider);
-    final (either, expected) = await (
-      useCase(result.barcode),
-      ref.read(expectedQtyProvider(BinKey(result.barcode, warehouse)).future),
-    ).wait;
+    // Prefetch expected qty for all scanned items concurrently.
+    final expectedFutures = result
+        .map((s) => ref.read(
+              expectedQtyProvider(BinKey(s.item.itemCode, warehouse)).future,
+            ),)
+        .toList();
+    final expectedQtys = await Future.wait(expectedFutures);
     if (!mounted) return;
-    setState(() => _resolving = false);
 
-    either.fold(
-      (failure) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(failure.message)),
-        );
-      },
-      (item) {
-        ref.read(reconciliationDraftProvider.notifier).addLine(
-              CountLine(
-                itemCode: item.itemCode,
-                itemName: item.itemName,
-                countedQty: 1,
-                expectedQty: expected,
-              ),
-            );
-      },
-    );
+    final notifier = ref.read(reconciliationDraftProvider.notifier);
+    for (var i = 0; i < result.length; i++) {
+      final scanned = result[i];
+      notifier.addLine(CountLine(
+        itemCode: scanned.item.itemCode,
+        itemName: scanned.item.itemName,
+        countedQty: scanned.qty,
+        expectedQty: expectedQtys[i],
+      ),);
+    }
   }
 }
 

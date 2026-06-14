@@ -11,11 +11,15 @@ import '../../features/inventory/presentation/item_search_screen.dart';
 import '../../features/onboarding/presentation/company_setup_screen.dart';
 import '../../features/receipt/presentation/receipt_screen.dart';
 import '../../features/reconciliation/presentation/reconciliation_screen.dart';
+import '../../features/scan_session/domain/scan_session_mode.dart';
+import '../../features/scan_session/presentation/scan_session_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/sync/presentation/pending_queue_screen.dart';
 import '../../features/tenant/presentation/providers/tenant_notifier.dart';
 import '../../features/transfer/presentation/transfer_screen.dart';
+import '../../features/warehouse/presentation/warehouse_detail_screen.dart';
+import '../../features/warehouse/presentation/warehouse_list_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
@@ -107,6 +111,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/reconcile',
         builder: (context, state) => const ReconciliationScreen(),
+      ),
+      GoRoute(
+        path: '/warehouses',
+        builder: (context, state) => const WarehouseListScreen(),
+      ),
+      GoRoute(
+        path: '/warehouse/:name',
+        builder: (context, state) => WarehouseDetailScreen(
+          warehouseName: Uri.decodeComponent(state.pathParameters['name']!),
+        ),
+      ),
+      GoRoute(
+        path: '/scan-session',
+        builder: (context, state) => ScanSessionScreen(
+          mode: ScanSessionModeExt.fromQuery(
+            state.uri.queryParameters['mode'],
+          ),
+        ),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

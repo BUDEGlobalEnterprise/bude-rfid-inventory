@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/hardware/entities/scan_event.dart';
 import '../../../core/sync/providers.dart';
 import '../../../core/ui/error_banner.dart';
-import '../../inventory/presentation/providers/item_search_notifier.dart';
+import '../../../core/utils/locale_ext.dart';
+import '../../scan_session/domain/scanned_item.dart';
 import '../domain/receipt_draft.dart';
 import 'providers/receipt_providers.dart';
 
@@ -19,10 +19,11 @@ class ReceiptScreen extends ConsumerWidget {
     final poAsync = ref.watch(purchaseOrdersProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Receive stock')),
+      appBar: AppBar(title: Text(context.l10n.receiveStock)),
       body: warehousesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _ErrorView(message: 'Failed to load warehouses: $e'),
+        error: (e, _) =>
+            _ErrorView(message: context.l10n.failedToLoadWarehouses(e.toString())),
         data: (warehouses) => _ReceiptBody(
           draft: draft,
           warehouses: warehouses,
@@ -33,8 +34,9 @@ class ReceiptScreen extends ConsumerWidget {
           ? null
           : FloatingActionButton.extended(
               icon: const Icon(Icons.send),
-              label: const Text('Queue receipt'),
-              onPressed: draft.isSubmittable ? () => _submit(context, ref, draft) : null,
+              label: Text(context.l10n.queueReceipt),
+              onPressed:
+                  draft.isSubmittable ? () => _submit(context, ref, draft) : null,
             ),
     );
   }
@@ -51,9 +53,9 @@ class ReceiptScreen extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Receipt queued (op $id). Watch /sync for status.'),
+        content: Text(context.l10n.receiptQueued(id)),
         action: SnackBarAction(
-          label: 'Open sync',
+          label: context.l10n.openSync,
           onPressed: () => context.push('/sync'),
         ),
       ),
@@ -77,7 +79,6 @@ class _ReceiptBody extends ConsumerStatefulWidget {
 }
 
 class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
-  bool _resolving = false;
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +88,7 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
       padding: const EdgeInsets.all(16),
       children: [
         _Dropdown(
-          label: 'Target warehouse',
+          label: context.l10n.targetWarehouse,
           value: widget.draft.targetWarehouse,
           options: widget.warehouses,
           onChanged: notifier.setTarget,
@@ -95,9 +96,10 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
         const SizedBox(height: 12),
         widget.poAsync.when(
           loading: () => const LinearProgressIndicator(),
-          error: (e, _) => ErrorText('Could not load POs: $e'),
+          error: (e, _) =>
+              ErrorText(context.l10n.couldNotLoadPOs(e.toString())),
           data: (pos) => _Dropdown(
-            label: 'Against PO (optional)',
+            label: context.l10n.againstPo,
             value: widget.draft.againstPo,
             options: pos,
             allowClear: true,
@@ -108,28 +110,22 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
         Row(
           children: [
             Text(
-              'Items (${widget.draft.lines.length})',
+              context.l10n.items(widget.draft.lines.length),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const Spacer(),
             OutlinedButton.icon(
-              icon: _resolving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.qr_code_scanner),
-              label: const Text('Scan to add'),
-              onPressed: _resolving ? null : () => _scanAndAdd(context),
+              icon: const Icon(Icons.qr_code_scanner),
+              label: Text(context.l10n.startScanSession),
+              onPressed: () => _startScanSession(context),
             ),
           ],
         ),
         const SizedBox(height: 8),
         if (widget.draft.lines.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Text('No items yet — scan or add manually.'),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Text(context.l10n.noItemsYet),
           )
         else
           ...widget.draft.lines.map(
@@ -143,32 +139,18 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
     );
   }
 
-  Future<void> _scanAndAdd(BuildContext context) async {
-    final result = await context.push<ScanEvent>('/scan');
-    if (result == null || !context.mounted) return;
-
-    setState(() => _resolving = true);
-    final useCase = ref.read(getItemByBarcodeUseCaseProvider);
-    final either = await useCase(result.barcode);
-    if (!mounted) return;
-    setState(() => _resolving = false);
-
-    either.fold(
-      (failure) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(failure.message)),
-        );
-      },
-      (item) {
-        ref.read(receiptDraftProvider.notifier).addLine(
-              ReceiptLine(
-                itemCode: item.itemCode,
-                itemName: item.itemName,
-                qty: 1,
-              ),
-            );
-      },
-    );
+  Future<void> _startScanSession(BuildContext context) async {
+    final result =
+        await context.push<List<ScannedItem>>('/scan-session?mode=receipt');
+    if (result == null || result.isEmpty || !context.mounted) return;
+    final notifier = ref.read(receiptDraftProvider.notifier);
+    for (final scanned in result) {
+      notifier.addLine(ReceiptLine(
+        itemCode: scanned.item.itemCode,
+        itemName: scanned.item.itemName,
+        qty: scanned.qty,
+      ),);
+    }
   }
 }
 
@@ -191,7 +173,10 @@ class _Dropdown extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       if (allowClear)
-        const DropdownMenuItem<String>(value: null, child: Text('— none —')),
+        DropdownMenuItem<String>(
+          value: null,
+          child: Text(context.l10n.noneSelected),
+        ),
       ...options.map((w) => DropdownMenuItem(value: w, child: Text(w))),
     ];
     return DropdownButtonFormField<String>(
@@ -231,7 +216,8 @@ class _LineTile extends StatelessWidget {
             child: TextFormField(
               initialValue: line.qty.toString(),
               textAlign: TextAlign.end,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(isDense: true),
               onChanged: (v) {
                 final q = double.tryParse(v);

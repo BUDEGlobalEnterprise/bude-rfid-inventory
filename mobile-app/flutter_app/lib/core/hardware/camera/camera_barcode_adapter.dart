@@ -1,13 +1,15 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../adapters/barcode_adapter.dart';
+import '../adapters/camera_preview_adapter.dart';
 import '../entities/scan_event.dart';
 
 /// Camera-backed [BarcodeAdapter] using the `mobile_scanner` package.
 /// Always available as a fallback when no vendor scanner is detected.
-class CameraBarcodeAdapter implements BarcodeAdapter {
+class CameraBarcodeAdapter implements BarcodeAdapter, CameraPreviewAdapter {
   @override
   final String vendor = 'camera';
 
@@ -67,6 +69,9 @@ class CameraBarcodeAdapter implements BarcodeAdapter {
       await stopScan();
     }
   }
+
+  @override
+  Widget buildPreview() => MobileScanner(controller: controller);
 
   @override
   Future<void> dispose() async {

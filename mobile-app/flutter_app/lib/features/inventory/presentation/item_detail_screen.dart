@@ -1,22 +1,56 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/errors/failures.dart';
+import '../../../core/ui/empty_state_view.dart';
+import '../../../core/ui/loading_shimmer.dart';
+import '../../../core/utils/locale_ext.dart';
 import '../domain/entities/item.dart';
 import '../domain/entities/item_stock.dart';
+import '../domain/entities/stock_ledger_entry.dart';
 import 'providers/item_search_notifier.dart';
 
-class ItemDetailScreen extends ConsumerWidget {
+class ItemDetailScreen extends ConsumerStatefulWidget {
   final String itemCode;
   const ItemDetailScreen({super.key, required this.itemCode});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final detailAsync = ref.watch(_itemDetailProvider(itemCode));
+  ConsumerState<ItemDetailScreen> createState() => _ItemDetailScreenState();
+}
+
+class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final detailAsync = ref.watch(_itemDetailProvider(widget.itemCode));
 
     return Scaffold(
-      appBar: AppBar(title: Text(itemCode)),
+      appBar: AppBar(
+        title: Text(widget.itemCode),
+        bottom: TabBar(
+          controller: _tabs,
+          tabs: [
+            Tab(text: context.l10n.stockTab),
+            Tab(text: context.l10n.historyTab),
+          ],
+        ),
+      ),
       body: detailAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -27,9 +61,12 @@ class ItemDetailScreen extends ConsumerWidget {
               child: Text(failure.message, textAlign: TextAlign.center),
             ),
           ),
-          (payload) => _DetailBody(
-            item: payload.$1,
-            stock: payload.$2,
+          (payload) => TabBarView(
+            controller: _tabs,
+            children: [
+              _StockTab(item: payload.$1, stock: payload.$2),
+              _HistoryTab(itemCode: widget.itemCode),
+            ],
           ),
         ),
       ),
@@ -37,10 +74,12 @@ class ItemDetailScreen extends ConsumerWidget {
   }
 }
 
-class _DetailBody extends StatelessWidget {
+// ── Stock tab ─────────────────────────────────────────────────────────────────
+
+class _StockTab extends StatelessWidget {
   final Item item;
   final List<ItemStock> stock;
-  const _DetailBody({required this.item, required this.stock});
+  const _StockTab({required this.item, required this.stock});
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +143,135 @@ class _StockRow extends StatelessWidget {
       v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
 }
 
+// ── History tab ───────────────────────────────────────────────────────────────
+
+class _HistoryTab extends ConsumerWidget {
+  final String itemCode;
+  const _HistoryTab({required this.itemCode});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ledgerAsync = ref.watch(_ledgerProvider(itemCode));
+
+    return ledgerAsync.when(
+      loading: () => const ShimmerList(count: 8),
+      error: (e, _) => Center(child: Text('Error: $e')),
+      data: (data) => data.fold(
+        (failure) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(failure.message, textAlign: TextAlign.center),
+          ),
+        ),
+        (entries) => entries.isEmpty
+            ? EmptyStateView(
+                icon: Icons.history,
+                title: context.l10n.noMovementHistory,
+                subtitle: context.l10n.noMovementHistorySubtitle,
+              )
+            : _LedgerList(entries: entries),
+      ),
+    );
+  }
+}
+
+class _LedgerList extends StatelessWidget {
+  final List<StockLedgerEntry> entries;
+  const _LedgerList({required this.entries});
+
+  static final _dateFmt = DateFormat('d MMM yyyy');
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final items = <Widget>[];
+    String? lastDate;
+
+    for (final entry in entries) {
+      final dateStr = _dateFmt.format(entry.postingDate);
+      if (dateStr != lastDate) {
+        lastDate = dateStr;
+        items.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text(
+              dateStr,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        );
+      }
+      items.add(_LedgerTile(entry: entry));
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: items,
+    );
+  }
+}
+
+class _LedgerTile extends StatelessWidget {
+  final StockLedgerEntry entry;
+  const _LedgerTile({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    final qty = entry.actualQty;
+    final positive = qty >= 0;
+    final qtyColor = positive ? Colors.green.shade700 : Colors.red.shade700;
+    final qtyStr = positive ? '+${_fmt(qty)}' : _fmt(qty);
+    final balanceStr = _fmt(entry.qtyAfterTransaction);
+
+    return ListTile(
+      leading: CircleAvatar(
+        radius: 20,
+        backgroundColor: positive
+            ? Colors.green.withValues(alpha: 0.12)
+            : Colors.red.withValues(alpha: 0.12),
+        child: Icon(
+          positive ? Icons.arrow_upward : Icons.arrow_downward,
+          size: 18,
+          color: qtyColor,
+        ),
+      ),
+      title: Text(entry.voucherType),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            entry.warehouse,
+            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+          ),
+          Text(
+            l10n.balanceAfter(balanceStr),
+            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+          ),
+        ],
+      ),
+      trailing: Text(
+        qtyStr,
+        style: TextStyle(
+          color: qtyColor,
+          fontWeight: FontWeight.w600,
+          fontSize: 15,
+        ),
+      ),
+      isThreeLine: true,
+    );
+  }
+
+  String _fmt(double v) =>
+      v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
+}
+
+// ── Providers ─────────────────────────────────────────────────────────────────
+
 final _itemDetailProvider = FutureProvider.family
     .autoDispose<Either<Failure, (Item, List<ItemStock>)>, String>(
   (ref, itemCode) async {
@@ -132,5 +300,13 @@ final _itemDetailProvider = FutureProvider.family
       Left.new,
       (stock) => Right((item, stock)),
     );
+  },
+);
+
+final _ledgerProvider = FutureProvider.family
+    .autoDispose<Either<Failure, List<StockLedgerEntry>>, String>(
+  (ref, itemCode) async {
+    final repo = ref.watch(itemRepositoryProvider);
+    return repo.getLedger(itemCode);
   },
 );
