@@ -109,17 +109,21 @@ Activate real vendor SDKs behind the existing HAL interfaces. Each vendor is an 
 
 ---
 
-## Phase 5 — Analytics & Reporting 🔲
+## Phase 5 — Analytics & Reporting ✅
 
 KPI dashboards, variance analysis, and data export.
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **Stock aging report** | Items with zero movement for N days, filterable per warehouse | 🔲 |
-| **Variance dashboard** | Reconciliation vs. expected qty — chart + drill-down | 🔲 |
-| **Transfer throughput** | Ops-per-day / ops-per-user timeline | 🔲 |
-| **Export to CSV / Excel** | Stock, ledger, or reconciliation results as a downloadable file | 🔲 |
-| **Push / background sync** | Periodic background fetch so data is fresh on app open | 🔲 |
+| **Stock aging report** | Items idle for N days per warehouse; threshold picker (7/14/30/60/90 d); sorted by days idle | ✅ |
+| **Variance dashboard** | Submitted reconciliation history — counted vs expected per line, colour-coded surplus/deficit, expandable cards | ✅ |
+| **Transfer throughput** | Ops per day from local Hive queue; stacked `fl_chart` bar chart; 7/14/30-day period picker | ✅ |
+| **Export to CSV** | Warehouse stock or item ledger as `.csv` via system share sheet (`share_plus`) | ✅ |
+| **Pull-to-refresh** | `RefreshIndicator` on warehouse list, warehouse detail, and item history tab | ✅ |
+
+**Backend** — `analytics.get_stock_aging`, `analytics.get_reconciliation_history` (standard ERPNext DocTypes, 9 pytest tests)
+
+**New packages** — `fl_chart ^0.69.0`, `share_plus ^10.0.0`, `csv ^6.0.0`, `path_provider ^2.1.4`
 
 ---
 
