@@ -18,6 +18,11 @@ import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/sync/presentation/pending_queue_screen.dart';
 import '../../features/tenant/presentation/providers/tenant_notifier.dart';
 import '../../features/transfer/presentation/transfer_screen.dart';
+import '../../features/analytics/presentation/analytics_screen.dart';
+import '../../features/analytics/presentation/export_screen.dart';
+import '../../features/analytics/presentation/stock_aging_screen.dart';
+import '../../features/analytics/presentation/throughput_screen.dart';
+import '../../features/analytics/presentation/variance_dashboard_screen.dart';
 import '../../features/warehouse/presentation/warehouse_detail_screen.dart';
 import '../../features/warehouse/presentation/warehouse_list_screen.dart';
 
@@ -111,6 +116,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/reconcile',
         builder: (context, state) => const ReconciliationScreen(),
+      ),
+      GoRoute(
+        path: '/analytics',
+        builder: (context, state) => const AnalyticsScreen(),
+      ),
+      GoRoute(
+        path: '/analytics/aging',
+        builder: (context, state) => const StockAgingScreen(),
+      ),
+      GoRoute(
+        path: '/analytics/variance',
+        builder: (context, state) => const VarianceDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/analytics/throughput',
+        builder: (context, state) => const ThroughputScreen(),
+      ),
+      GoRoute(
+        path: '/analytics/export',
+        builder: (context, state) => const ExportScreen(),
       ),
       GoRoute(
         path: '/warehouses',

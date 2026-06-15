@@ -389,4 +389,120 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get barcodeNotFound => 'الباركود غير موجود';
+
+  @override
+  String get analytics => 'التحليلات';
+
+  @override
+  String get stockAging => 'تقادم المخزون';
+
+  @override
+  String get stockAgingSubtitle => 'الأصناف التي لم تُحرَّك مؤخراً';
+
+  @override
+  String get thresholdDays => 'حد التوقف';
+
+  @override
+  String daysIdle(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days أيام بدون حركة',
+      one: 'يوم واحد بدون حركة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String lastMovedDate(String date) {
+    return 'آخر حركة $date';
+  }
+
+  @override
+  String get neverMoved => 'لم تُحرَّك قط';
+
+  @override
+  String get noIdleItems => 'لا توجد أصناف متوقفة';
+
+  @override
+  String get noIdleItemsSubtitle => 'جميع الأصناف تحركت ضمن الحد المحدد.';
+
+  @override
+  String get varianceDashboard => 'لوحة الفروقات';
+
+  @override
+  String get varianceDashboardSubtitle => 'الجرد الفعلي مقابل الكميات المتوقعة';
+
+  @override
+  String get reconciliationHistory => 'سجل الجرد';
+
+  @override
+  String get counted => 'المحسوب';
+
+  @override
+  String get expected => 'المتوقع';
+
+  @override
+  String get noReconciliations => 'لم يتم العثور على عمليات جرد';
+
+  @override
+  String get noReconciliationsSubtitle => 'ستظهر عمليات الجرد المقدمة هنا.';
+
+  @override
+  String get throughput => 'الإنتاجية';
+
+  @override
+  String get throughputSubtitle => 'نشاط العمليات عبر الزمن';
+
+  @override
+  String get operationThroughput => 'إنتاجية العمليات';
+
+  @override
+  String get totalOps => 'إجمالي العمليات';
+
+  @override
+  String get successRate => 'معدل النجاح';
+
+  @override
+  String get mostActiveDay => 'أكثر يوم نشاطاً';
+
+  @override
+  String get last7Days => '٧ أيام';
+
+  @override
+  String get last14Days => '١٤ يوماً';
+
+  @override
+  String get last30Days => '٣٠ يوماً';
+
+  @override
+  String get noOpsYet => 'لا توجد عمليات بعد';
+
+  @override
+  String get noOpsYetSubtitle =>
+      'قم بإضافة نقل أو استلام أو جرد لرؤية بيانات الإنتاجية.';
+
+  @override
+  String get exportDataSubtitle => 'تحميل بيانات المخزون أو السجل بصيغة CSV';
+
+  @override
+  String get exportData => 'تصدير البيانات';
+
+  @override
+  String get exportType => 'نوع التصدير';
+
+  @override
+  String get itemLedger => 'سجل الصنف';
+
+  @override
+  String get exportCsv => 'تصدير CSV';
+
+  @override
+  String get exporting => 'جارٍ التصدير…';
+
+  @override
+  String get exportComplete => 'التصدير جاهز';
+
+  @override
+  String get exportFailed => 'فشل التصدير';
 }

@@ -392,4 +392,122 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get barcodeNotFound => 'Barcode not found';
+
+  @override
+  String get analytics => 'Analytics';
+
+  @override
+  String get stockAging => 'Stock Aging';
+
+  @override
+  String get stockAgingSubtitle => 'Items with no recent movement';
+
+  @override
+  String get thresholdDays => 'Idle threshold';
+
+  @override
+  String daysIdle(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days idle',
+      one: '1 day idle',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String lastMovedDate(String date) {
+    return 'Last moved $date';
+  }
+
+  @override
+  String get neverMoved => 'Never moved';
+
+  @override
+  String get noIdleItems => 'No idle items';
+
+  @override
+  String get noIdleItemsSubtitle =>
+      'All items moved within the selected threshold.';
+
+  @override
+  String get varianceDashboard => 'Variance Dashboard';
+
+  @override
+  String get varianceDashboardSubtitle => 'Reconciliation vs expected qty';
+
+  @override
+  String get reconciliationHistory => 'Reconciliation History';
+
+  @override
+  String get counted => 'Counted';
+
+  @override
+  String get expected => 'Expected';
+
+  @override
+  String get noReconciliations => 'No reconciliations found';
+
+  @override
+  String get noReconciliationsSubtitle =>
+      'Submitted stock counts will appear here.';
+
+  @override
+  String get throughput => 'Throughput';
+
+  @override
+  String get throughputSubtitle => 'Operation activity over time';
+
+  @override
+  String get operationThroughput => 'Operation Throughput';
+
+  @override
+  String get totalOps => 'Total ops';
+
+  @override
+  String get successRate => 'Success rate';
+
+  @override
+  String get mostActiveDay => 'Most active day';
+
+  @override
+  String get last7Days => '7 days';
+
+  @override
+  String get last14Days => '14 days';
+
+  @override
+  String get last30Days => '30 days';
+
+  @override
+  String get noOpsYet => 'No operations yet';
+
+  @override
+  String get noOpsYetSubtitle =>
+      'Queue a transfer, receipt, or count to see throughput data.';
+
+  @override
+  String get exportDataSubtitle => 'Download stock or ledger as CSV';
+
+  @override
+  String get exportData => 'Export Data';
+
+  @override
+  String get exportType => 'Export type';
+
+  @override
+  String get itemLedger => 'Item ledger';
+
+  @override
+  String get exportCsv => 'Export CSV';
+
+  @override
+  String get exporting => 'Exporting…';
+
+  @override
+  String get exportComplete => 'Export ready';
+
+  @override
+  String get exportFailed => 'Export failed';
 }

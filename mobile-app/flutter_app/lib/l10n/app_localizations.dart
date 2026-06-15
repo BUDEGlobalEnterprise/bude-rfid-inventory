@@ -775,6 +775,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Barcode not found'**
   String get barcodeNotFound;
+
+  /// No description provided for @analytics.
+  ///
+  /// In en, this message translates to:
+  /// **'Analytics'**
+  String get analytics;
+
+  /// No description provided for @stockAging.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock Aging'**
+  String get stockAging;
+
+  /// No description provided for @stockAgingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Items with no recent movement'**
+  String get stockAgingSubtitle;
+
+  /// No description provided for @thresholdDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle threshold'**
+  String get thresholdDays;
+
+  /// No description provided for @daysIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'{days,plural, =1{1 day idle} other{{days} days idle}}'**
+  String daysIdle(int days);
+
+  /// No description provided for @lastMovedDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Last moved {date}'**
+  String lastMovedDate(String date);
+
+  /// No description provided for @neverMoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Never moved'**
+  String get neverMoved;
+
+  /// No description provided for @noIdleItems.
+  ///
+  /// In en, this message translates to:
+  /// **'No idle items'**
+  String get noIdleItems;
+
+  /// No description provided for @noIdleItemsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All items moved within the selected threshold.'**
+  String get noIdleItemsSubtitle;
+
+  /// No description provided for @varianceDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Variance Dashboard'**
+  String get varianceDashboard;
+
+  /// No description provided for @varianceDashboardSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconciliation vs expected qty'**
+  String get varianceDashboardSubtitle;
+
+  /// No description provided for @reconciliationHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconciliation History'**
+  String get reconciliationHistory;
+
+  /// No description provided for @counted.
+  ///
+  /// In en, this message translates to:
+  /// **'Counted'**
+  String get counted;
+
+  /// No description provided for @expected.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected'**
+  String get expected;
+
+  /// No description provided for @noReconciliations.
+  ///
+  /// In en, this message translates to:
+  /// **'No reconciliations found'**
+  String get noReconciliations;
+
+  /// No description provided for @noReconciliationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted stock counts will appear here.'**
+  String get noReconciliationsSubtitle;
+
+  /// No description provided for @throughput.
+  ///
+  /// In en, this message translates to:
+  /// **'Throughput'**
+  String get throughput;
+
+  /// No description provided for @throughputSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Operation activity over time'**
+  String get throughputSubtitle;
+
+  /// No description provided for @operationThroughput.
+  ///
+  /// In en, this message translates to:
+  /// **'Operation Throughput'**
+  String get operationThroughput;
+
+  /// No description provided for @totalOps.
+  ///
+  /// In en, this message translates to:
+  /// **'Total ops'**
+  String get totalOps;
+
+  /// No description provided for @successRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Success rate'**
+  String get successRate;
+
+  /// No description provided for @mostActiveDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Most active day'**
+  String get mostActiveDay;
+
+  /// No description provided for @last7Days.
+  ///
+  /// In en, this message translates to:
+  /// **'7 days'**
+  String get last7Days;
+
+  /// No description provided for @last14Days.
+  ///
+  /// In en, this message translates to:
+  /// **'14 days'**
+  String get last14Days;
+
+  /// No description provided for @last30Days.
+  ///
+  /// In en, this message translates to:
+  /// **'30 days'**
+  String get last30Days;
+
+  /// No description provided for @noOpsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No operations yet'**
+  String get noOpsYet;
+
+  /// No description provided for @noOpsYetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Queue a transfer, receipt, or count to see throughput data.'**
+  String get noOpsYetSubtitle;
+
+  /// No description provided for @exportDataSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download stock or ledger as CSV'**
+  String get exportDataSubtitle;
+
+  /// No description provided for @exportData.
+  ///
+  /// In en, this message translates to:
+  /// **'Export Data'**
+  String get exportData;
+
+  /// No description provided for @exportType.
+  ///
+  /// In en, this message translates to:
+  /// **'Export type'**
+  String get exportType;
+
+  /// No description provided for @itemLedger.
+  ///
+  /// In en, this message translates to:
+  /// **'Item ledger'**
+  String get itemLedger;
+
+  /// No description provided for @exportCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Export CSV'**
+  String get exportCsv;
+
+  /// No description provided for @exporting.
+  ///
+  /// In en, this message translates to:
+  /// **'Exporting…'**
+  String get exporting;
+
+  /// No description provided for @exportComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Export ready'**
+  String get exportComplete;
+
+  /// No description provided for @exportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed'**
+  String get exportFailed;
 }
 
 class _AppLocalizationsDelegate

@@ -118,6 +118,11 @@ class DashboardScreen extends ConsumerWidget {
                               route: '/warehouses',
                             ),
                             _NavCard(
+                              icon: Icons.bar_chart,
+                              label: context.l10n.analytics,
+                              route: '/analytics',
+                            ),
+                            _NavCard(
                               icon: Icons.settings,
                               label: context.l10n.settings,
                               route: '/settings',
@@ -150,6 +155,7 @@ class _RecentlyUsedRow extends ConsumerWidget {
     '/settings': ('Settings', Icons.settings),
     '/sync': ('Sync', Icons.sync),
     '/warehouses': ('Warehouses', Icons.warehouse_outlined),
+    '/analytics': ('Analytics', Icons.bar_chart),
   };
 
   @override
