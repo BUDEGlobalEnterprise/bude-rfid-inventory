@@ -33,20 +33,23 @@ class WarehouseListScreen extends ConsumerWidget {
                 title: context.l10n.noWarehousesFound,
                 subtitle: context.l10n.noWarehousesFoundSubtitle,
               )
-            : ListView.separated(
-                itemCount: names.length,
-                separatorBuilder: (_, __) => const Divider(height: 0),
-                itemBuilder: (context, i) {
-                  final name = names[i];
-                  return ListTile(
-                    leading: const Icon(Icons.warehouse_outlined),
-                    title: Text(name),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push(
-                      '/warehouse/${Uri.encodeComponent(name)}',
-                    ),
-                  );
-                },
+            : RefreshIndicator(
+                onRefresh: () async => ref.invalidate(warehouseListProvider),
+                child: ListView.separated(
+                  itemCount: names.length,
+                  separatorBuilder: (_, __) => const Divider(height: 0),
+                  itemBuilder: (context, i) {
+                    final name = names[i];
+                    return ListTile(
+                      leading: const Icon(Icons.warehouse_outlined),
+                      title: Text(name),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(
+                        '/warehouse/${Uri.encodeComponent(name)}',
+                      ),
+                    );
+                  },
+                ),
               ),
       ),
     );

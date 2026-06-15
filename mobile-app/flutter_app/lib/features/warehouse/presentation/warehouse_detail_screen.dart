@@ -33,18 +33,22 @@ class WarehouseDetailScreen extends ConsumerWidget {
               subtitle: context.l10n.noStockInWarehouseSubtitle,
             );
           }
-          return Column(
-            children: [
-              _StockSummaryBar(count: lines.length),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: lines.length,
-                  separatorBuilder: (_, __) => const Divider(height: 0),
-                  itemBuilder: (context, i) =>
-                      _StockLineTile(line: lines[i]),
+          return RefreshIndicator(
+            onRefresh: () async =>
+                ref.invalidate(warehouseStockProvider(warehouseName)),
+            child: Column(
+              children: [
+                _StockSummaryBar(count: lines.length),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: lines.length,
+                    separatorBuilder: (_, __) => const Divider(height: 0),
+                    itemBuilder: (context, i) =>
+                        _StockLineTile(line: lines[i]),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),

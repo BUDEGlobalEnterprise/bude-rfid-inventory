@@ -169,7 +169,11 @@ class _HistoryTab extends ConsumerWidget {
                 title: context.l10n.noMovementHistory,
                 subtitle: context.l10n.noMovementHistorySubtitle,
               )
-            : _LedgerList(entries: entries),
+            : RefreshIndicator(
+                onRefresh: () async =>
+                    ref.invalidate(_ledgerProvider(itemCode)),
+                child: _LedgerList(entries: entries),
+              ),
       ),
     );
   }
