@@ -6,6 +6,7 @@ import '../../../core/sync/providers.dart';
 import '../../../core/ui/error_banner.dart';
 import '../../../core/utils/locale_ext.dart';
 import '../../scan_session/domain/scanned_item.dart';
+import '../../settings/presentation/providers/settings_notifier.dart';
 import '../domain/receipt_draft.dart';
 import 'providers/receipt_providers.dart';
 
@@ -46,7 +47,10 @@ class ReceiptScreen extends ConsumerWidget {
     WidgetRef ref,
     ReceiptDraft draft,
   ) async {
-    final id = await ref.read(submitReceiptUseCaseProvider).call(draft);
+    final settings = ref.read(settingsNotifierProvider);
+    final id = await ref
+        .read(submitReceiptUseCaseProvider)
+        .call(draft.copyWith(company: settings.activeCompany));
     // ignore: discarded_futures
     ref.read(syncEngineProvider).kick();
     ref.read(receiptDraftProvider.notifier).clear();

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/sync/pending_operation.dart';
 import '../../../core/sync/providers.dart';
 import '../../../core/utils/locale_ext.dart';
 import '../../scan_session/domain/scanned_item.dart';
+import '../../settings/presentation/providers/settings_notifier.dart';
 import '../domain/reconciliation_draft.dart';
 import 'providers/reconciliation_providers.dart';
 
@@ -45,11 +47,30 @@ class ReconciliationScreen extends ConsumerWidget {
     WidgetRef ref,
     ReconciliationDraft draft,
   ) async {
-    final id = await ref.read(submitReconciliationUseCaseProvider).call(draft);
+    final settings = ref.read(settingsNotifierProvider);
+    final draftWithCompany = draft.copyWith(company: settings.activeCompany);
+
+    final threshold = settings.reconciliationVarianceThreshold;
+    final needsApproval =
+        threshold > 0 && draftWithCompany.totalVariance > threshold;
+
+    final initialStatus =
+        needsApproval ? OpStatus.pendingApproval : OpStatus.pending;
+    final id = await ref
+        .read(submitReconciliationUseCaseProvider)
+        .callWithStatus(draftWithCompany, initialStatus);
+
+    ref.read(reconciliationDraftProvider.notifier).clear();
+
+    if (!context.mounted) return;
+
+    if (needsApproval) {
+      context.push('/reconcile/approve', extra: id);
+      return;
+    }
+
     // ignore: discarded_futures
     ref.read(syncEngineProvider).kick();
-    ref.read(reconciliationDraftProvider.notifier).clear();
-    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(context.l10n.countQueued(id)),

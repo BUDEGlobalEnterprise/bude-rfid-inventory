@@ -368,5 +368,61 @@
   "exportComplete": "Export ready",
   "@exportComplete": {},
   "exportFailed": "Export failed",
-  "@exportFailed": {}
+  "@exportFailed": {},
+
+  "auditTrail": "Audit Trail",
+  "@auditTrail": {},
+  "auditTrailSubtitle": "All submitted operations on this device",
+  "@auditTrailSubtitle": {},
+  "all": "All",
+  "@all": {},
+  "stockTransferLabel": "Stock Transfer",
+  "@stockTransferLabel": {},
+  "goodsReceiptLabel": "Goods Receipt",
+  "@goodsReceiptLabel": {},
+  "stockCountLabel": "Stock Count",
+  "@stockCountLabel": {},
+  "noAuditOps": "No operations yet",
+  "@noAuditOps": {},
+  "noAuditOpsSubtitle": "Completed operations will appear here.",
+  "@noAuditOpsSubtitle": {},
+  "viewInErp": "View in ERP",
+  "@viewInErp": {},
+
+  "activeCompany": "Active Company",
+  "@activeCompany": {},
+  "selectCompany": "Select company",
+  "@selectCompany": {},
+  "noCompanies": "No companies found",
+  "@noCompanies": {},
+  "varianceThreshold": "Variance approval threshold (units)",
+  "@varianceThreshold": {},
+  "varianceThresholdHint": "0 = disabled",
+  "@varianceThresholdHint": {},
+
+  "autoLogout": "Auto-logout",
+  "@autoLogout": {},
+  "autoLogoutDisabled": "Disabled",
+  "@autoLogoutDisabled": {},
+  "unlockApp": "Unlock to continue",
+  "@unlockApp": {},
+  "sessionLocked": "Session Locked",
+  "@sessionLocked": {},
+
+  "approvalRequired": "Supervisor Approval Required",
+  "@approvalRequired": {},
+  "approvalRequiredSubtitle": "Total variance of {qty} units exceeds the approval threshold.",
+  "@approvalRequiredSubtitle": {
+    "placeholders": {
+      "qty": { "type": "String" }
+    }
+  },
+  "approveWithBiometric": "Approve with Biometric / PIN",
+  "@approveWithBiometric": {},
+  "approvalGranted": "Approved — operation queued.",
+  "@approvalGranted": {},
+  "approvalFailed": "Biometric failed — approval not granted.",
+  "@approvalFailed": {},
+  "pendingApprovalStatus": "Awaiting Approval",
+  "@pendingApprovalStatus": {}
 }

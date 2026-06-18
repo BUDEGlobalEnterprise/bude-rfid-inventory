@@ -985,6 +985,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Export failed'**
   String get exportFailed;
+
+  /// No description provided for @auditTrail.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit Trail'**
+  String get auditTrail;
+
+  /// No description provided for @auditTrailSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All submitted operations on this device'**
+  String get auditTrailSubtitle;
+
+  /// No description provided for @all.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get all;
+
+  /// No description provided for @stockTransferLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock Transfer'**
+  String get stockTransferLabel;
+
+  /// No description provided for @goodsReceiptLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Goods Receipt'**
+  String get goodsReceiptLabel;
+
+  /// No description provided for @stockCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock Count'**
+  String get stockCountLabel;
+
+  /// No description provided for @noAuditOps.
+  ///
+  /// In en, this message translates to:
+  /// **'No operations yet'**
+  String get noAuditOps;
+
+  /// No description provided for @noAuditOpsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed operations will appear here.'**
+  String get noAuditOpsSubtitle;
+
+  /// No description provided for @viewInErp.
+  ///
+  /// In en, this message translates to:
+  /// **'View in ERP'**
+  String get viewInErp;
+
+  /// No description provided for @activeCompany.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Company'**
+  String get activeCompany;
+
+  /// No description provided for @selectCompany.
+  ///
+  /// In en, this message translates to:
+  /// **'Select company'**
+  String get selectCompany;
+
+  /// No description provided for @noCompanies.
+  ///
+  /// In en, this message translates to:
+  /// **'No companies found'**
+  String get noCompanies;
+
+  /// No description provided for @varianceThreshold.
+  ///
+  /// In en, this message translates to:
+  /// **'Variance approval threshold (units)'**
+  String get varianceThreshold;
+
+  /// No description provided for @varianceThresholdHint.
+  ///
+  /// In en, this message translates to:
+  /// **'0 = disabled'**
+  String get varianceThresholdHint;
+
+  /// No description provided for @autoLogout.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-logout'**
+  String get autoLogout;
+
+  /// No description provided for @unlockApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock to continue'**
+  String get unlockApp;
+
+  /// No description provided for @sessionLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Session Locked'**
+  String get sessionLocked;
+
+  /// No description provided for @approvalRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Supervisor Approval Required'**
+  String get approvalRequired;
+
+  /// No description provided for @approvalRequiredSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Total variance of {qty} units exceeds the approval threshold.'**
+  String approvalRequiredSubtitle(String qty);
+
+  /// No description provided for @approveWithBiometric.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve with Biometric / PIN'**
+  String get approveWithBiometric;
+
+  /// No description provided for @approvalGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved — operation queued.'**
+  String get approvalGranted;
+
+  /// No description provided for @approvalFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Biometric failed — approval not granted.'**
+  String get approvalFailed;
+
+  /// No description provided for @pendingApprovalStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting Approval'**
+  String get pendingApprovalStatus;
 }
 
 class _AppLocalizationsDelegate

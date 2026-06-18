@@ -505,4 +505,75 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get exportFailed => 'فشل التصدير';
+
+  @override
+  String get auditTrail => 'سجل المراجعة';
+
+  @override
+  String get auditTrailSubtitle => 'جميع العمليات المقدمة على هذا الجهاز';
+
+  @override
+  String get all => 'الكل';
+
+  @override
+  String get stockTransferLabel => 'تحويل المخزون';
+
+  @override
+  String get goodsReceiptLabel => 'استلام البضائع';
+
+  @override
+  String get stockCountLabel => 'جرد المخزون';
+
+  @override
+  String get noAuditOps => 'لا توجد عمليات بعد';
+
+  @override
+  String get noAuditOpsSubtitle => 'ستظهر العمليات المكتملة هنا.';
+
+  @override
+  String get viewInErp => 'عرض في ERP';
+
+  @override
+  String get activeCompany => 'الشركة النشطة';
+
+  @override
+  String get selectCompany => 'اختر شركة';
+
+  @override
+  String get noCompanies => 'لم يتم العثور على شركات';
+
+  @override
+  String get varianceThreshold => 'حد انحراف الموافقة (وحدات)';
+
+  @override
+  String get varianceThresholdHint => '0 = معطّل';
+
+  @override
+  String get autoLogout => 'تسجيل الخروج التلقائي';
+
+  @override
+  String get unlockApp => 'افتح القفل للمتابعة';
+
+  @override
+  String get sessionLocked => 'الجلسة مقفلة';
+
+  @override
+  String get approvalRequired => 'مطلوب موافقة المشرف';
+
+  @override
+  String approvalRequiredSubtitle(String qty) {
+    return 'إجمالي الانحراف $qty وحدة يتجاوز حد الموافقة.';
+  }
+
+  @override
+  String get approveWithBiometric => 'الموافقة بالبصمة / رمز PIN';
+
+  @override
+  String get approvalGranted => 'تمت الموافقة — العملية في قائمة الانتظار.';
+
+  @override
+  String get approvalFailed => 'فشلت البصمة — لم تُمنح الموافقة.';
+
+  @override
+  String get pendingApprovalStatus => 'في انتظار الموافقة';
 }

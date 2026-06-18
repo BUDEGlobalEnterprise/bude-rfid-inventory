@@ -47,7 +47,16 @@ def session_info() -> dict:
         return failure("No active session.", code="AUTH_NO_SESSION")
 
     full_name = None
+    roles: list = []
+    default_warehouse: str = ""
     if frappe is not None:
         full_name = frappe.db.get_value("User", user, "full_name")
+        roles = frappe.get_roles(user)
+        default_warehouse = frappe.db.get_value("User", user, "default_warehouse") or ""
 
-    return success({"user": user, "full_name": full_name})
+    return success({
+        "user": user,
+        "full_name": full_name,
+        "roles": roles,
+        "default_warehouse": default_warehouse,
+    })

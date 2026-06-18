@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/api_client.dart';
 import '../../../../core/utils/use_case.dart';
+import '../../../settings/presentation/providers/settings_notifier.dart';
 import '../../data/auth_repository_impl.dart';
 import '../../data/datasources/auth_local_data_source.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
@@ -68,7 +69,15 @@ final authNotifierProvider =
     logoutUseCase: LogoutUseCase(repo),
     getCurrentSessionUseCase: GetCurrentSessionUseCase(repo),
     apiClient: apiClient,
+    ref: ref,
   );
+});
+
+/// Derived provider — empty set when unauthenticated.
+final rolesProvider = Provider<Set<String>>((ref) {
+  final authState = ref.watch(authNotifierProvider);
+  if (authState is Authenticated) return authState.session.roles.toSet();
+  return {};
 });
 
 class AuthNotifier extends StateNotifier<AuthState> {
@@ -76,13 +85,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final LogoutUseCase logoutUseCase;
   final GetCurrentSessionUseCase getCurrentSessionUseCase;
   final ApiClient apiClient;
+  final Ref _ref;
 
   AuthNotifier({
     required this.loginUseCase,
     required this.logoutUseCase,
     required this.getCurrentSessionUseCase,
     required this.apiClient,
-  }) : super(const AuthInitial());
+    required Ref ref,
+  })  : _ref = ref,
+        super(const AuthInitial());
 
   Future<void> bootstrap() async {
     state = const AuthLoading();
@@ -92,6 +104,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       (session) {
         if (session == null) return const Unauthenticated();
         apiClient.setAuthToken(session.token);
+        _applyDefaultWarehouse(session);
         return Authenticated(session);
       },
     );
@@ -106,6 +119,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       (failure) => AuthFailed(failure.message),
       (session) {
         apiClient.setAuthToken(session.token);
+        _applyDefaultWarehouse(session);
         return Authenticated(session);
       },
     );
@@ -115,5 +129,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await logoutUseCase(const NoParams());
     apiClient.clearAuthToken();
     state = const Unauthenticated();
+  }
+
+  void _applyDefaultWarehouse(AuthSession session) {
+    final dw = session.defaultWarehouse;
+    if (dw == null || dw.isEmpty) return;
+    final settings = _ref.read(settingsNotifierProvider);
+    if (settings.defaultSourceWarehouse == null) {
+      _ref.read(settingsNotifierProvider.notifier).setDefaultSourceWarehouse(dw);
+    }
   }
 }

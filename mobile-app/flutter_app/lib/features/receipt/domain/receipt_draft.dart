@@ -26,11 +26,13 @@ class ReceiptDraft extends Equatable {
   final String? targetWarehouse;
   final String? againstPo;
   final List<ReceiptLine> lines;
+  final String? company;
 
   const ReceiptDraft({
     this.targetWarehouse,
     this.againstPo,
     this.lines = const [],
+    this.company,
   });
 
   ReceiptDraft copyWith({
@@ -38,11 +40,13 @@ class ReceiptDraft extends Equatable {
     String? againstPo,
     List<ReceiptLine>? lines,
     bool clearAgainstPo = false,
+    Object? company = _sentinel,
   }) {
     return ReceiptDraft(
       targetWarehouse: targetWarehouse ?? this.targetWarehouse,
       againstPo: clearAgainstPo ? null : (againstPo ?? this.againstPo),
       lines: lines ?? this.lines,
+      company: company == _sentinel ? this.company : company as String?,
     );
   }
 
@@ -55,8 +59,11 @@ class ReceiptDraft extends Equatable {
         'target_warehouse': targetWarehouse,
         if (againstPo != null) 'against_po': againstPo,
         'items': lines.map((l) => l.toJson()).toList(),
+        if (company != null) 'company': company,
       };
 
   @override
-  List<Object?> get props => [targetWarehouse, againstPo, lines];
+  List<Object?> get props => [targetWarehouse, againstPo, lines, company];
 }
+
+const _sentinel = Object();

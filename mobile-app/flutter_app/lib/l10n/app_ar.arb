@@ -148,5 +148,33 @@
   "exportCsv": "تصدير CSV",
   "exporting": "جارٍ التصدير…",
   "exportComplete": "التصدير جاهز",
-  "exportFailed": "فشل التصدير"
+  "exportFailed": "فشل التصدير",
+
+  "auditTrail": "سجل المراجعة",
+  "auditTrailSubtitle": "جميع العمليات المقدمة على هذا الجهاز",
+  "all": "الكل",
+  "stockTransferLabel": "تحويل المخزون",
+  "goodsReceiptLabel": "استلام البضائع",
+  "stockCountLabel": "جرد المخزون",
+  "noAuditOps": "لا توجد عمليات بعد",
+  "noAuditOpsSubtitle": "ستظهر العمليات المكتملة هنا.",
+  "viewInErp": "عرض في ERP",
+
+  "activeCompany": "الشركة النشطة",
+  "selectCompany": "اختر شركة",
+  "noCompanies": "لم يتم العثور على شركات",
+  "varianceThreshold": "حد انحراف الموافقة (وحدات)",
+  "varianceThresholdHint": "0 = معطّل",
+
+  "autoLogout": "تسجيل الخروج التلقائي",
+  "autoLogoutDisabled": "معطّل",
+  "unlockApp": "افتح القفل للمتابعة",
+  "sessionLocked": "الجلسة مقفلة",
+
+  "approvalRequired": "مطلوب موافقة المشرف",
+  "approvalRequiredSubtitle": "إجمالي الانحراف {qty} وحدة يتجاوز حد الموافقة.",
+  "approveWithBiometric": "الموافقة بالبصمة / رمز PIN",
+  "approvalGranted": "تمت الموافقة — العملية في قائمة الانتظار.",
+  "approvalFailed": "فشلت البصمة — لم تُمنح الموافقة.",
+  "pendingApprovalStatus": "في انتظار الموافقة"
 }

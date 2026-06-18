@@ -86,3 +86,34 @@ def test_session_info_returns_failure_when_no_user(mock_service):
     result = auth_api.session_info()
     assert result["ok"] is False
     assert result["code"] == "AUTH_NO_SESSION"
+
+
+@patch.object(auth_api, "_service")
+@patch("bude_api.api.auth.frappe")
+def test_session_info_includes_roles(mock_frappe, mock_service):
+    mock_service.current_user.return_value = "alice@example.com"
+    mock_frappe.db.get_value.return_value = "Alice"
+    mock_frappe.get_roles.return_value = ["Stock Manager", "All"]
+    mock_frappe.db.get_value.side_effect = lambda *a, **kw: (
+        "Alice" if a[2] == "full_name" else ""
+    )
+
+    result = auth_api.session_info()
+
+    assert result["ok"] is True
+    assert "Stock Manager" in result["data"]["roles"]
+
+
+@patch.object(auth_api, "_service")
+@patch("bude_api.api.auth.frappe")
+def test_session_info_includes_default_warehouse(mock_frappe, mock_service):
+    mock_service.current_user.return_value = "alice@example.com"
+    mock_frappe.get_roles.return_value = ["All"]
+    mock_frappe.db.get_value.side_effect = lambda *a, **kw: (
+        "Alice" if a[2] == "full_name" else "Stores - A"
+    )
+
+    result = auth_api.session_info()
+
+    assert result["ok"] is True
+    assert result["data"]["default_warehouse"] == "Stores - A"

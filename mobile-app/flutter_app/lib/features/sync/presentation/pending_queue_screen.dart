@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/sync/pending_operation.dart';
@@ -67,20 +68,31 @@ class _OpTile extends ConsumerWidget {
         ],
       ),
       isThreeLine: op.lastError != null,
-      trailing: PopupMenuButton<String>(
-        onSelected: (value) async {
-          final queue = ref.read(syncQueueProvider);
-          if (value == 'retry') {
-            await queue.retry(op.id);
-            await ref.read(syncEngineProvider).kick();
-          } else if (value == 'discard') {
-            await queue.delete(op.id);
-          }
-        },
-        itemBuilder: (_) => [
-          if (op.status == OpStatus.failed)
-            const PopupMenuItem(value: 'retry', child: Text('Retry')),
-          const PopupMenuItem(value: 'discard', child: Text('Discard')),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (op.status == OpStatus.pendingApproval)
+            ActionChip(
+              avatar: const Icon(Icons.approval, size: 16),
+              label: const Text('Approve'),
+              onPressed: () => context.push('/reconcile/approve', extra: op.id),
+            ),
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              final queue = ref.read(syncQueueProvider);
+              if (value == 'retry') {
+                await queue.retry(op.id);
+                await ref.read(syncEngineProvider).kick();
+              } else if (value == 'discard') {
+                await queue.delete(op.id);
+              }
+            },
+            itemBuilder: (_) => [
+              if (op.status == OpStatus.failed)
+                const PopupMenuItem(value: 'retry', child: Text('Retry')),
+              const PopupMenuItem(value: 'discard', child: Text('Discard')),
+            ],
+          ),
         ],
       ),
     );

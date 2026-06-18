@@ -33,6 +33,7 @@ def create_transfer(
     source_warehouse: str,
     target_warehouse: str,
     posting_date: Optional[str] = None,
+    company: Optional[str] = None,
 ) -> dict:
     """Create + submit a Stock Entry of type Material Transfer.
 
@@ -70,7 +71,7 @@ def create_transfer(
             code="VALIDATION_UNKNOWN_ITEM",
         )
 
-    doc = frappe.get_doc({
+    doc_data = {
         "doctype": "Stock Entry",
         "stock_entry_type": "Material Transfer",
         "purpose": "Material Transfer",
@@ -84,7 +85,10 @@ def create_transfer(
             }
             for row in items
         ],
-    })
+    }
+    if company:
+        doc_data["company"] = company
+    doc = frappe.get_doc(doc_data)
     doc.insert(ignore_permissions=False)
     doc.submit()
 
@@ -156,6 +160,7 @@ def create_receipt(
     target_warehouse: str,
     against_po: Optional[str] = None,
     posting_date: Optional[str] = None,
+    company: Optional[str] = None,
 ) -> dict:
     """Receive stock into [target_warehouse].
 
@@ -189,9 +194,9 @@ def create_receipt(
         )
 
     if against_po:
-        return _create_purchase_receipt(items, target_warehouse, against_po, posting_date)
+        return _create_purchase_receipt(items, target_warehouse, against_po, posting_date, company)
 
-    return _create_material_receipt(items, target_warehouse, posting_date)
+    return _create_material_receipt(items, target_warehouse, posting_date, company)
 
 
 def _validate_receipt_inputs(items, target_warehouse) -> Optional[dict]:
@@ -221,8 +226,8 @@ def _validate_receipt_inputs(items, target_warehouse) -> Optional[dict]:
     return None
 
 
-def _create_material_receipt(items, target_warehouse, posting_date) -> dict:
-    doc = frappe.get_doc({
+def _create_material_receipt(items, target_warehouse, posting_date, company=None) -> dict:
+    doc_data = {
         "doctype": "Stock Entry",
         "stock_entry_type": "Material Receipt",
         "purpose": "Material Receipt",
@@ -235,13 +240,16 @@ def _create_material_receipt(items, target_warehouse, posting_date) -> dict:
             }
             for row in items
         ],
-    })
+    }
+    if company:
+        doc_data["company"] = company
+    doc = frappe.get_doc(doc_data)
     doc.insert(ignore_permissions=False)
     doc.submit()
     return success({"name": doc.name, "docstatus": doc.docstatus})
 
 
-def _create_purchase_receipt(items, target_warehouse, against_po, posting_date) -> dict:
+def _create_purchase_receipt(items, target_warehouse, against_po, posting_date, company=None) -> dict:
     po_doc = frappe.db.get_value(
         "Purchase Order",
         {"name": against_po, "docstatus": 1},
@@ -272,7 +280,7 @@ def _create_purchase_receipt(items, target_warehouse, against_po, posting_date) 
             code="VALIDATION_PO_LINE_MISMATCH",
         )
 
-    pr = frappe.get_doc({
+    pr_data = {
         "doctype": "Purchase Receipt",
         "supplier": po_doc["supplier"],
         "posting_date": posting_date,
@@ -286,7 +294,10 @@ def _create_purchase_receipt(items, target_warehouse, against_po, posting_date) 
             }
             for row in items
         ],
-    })
+    }
+    if company:
+        pr_data["company"] = company
+    pr = frappe.get_doc(pr_data)
     pr.insert(ignore_permissions=False)
     pr.submit()
     return success({"name": pr.name, "docstatus": pr.docstatus})
@@ -302,6 +313,7 @@ def create_reconciliation(
     counts: list,
     warehouse: str,
     posting_date: Optional[str] = None,
+    company: Optional[str] = None,
 ) -> dict:
     """Submit a Stock Reconciliation that snapshots actual counted quantities.
 
@@ -335,7 +347,7 @@ def create_reconciliation(
             code="VALIDATION_UNKNOWN_ITEM",
         )
 
-    doc = frappe.get_doc({
+    doc_data = {
         "doctype": "Stock Reconciliation",
         "purpose": "Stock Reconciliation",
         "posting_date": posting_date,
@@ -347,7 +359,10 @@ def create_reconciliation(
             }
             for row in counts
         ],
-    })
+    }
+    if company:
+        doc_data["company"] = company
+    doc = frappe.get_doc(doc_data)
     doc.insert(ignore_permissions=False)
     doc.submit()
     return success({"name": doc.name, "docstatus": doc.docstatus})

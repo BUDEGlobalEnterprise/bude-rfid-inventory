@@ -510,4 +510,75 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exportFailed => 'Export failed';
+
+  @override
+  String get auditTrail => 'Audit Trail';
+
+  @override
+  String get auditTrailSubtitle => 'All submitted operations on this device';
+
+  @override
+  String get all => 'All';
+
+  @override
+  String get stockTransferLabel => 'Stock Transfer';
+
+  @override
+  String get goodsReceiptLabel => 'Goods Receipt';
+
+  @override
+  String get stockCountLabel => 'Stock Count';
+
+  @override
+  String get noAuditOps => 'No operations yet';
+
+  @override
+  String get noAuditOpsSubtitle => 'Completed operations will appear here.';
+
+  @override
+  String get viewInErp => 'View in ERP';
+
+  @override
+  String get activeCompany => 'Active Company';
+
+  @override
+  String get selectCompany => 'Select company';
+
+  @override
+  String get noCompanies => 'No companies found';
+
+  @override
+  String get varianceThreshold => 'Variance approval threshold (units)';
+
+  @override
+  String get varianceThresholdHint => '0 = disabled';
+
+  @override
+  String get autoLogout => 'Auto-logout';
+
+  @override
+  String get unlockApp => 'Unlock to continue';
+
+  @override
+  String get sessionLocked => 'Session Locked';
+
+  @override
+  String get approvalRequired => 'Supervisor Approval Required';
+
+  @override
+  String approvalRequiredSubtitle(String qty) {
+    return 'Total variance of $qty units exceeds the approval threshold.';
+  }
+
+  @override
+  String get approveWithBiometric => 'Approve with Biometric / PIN';
+
+  @override
+  String get approvalGranted => 'Approved — operation queued.';
+
+  @override
+  String get approvalFailed => 'Biometric failed — approval not granted.';
+
+  @override
+  String get pendingApprovalStatus => 'Awaiting Approval';
 }

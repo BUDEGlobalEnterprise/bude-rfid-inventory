@@ -8,6 +8,7 @@ import '../../../core/ui/bude_section_header.dart';
 import '../../../core/utils/locale_ext.dart';
 import '../../authentication/presentation/providers/auth_notifier.dart';
 import '../../tenant/presentation/providers/tenant_notifier.dart';
+import '../../company/presentation/providers/company_providers.dart';
 import '../../transfer/presentation/providers/transfer_providers.dart';
 import 'providers/settings_notifier.dart';
 
@@ -51,6 +52,10 @@ class _SettingsBody extends ConsumerWidget {
         // ── Connection ──────────────────────────────────────────────────────
         BudeSectionHeader(context.l10n.connection),
         _ConnectionSection(tenant: tenant),
+
+        // ── Company ─────────────────────────────────────────────────────────
+        BudeSectionHeader(context.l10n.company),
+        _CompanySection(settings: settings, notifier: notifier),
 
         // ── Defaults ────────────────────────────────────────────────────────
         BudeSectionHeader(context.l10n.defaults),
@@ -252,6 +257,55 @@ class _ConnectionSection extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// Company section
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _CompanySection extends ConsumerWidget {
+  final dynamic settings;
+  final dynamic notifier;
+  const _CompanySection({required this.settings, required this.notifier});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(settingsNotifierProvider);
+    final n = ref.read(settingsNotifierProvider.notifier);
+    final companiesAsync = ref.watch(companiesProvider);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: companiesAsync.when(
+          loading: () => const LinearProgressIndicator(),
+          error: (_, __) => Text(context.l10n.noCompanies),
+          data: (companies) => DropdownButtonFormField<String>(
+            key: ValueKey('company-${s.activeCompany}'),
+            decoration: InputDecoration(
+              labelText: context.l10n.activeCompany,
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.business),
+            ),
+            initialValue: s.activeCompany,
+            items: [
+              DropdownMenuItem<String>(
+                value: null,
+                child: Text(context.l10n.noneSelected),
+              ),
+              ...companies.map(
+                (c) => DropdownMenuItem(
+                  value: c.name,
+                  child: Text(c.companyName),
+                ),
+              ),
+            ],
+            onChanged: n.setActiveCompany,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // Defaults section
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -306,6 +360,23 @@ class _DefaultsSection extends ConsumerWidget {
               initialValue: s.defaultTargetWarehouse,
               items: whItems,
               onChanged: n.setDefaultTargetWarehouse,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              decoration: InputDecoration(
+                labelText: context.l10n.varianceThreshold,
+                hintText: context.l10n.varianceThresholdHint,
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.warning_amber_outlined),
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              initialValue: s.reconciliationVarianceThreshold == 0.0
+                  ? ''
+                  : s.reconciliationVarianceThreshold.toString(),
+              onChanged: (v) {
+                final parsed = double.tryParse(v);
+                n.setReconciliationVarianceThreshold(parsed ?? 0.0);
+              },
             ),
           ],
         ),
@@ -435,10 +506,42 @@ class _AccountSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(settingsNotifierProvider);
+    final n = ref.read(settingsNotifierProvider.notifier);
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.autoLogout,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<int>(
+                  segments: [
+                    ButtonSegment(
+                      value: 0,
+                      label: Text(context.l10n.autoLogoutDisabled),
+                    ),
+                    const ButtonSegment(value: 5, label: Text('5 min')),
+                    const ButtonSegment(value: 15, label: Text('15 min')),
+                    const ButtonSegment(value: 30, label: Text('30 min')),
+                  ],
+                  selected: {s.autoLogoutMinutes},
+                  onSelectionChanged: (v) => n.setAutoLogoutMinutes(v.first),
+                  showSelectedIcon: false,
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 16),
           Padding(
             padding: const EdgeInsets.all(16),
             child: FilledButton.tonalIcon(

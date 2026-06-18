@@ -48,6 +48,10 @@ dependencies:
   share_plus: ^10.0.0
   path_provider: ^2.1.4
 
+  # Phase 6 — biometric auth + ERP deep links
+  local_auth: ^2.3.0
+  url_launcher: ^6.3.0
+
   # Barcode scanning (camera-based for Phase 1)
   mobile_scanner: ^5.0.0
 

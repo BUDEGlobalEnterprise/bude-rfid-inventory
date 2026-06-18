@@ -64,6 +64,12 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Future<void> setAutoLogoutMinutes(int minutes) =>
       _persist(state.copyWith(autoLogoutMinutes: minutes));
 
+  Future<void> setActiveCompany(String? name) =>
+      _persist(state.copyWith(activeCompany: name));
+
+  Future<void> setReconciliationVarianceThreshold(double threshold) =>
+      _persist(state.copyWith(reconciliationVarianceThreshold: threshold));
+
   Future<void> setSyncOnWifiOnly(bool value) =>
       _persist(state.copyWith(syncOnWifiOnly: value));
 

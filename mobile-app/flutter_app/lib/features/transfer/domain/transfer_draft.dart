@@ -26,22 +26,26 @@ class TransferDraft extends Equatable {
   final String? sourceWarehouse;
   final String? targetWarehouse;
   final List<TransferLine> lines;
+  final String? company;
 
   const TransferDraft({
     this.sourceWarehouse,
     this.targetWarehouse,
     this.lines = const [],
+    this.company,
   });
 
   TransferDraft copyWith({
     String? sourceWarehouse,
     String? targetWarehouse,
     List<TransferLine>? lines,
+    Object? company = _sentinel,
   }) {
     return TransferDraft(
       sourceWarehouse: sourceWarehouse ?? this.sourceWarehouse,
       targetWarehouse: targetWarehouse ?? this.targetWarehouse,
       lines: lines ?? this.lines,
+      company: company == _sentinel ? this.company : company as String?,
     );
   }
 
@@ -56,8 +60,11 @@ class TransferDraft extends Equatable {
         'source_warehouse': sourceWarehouse,
         'target_warehouse': targetWarehouse,
         'items': lines.map((l) => l.toJson()).toList(),
+        if (company != null) 'company': company,
       };
 
   @override
-  List<Object?> get props => [sourceWarehouse, targetWarehouse, lines];
+  List<Object?> get props => [sourceWarehouse, targetWarehouse, lines, company];
 }
+
+const _sentinel = Object();

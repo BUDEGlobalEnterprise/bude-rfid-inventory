@@ -25,6 +25,13 @@ class DashboardScreen extends ConsumerWidget {
     final logoUrl = branding?.logoUrl(tenantUrl);
     final title = branding?.companyName ?? context.l10n.appName;
     final featureFlags = branding?.featureFlags ?? {};
+    final roles = ref.watch(rolesProvider);
+    final isManager = roles.contains('Stock Manager');
+    final isStockUser = roles.contains('Stock User');
+    // Stock Manager → all; Stock User → ops only; guest → scan+search only.
+    final canAccessOps = isManager || isStockUser || roles.isEmpty;
+    final canAccessAnalytics = isManager || roles.isEmpty;
+    final canAccessWarehouses = isManager || roles.isEmpty;
 
     final recentRoutes =
         ref.watch(settingsNotifierProvider.select((s) => s.recentRoutes));
@@ -98,29 +105,38 @@ class DashboardScreen extends ConsumerWidget {
                               icon: Icons.swap_horiz,
                               label: context.l10n.transfer,
                               route: '/transfer',
+                              enabled: canAccessOps,
                             ),
                             _NavCard(
                               icon: Icons.input,
                               label: context.l10n.receive,
                               route: '/receipt',
-                              enabled: featureFlags['receipt'] != false,
+                              enabled: canAccessOps &&
+                                  featureFlags['receipt'] != false,
                             ),
                             _NavCard(
                               icon: Icons.fact_check,
                               label: context.l10n.count,
                               route: '/reconcile',
-                              enabled:
+                              enabled: canAccessOps &&
                                   featureFlags['reconciliation'] != false,
                             ),
                             _NavCard(
                               icon: Icons.warehouse_outlined,
                               label: context.l10n.warehouses,
                               route: '/warehouses',
+                              enabled: canAccessWarehouses,
                             ),
                             _NavCard(
                               icon: Icons.bar_chart,
                               label: context.l10n.analytics,
                               route: '/analytics',
+                              enabled: canAccessAnalytics,
+                            ),
+                            _NavCard(
+                              icon: Icons.history,
+                              label: context.l10n.auditTrail,
+                              route: '/audit',
                             ),
                             _NavCard(
                               icon: Icons.settings,
@@ -156,6 +172,7 @@ class _RecentlyUsedRow extends ConsumerWidget {
     '/sync': ('Sync', Icons.sync),
     '/warehouses': ('Warehouses', Icons.warehouse_outlined),
     '/analytics': ('Analytics', Icons.bar_chart),
+    '/audit': ('Audit Trail', Icons.history),
   };
 
   @override

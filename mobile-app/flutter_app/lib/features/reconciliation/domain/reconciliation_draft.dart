@@ -37,16 +37,23 @@ class CountLine extends Equatable {
 class ReconciliationDraft extends Equatable {
   final String? warehouse;
   final List<CountLine> lines;
+  final String? company;
 
-  const ReconciliationDraft({this.warehouse, this.lines = const []});
+  const ReconciliationDraft({
+    this.warehouse,
+    this.lines = const [],
+    this.company,
+  });
 
   ReconciliationDraft copyWith({
     String? warehouse,
     List<CountLine>? lines,
+    Object? company = _sentinel,
   }) {
     return ReconciliationDraft(
       warehouse: warehouse ?? this.warehouse,
       lines: lines ?? this.lines,
+      company: company == _sentinel ? this.company : company as String?,
     );
   }
 
@@ -56,11 +63,19 @@ class ReconciliationDraft extends Equatable {
       lines.isNotEmpty &&
       lines.every((l) => l.countedQty >= 0);
 
+  double get totalVariance => lines.fold(
+        0.0,
+        (s, l) => s + (l.variance?.abs() ?? 0.0),
+      );
+
   Map<String, dynamic> toPayload() => {
         'warehouse': warehouse,
         'counts': lines.map((l) => l.toJson()).toList(),
+        if (company != null) 'company': company,
       };
 
   @override
-  List<Object?> get props => [warehouse, lines];
+  List<Object?> get props => [warehouse, lines, company];
 }
+
+const _sentinel = Object();

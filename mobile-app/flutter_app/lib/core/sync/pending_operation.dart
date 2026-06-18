@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:equatable/equatable.dart';
 
 /// Status of a queued operation in its lifecycle.
-enum OpStatus { pending, inflight, succeeded, failed }
+enum OpStatus { pendingApproval, pending, inflight, succeeded, failed }
 
 /// A serialized write operation waiting to be sent to ERPNext.
 ///

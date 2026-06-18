@@ -6,6 +6,7 @@ import '../../../core/sync/providers.dart';
 import '../../../core/ui/error_banner.dart';
 import '../../../core/utils/locale_ext.dart';
 import '../../scan_session/domain/scanned_item.dart';
+import '../../settings/presentation/providers/settings_notifier.dart';
 import '../domain/transfer_draft.dart';
 import 'providers/transfer_providers.dart';
 
@@ -45,7 +46,10 @@ class TransferScreen extends ConsumerWidget {
     WidgetRef ref,
     TransferDraft draft,
   ) async {
-    final id = await ref.read(submitTransferUseCaseProvider).call(draft);
+    final settings = ref.read(settingsNotifierProvider);
+    final id = await ref
+        .read(submitTransferUseCaseProvider)
+        .call(draft.copyWith(company: settings.activeCompany));
     unawaited(ref.read(syncEngineProvider).kick());
     ref.read(transferDraftProvider.notifier).clear();
     if (!context.mounted) return;

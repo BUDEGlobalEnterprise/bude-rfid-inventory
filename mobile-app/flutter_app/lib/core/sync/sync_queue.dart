@@ -24,17 +24,31 @@ class SyncQueue {
   Future<String> enqueue({
     required String type,
     required Map<String, dynamic> payload,
+    OpStatus initialStatus = OpStatus.pending,
   }) async {
     final op = PendingOperation(
       id: _uuid.v4(),
       type: type,
       payload: payload,
-      status: OpStatus.pending,
+      status: initialStatus,
       createdAt: DateTime.now().toUtc(),
     );
     await _box.put(op.id, op.encode());
     _changes.add(null);
     return op.id;
+  }
+
+  /// Promote a pendingApproval op to pending so the sync engine picks it up.
+  Future<void> approve(String id) async {
+    final op = getById(id);
+    if (op == null || op.status != OpStatus.pendingApproval) return;
+    await update(
+      op.copyWith(
+        status: OpStatus.pending,
+        clearError: true,
+        clearNextRetry: true,
+      ),
+    );
   }
 
   PendingOperation? getById(String id) {
@@ -54,7 +68,7 @@ class SyncQueue {
   List<PendingOperation> failed() =>
       all().where((o) => o.status == OpStatus.failed).toList();
 
-  /// Count of operations not yet successfully sent (pending + inflight + failed).
+  /// Count of operations not yet successfully sent (pendingApproval + pending + inflight + failed).
   int unresolvedCount() =>
       all().where((o) => o.status != OpStatus.succeeded).length;
 

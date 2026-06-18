@@ -18,6 +18,7 @@ import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/sync/presentation/pending_queue_screen.dart';
 import '../../features/tenant/presentation/providers/tenant_notifier.dart';
 import '../../features/transfer/presentation/transfer_screen.dart';
+import '../../features/audit/presentation/audit_trail_screen.dart';
 import '../../features/analytics/presentation/analytics_screen.dart';
 import '../../features/analytics/presentation/export_screen.dart';
 import '../../features/analytics/presentation/stock_aging_screen.dart';
@@ -146,6 +147,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => WarehouseDetailScreen(
           warehouseName: Uri.decodeComponent(state.pathParameters['name']!),
         ),
+      ),
+      GoRoute(
+        path: '/audit',
+        builder: (context, state) => const AuditTrailScreen(),
       ),
       GoRoute(
         path: '/scan-session',
