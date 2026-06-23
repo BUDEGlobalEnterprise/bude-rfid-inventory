@@ -160,6 +160,7 @@ desktop.ini
 # ----- Project-specific -----
 /.frappe-bench/
 /sites/
+/vendor_sdk_cache/
 
 # ----- Local tool config -----
 .claude/

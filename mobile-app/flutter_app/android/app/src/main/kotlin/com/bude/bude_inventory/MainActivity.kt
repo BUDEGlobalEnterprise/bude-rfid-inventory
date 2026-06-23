@@ -7,5 +7,6 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         HardwareProbePlugin.register(flutterEngine, this)
+        ChainwayHardwarePlugin.register(flutterEngine, this)
     }
 }

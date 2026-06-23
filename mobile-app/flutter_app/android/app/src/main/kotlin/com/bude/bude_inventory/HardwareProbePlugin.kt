@@ -47,13 +47,18 @@ object HardwareProbePlugin {
             capabilities.add("bluetoothRfidReader")
         }
 
-        // Heuristic: vendor handhelds advertise an integrated UHF radio
-        // via a known system feature ("com.<vendor>.uhf"). When we add
-        // a real SDK integration these checks should be replaced with
-        // SDK class lookups (e.g. RFIDWithUHFUART.getInstance()).
         val manufacturer = (Build.MANUFACTURER ?: "").lowercase()
-        if (manufacturer.contains("chainway") ||
-            manufacturer.contains("zebra") ||
+        val hasChainwayUhfSdk = hasClass("com.rscja.deviceapi.RFIDWithUHFUART") ||
+            hasClass("com.rscja.deviceapi.RFIDWithUHFA4")
+        val hasChainwayBarcodeSdk = hasClass("com.rscja.deviceapi.Barcode2D")
+
+        if (manufacturer.contains("chainway") || hasChainwayUhfSdk) {
+            capabilities.add("builtInRfidReader")
+        }
+        if (manufacturer.contains("chainway") || hasChainwayBarcodeSdk) {
+            capabilities.add("builtInBarcodeScanner")
+        }
+        if (manufacturer.contains("zebra") ||
             manufacturer.contains("urovo")) {
             capabilities.add("builtInRfidReader")
             capabilities.add("builtInBarcodeScanner")
@@ -64,4 +69,12 @@ object HardwareProbePlugin {
 
         return capabilities
     }
+
+    private fun hasClass(className: String): Boolean =
+        try {
+            Class.forName(className)
+            true
+        } catch (_: ClassNotFoundException) {
+            false
+        }
 }

@@ -95,7 +95,7 @@ Activate real vendor SDKs behind the existing HAL interfaces. Each vendor is an 
 
 | Vendor | Adapter | Devices | Status |
 |--------|---------|---------|--------|
-| **Chainway** | `ChainwayBarcodeAdapter` + `ChainwayRfidAdapter` | C72, C66, R6 | 🔲 |
+| **Chainway** | `ChainwayBarcodeAdapter` + `ChainwayRfidAdapter` | C72, C66, R6 | 🟡 SDK bridge built; physical validation pending |
 | **Zebra** | `ZebraBarcodeAdapter` + `ZebraRfidAdapter` | TC-series + RFD40 / RFID8500 sled | 🔲 |
 | **Urovo** | `UrovoBarcodeAdapter` + `UrovoRfidAdapter` | DT40 RFID, i9000s | 🔲 |
 | **Honeywell** | `HoneywellBarcodeAdapter` | CT40, EDA52, EDA61k | 🔲 |
@@ -106,6 +106,13 @@ Activate real vendor SDKs behind the existing HAL interfaces. Each vendor is an 
 - Add `DeviceProbe` detection (model string, package query, or method-channel ping)
 - Integration test harness against device emulator or physical unit
 - Update `documentation/hardware-roadmap/integration-roadmap.md`
+
+**Chainway integration notes**
+- Cached public Chainway SDK archives under `vendor_sdk_cache/chainway/`.
+- Bundled `DeviceAPI_ver20251103_release.aar` into `mobile-app/flutter_app/android/app/libs/`.
+- Added Android method/event channels for Chainway barcode and UHF RFID.
+- Replaced Chainway Dart stubs with real HAL adapters.
+- Still requires validation on a C72/C66/R6 unit before marking complete.
 
 ---
 
