@@ -28,8 +28,10 @@ class AppSettings extends Equatable {
   final bool syncOnWifiOnly;
   final int syncIntervalMinutes; // 15 | 30 | 60
 
-  // Recently used routes (most recent first, max 3)
-  final List<String> recentRoutes;
+  // Search filter persistence
+  final String? lastSearchWarehouse;
+  final String? lastSearchItemGroup;
+  final bool lastSearchInStock;
 
   const AppSettings({
     this.apiBaseUrl,
@@ -47,7 +49,9 @@ class AppSettings extends Equatable {
     this.autoLogoutMinutes = 0,
     this.syncOnWifiOnly = false,
     this.syncIntervalMinutes = 30,
-    this.recentRoutes = const [],
+    this.lastSearchWarehouse,
+    this.lastSearchItemGroup,
+    this.lastSearchInStock = false,
   });
 
   AppSettings copyWith({
@@ -66,7 +70,9 @@ class AppSettings extends Equatable {
     int? autoLogoutMinutes,
     bool? syncOnWifiOnly,
     int? syncIntervalMinutes,
-    List<String>? recentRoutes,
+    Object? lastSearchWarehouse = _sentinel,
+    Object? lastSearchItemGroup = _sentinel,
+    bool? lastSearchInStock,
   }) {
     return AppSettings(
       apiBaseUrl: apiBaseUrl ?? this.apiBaseUrl,
@@ -91,7 +97,13 @@ class AppSettings extends Equatable {
       autoLogoutMinutes: autoLogoutMinutes ?? this.autoLogoutMinutes,
       syncOnWifiOnly: syncOnWifiOnly ?? this.syncOnWifiOnly,
       syncIntervalMinutes: syncIntervalMinutes ?? this.syncIntervalMinutes,
-      recentRoutes: recentRoutes ?? this.recentRoutes,
+      lastSearchWarehouse: lastSearchWarehouse == _sentinel
+          ? this.lastSearchWarehouse
+          : lastSearchWarehouse as String?,
+      lastSearchItemGroup: lastSearchItemGroup == _sentinel
+          ? this.lastSearchItemGroup
+          : lastSearchItemGroup as String?,
+      lastSearchInStock: lastSearchInStock ?? this.lastSearchInStock,
     );
   }
 
@@ -112,7 +124,9 @@ class AppSettings extends Equatable {
         autoLogoutMinutes,
         syncOnWifiOnly,
         syncIntervalMinutes,
-        recentRoutes,
+        lastSearchWarehouse,
+        lastSearchItemGroup,
+        lastSearchInStock,
       ];
 }
 

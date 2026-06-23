@@ -76,11 +76,14 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Future<void> setSyncIntervalMinutes(int minutes) =>
       _persist(state.copyWith(syncIntervalMinutes: minutes));
 
-  Future<void> recordRouteVisit(String route) async {
-    final updated = [
-      route,
-      ...state.recentRoutes.where((r) => r != route),
-    ].take(3).toList();
-    await _persist(state.copyWith(recentRoutes: updated));
-  }
+  Future<void> setLastSearchFilter({
+    required String? warehouse,
+    required String? itemGroup,
+    required bool inStock,
+  }) =>
+      _persist(state.copyWith(
+        lastSearchWarehouse: warehouse,
+        lastSearchItemGroup: itemGroup,
+        lastSearchInStock: inStock,
+      ),);
 }

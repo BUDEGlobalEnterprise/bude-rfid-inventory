@@ -24,7 +24,9 @@ class SettingsRepositoryImpl implements SettingsRepository {
   static const _autoLogoutKey = 'app_settings.auto_logout_minutes';
   static const _wifiOnlyKey = 'app_settings.sync_wifi_only';
   static const _syncIntervalKey = 'app_settings.sync_interval_minutes';
-  static const _recentRoutesKey = 'app_settings.recent_routes';
+  static const _lastSearchWhKey = 'search.filter.warehouse';
+  static const _lastSearchGroupKey = 'search.filter.item_group';
+  static const _lastSearchInStockKey = 'search.filter.in_stock';
 
   final FlutterSecureStorage _secure;
 
@@ -50,7 +52,9 @@ class SettingsRepositoryImpl implements SettingsRepository {
     final autoLogout = prefs.getInt(_autoLogoutKey) ?? 0;
     final wifiOnly = prefs.getBool(_wifiOnlyKey) ?? false;
     final syncInterval = prefs.getInt(_syncIntervalKey) ?? 30;
-    final recentRoutes = prefs.getStringList(_recentRoutesKey) ?? [];
+    final lastSearchWh = prefs.getString(_lastSearchWhKey);
+    final lastSearchGroup = prefs.getString(_lastSearchGroupKey);
+    final lastSearchInStock = prefs.getBool(_lastSearchInStockKey) ?? false;
 
     return AppSettings(
       apiBaseUrl: url,
@@ -68,7 +72,9 @@ class SettingsRepositoryImpl implements SettingsRepository {
       autoLogoutMinutes: autoLogout,
       syncOnWifiOnly: wifiOnly,
       syncIntervalMinutes: syncInterval,
-      recentRoutes: recentRoutes,
+      lastSearchWarehouse: lastSearchWh,
+      lastSearchItemGroup: lastSearchGroup,
+      lastSearchInStock: lastSearchInStock,
     );
   }
 
@@ -115,6 +121,16 @@ class SettingsRepositoryImpl implements SettingsRepository {
     await prefs.setInt(_autoLogoutKey, settings.autoLogoutMinutes);
     await prefs.setBool(_wifiOnlyKey, settings.syncOnWifiOnly);
     await prefs.setInt(_syncIntervalKey, settings.syncIntervalMinutes);
-    await prefs.setStringList(_recentRoutesKey, settings.recentRoutes);
+    if (settings.lastSearchWarehouse != null) {
+      await prefs.setString(_lastSearchWhKey, settings.lastSearchWarehouse!);
+    } else {
+      await prefs.remove(_lastSearchWhKey);
+    }
+    if (settings.lastSearchItemGroup != null) {
+      await prefs.setString(_lastSearchGroupKey, settings.lastSearchItemGroup!);
+    } else {
+      await prefs.remove(_lastSearchGroupKey);
+    }
+    await prefs.setBool(_lastSearchInStockKey, settings.lastSearchInStock);
   }
 }

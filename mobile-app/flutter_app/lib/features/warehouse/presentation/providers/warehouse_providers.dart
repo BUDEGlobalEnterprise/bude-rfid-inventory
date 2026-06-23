@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../authentication/presentation/providers/auth_notifier.dart';
+import '../../../../core/sync/providers.dart';
+import '../../data/datasources/warehouse_local_data_source.dart';
 import '../../data/datasources/warehouse_remote_data_source.dart';
 import '../../data/warehouse_repository_impl.dart';
 import '../../domain/entities/warehouse_stock_line.dart';
@@ -10,6 +12,7 @@ final warehouseRepositoryProvider = Provider<WarehouseRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return WarehouseRepositoryImpl(
     remote: WarehouseRemoteDataSourceImpl(apiClient.dio),
+    local: WarehouseLocalDataSourceImpl(ref.watch(warehouseCacheBoxProvider)),
   );
 });
 

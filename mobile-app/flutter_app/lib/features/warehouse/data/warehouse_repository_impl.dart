@@ -4,23 +4,31 @@ import '../../../core/errors/exceptions.dart';
 import '../../../core/errors/failures.dart';
 import '../domain/entities/warehouse_stock_line.dart';
 import '../domain/repositories/warehouse_repository.dart';
+import 'datasources/warehouse_local_data_source.dart';
 import 'datasources/warehouse_remote_data_source.dart';
 
 class WarehouseRepositoryImpl implements WarehouseRepository {
   final WarehouseRemoteDataSource remote;
-  WarehouseRepositoryImpl({required this.remote});
+  final WarehouseLocalDataSource local;
+
+  WarehouseRepositoryImpl({required this.remote, required this.local});
 
   @override
   Future<Either<Failure, List<String>>> listWarehouses({
     int limit = 100,
   }) async {
+    // Cache-first: warehouse list rarely changes.
+    final cached = local.getList();
+    if (cached != null) return Right(cached);
+
     try {
       final names = await remote.listWarehouses(limit: limit);
+      local.putList(names);
       return Right(names);
+    } on NetworkException {
+      return const Left(NetworkFailure('No internet connection.'));
     } on AuthException catch (e) {
       return Left(AuthFailure(e.message));
-    } on NetworkException catch (e) {
-      return Left(NetworkFailure(e.message));
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message, statusCode: e.statusCode));
     }
@@ -31,6 +39,7 @@ class WarehouseRepositoryImpl implements WarehouseRepository {
     String warehouse, {
     int limit = 100,
   }) async {
+    // Stock data is live — no cache to avoid stale transfer quantities.
     try {
       final models = await remote.getStock(warehouse, limit: limit);
       return Right(models.map((m) => m.toEntity()).toList());
