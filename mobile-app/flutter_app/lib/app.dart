@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/auth/app_lock_notifier.dart';
+import 'core/auth/inactivity_observer.dart';
+import 'core/auth/lock_screen.dart';
 import 'core/constants/app_strings.dart';
 import 'core/network/auth_interceptor.dart';
 import 'core/router/app_router.dart';
 import 'core/sync/providers.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
+import 'features/assets/data/asset_op_submitters.dart';
 import 'features/authentication/presentation/providers/auth_notifier.dart';
 import 'features/receipt/data/receipt_op_submitter.dart';
 import 'features/reconciliation/data/reconciliation_op_submitter.dart';
@@ -24,10 +28,13 @@ class BudeInventoryApp extends ConsumerStatefulWidget {
 
 class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
   ProviderSubscription<AuthState>? _authSub;
+  late final InactivityObserver _inactivityObserver;
 
   @override
   void initState() {
     super.initState();
+    _inactivityObserver = InactivityObserver(ref);
+    WidgetsBinding.instance.addObserver(_inactivityObserver);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final apiClient = ref.read(apiClientProvider);
       apiClient.installAuthInterceptor(
@@ -41,6 +48,9 @@ class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
       engine.registerSubmitter(TransferOpSubmitter(apiClient.dio));
       engine.registerSubmitter(ReceiptOpSubmitter(apiClient.dio));
       engine.registerSubmitter(ReconciliationOpSubmitter(apiClient.dio));
+      engine.registerSubmitter(AssetMovementOpSubmitter(apiClient.dio));
+      engine.registerSubmitter(AssetRepairOpSubmitter(apiClient.dio));
+      engine.registerSubmitter(MaintenanceLogOpSubmitter(apiClient.dio));
       engine.start();
 
       _authSub = ref.listenManual<AuthState>(authNotifierProvider, (
@@ -58,6 +68,7 @@ class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(_inactivityObserver);
     _authSub?.close();
     super.dispose();
   }
@@ -83,6 +94,15 @@ class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: router,
+      builder: (context, child) {
+        final locked = ref.watch(appLockProvider);
+        return Stack(
+          children: [
+            child!,
+            if (locked) const LockScreen(),
+          ],
+        );
+      },
     );
   }
 }
