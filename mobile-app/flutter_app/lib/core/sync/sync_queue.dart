@@ -57,10 +57,9 @@ class SyncQueue {
     return PendingOperation.decode(raw);
   }
 
-  List<PendingOperation> all() => _box.values
-      .map(PendingOperation.decode)
-      .toList()
-    ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  List<PendingOperation> all() =>
+      _box.values.map(PendingOperation.decode).toList()
+        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
   List<PendingOperation> pending() =>
       all().where((o) => o.status == OpStatus.pending).toList();

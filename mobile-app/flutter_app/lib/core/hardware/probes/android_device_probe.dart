@@ -33,7 +33,10 @@ class AndroidDeviceProbe implements DeviceProbe {
         manufacturer: manufacturer,
         model: model,
         osVersion: osVersion,
-        capabilities: capabilityNames.map(_parseCapability).whereType<HardwareCapability>().toSet(),
+        capabilities: capabilityNames
+            .map(_parseCapability)
+            .whereType<HardwareCapability>()
+            .toSet(),
       );
     } on MissingPluginException {
       return _fallback();

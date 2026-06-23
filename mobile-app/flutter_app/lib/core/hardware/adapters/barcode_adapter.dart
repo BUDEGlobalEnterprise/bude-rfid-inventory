@@ -22,7 +22,8 @@ abstract class BarcodeAdapter {
 
   /// One-shot helper: starts scanning, awaits the first event, stops.
   /// Returns null if no scan happened before [timeout].
-  Future<ScanEvent?> scanSingle({Duration timeout = const Duration(seconds: 30)});
+  Future<ScanEvent?> scanSingle(
+      {Duration timeout = const Duration(seconds: 30),});
 
   /// True when continuous-mode scanning is supported in hardware. Some
   /// vendors (e.g. camera) emulate continuous mode in software.

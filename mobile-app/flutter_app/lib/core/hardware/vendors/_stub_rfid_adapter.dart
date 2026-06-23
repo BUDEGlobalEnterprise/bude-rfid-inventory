@@ -7,8 +7,7 @@ import '../entities/rfid_tag.dart';
 abstract class StubRfidAdapter implements RfidAdapter {
   String get installHint;
 
-  Never _throw() =>
-      throw VendorSdkUnavailableException(vendor, installHint);
+  Never _throw() => throw VendorSdkUnavailableException(vendor, installHint);
 
   @override
   bool get isConnected => false;

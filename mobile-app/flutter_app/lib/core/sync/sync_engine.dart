@@ -45,9 +45,7 @@ class SyncEngine {
     if (_started) return;
     _started = true;
 
-    _connectivitySub = networkInfo
-        .onConnectivityChanged()
-        .listen((online) {
+    _connectivitySub = networkInfo.onConnectivityChanged().listen((online) {
       if (online) kick();
     });
 
@@ -158,9 +156,8 @@ class SyncEngine {
               status: OpStatus.pending,
               attempts: nextAttempts,
               lastError: error,
-              nextRetryAt: DateTime.now()
-                  .toUtc()
-                  .add(Duration(seconds: backoffSec)),
+              nextRetryAt:
+                  DateTime.now().toUtc().add(Duration(seconds: backoffSec)),
             ),
           );
         }

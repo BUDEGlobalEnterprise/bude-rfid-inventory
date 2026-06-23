@@ -62,7 +62,8 @@ class CameraBarcodeAdapter implements BarcodeAdapter, CameraPreviewAdapter {
   }) async {
     await startScan();
     try {
-      return await events.first.timeout(timeout, onTimeout: () => throw _Timeout());
+      return await events.first
+          .timeout(timeout, onTimeout: () => throw _Timeout());
     } on _Timeout {
       return null;
     } finally {

@@ -40,3 +40,15 @@ final unresolvedOpCountProvider = StreamProvider<int>((ref) {
 final allOpsProvider = StreamProvider<List<PendingOperation>>((ref) {
   return ref.watch(syncQueueProvider).watchAll();
 });
+
+// ── Read-cache Hive boxes ─────────────────────────────────────────────────────
+
+/// Set by `main()` after Hive opens the item cache box.
+final itemCacheBoxProvider = Provider<Box<String>>((ref) {
+  throw UnimplementedError('Override in ProviderScope after Hive init.');
+});
+
+/// Set by `main()` after Hive opens the warehouse cache box.
+final warehouseCacheBoxProvider = Provider<Box<String>>((ref) {
+  throw UnimplementedError('Override in ProviderScope after Hive init.');
+});

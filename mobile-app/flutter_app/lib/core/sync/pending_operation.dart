@@ -51,8 +51,7 @@ class PendingOperation extends Equatable {
       attempts: attempts ?? this.attempts,
       lastError: clearError ? null : (lastError ?? this.lastError),
       serverRef: serverRef ?? this.serverRef,
-      nextRetryAt:
-          clearNextRetry ? null : (nextRetryAt ?? this.nextRetryAt),
+      nextRetryAt: clearNextRetry ? null : (nextRetryAt ?? this.nextRetryAt),
     );
   }
 

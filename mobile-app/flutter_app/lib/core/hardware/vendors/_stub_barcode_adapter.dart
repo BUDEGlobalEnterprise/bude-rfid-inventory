@@ -12,8 +12,7 @@ import '../entities/scan_event.dart';
 abstract class StubBarcodeAdapter implements BarcodeAdapter {
   String get installHint;
 
-  Never _throw() =>
-      throw VendorSdkUnavailableException(vendor, installHint);
+  Never _throw() => throw VendorSdkUnavailableException(vendor, installHint);
 
   @override
   Stream<ScanEvent> get events => _throw();
