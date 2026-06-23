@@ -25,6 +25,7 @@ _ITEM_FIELDS = [
     "stock_uom",
     "image",
     "disabled",
+    "item_group",
 ]
 
 
@@ -37,49 +38,87 @@ def _whitelist(allow_guest: bool = False):
 
 
 @_whitelist()
-def search(query: str, limit: int = 20) -> dict:
+def search(
+    query: str = "",
+    limit: int = 20,
+    page: int = 0,
+    warehouse: Optional[str] = None,
+    item_group: Optional[str] = None,
+    in_stock: Optional[str] = None,
+) -> dict:
     """Search Items by item_code/item_name (LIKE) and by Item Barcode (exact).
 
+    Optional filters: item_group, warehouse (used with in_stock), in_stock.
+    Supports pagination via page (0-based).
     Returns merged, deduped results ordered by item_code.
     """
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
     query = (query or "").strip()
-    if not query:
+    limit = max(1, min(int(limit), 100))
+    page = max(0, int(page))
+
+    # Nothing to search without query or filters
+    if not query and not item_group and not in_stock:
         return success([])
 
-    limit = max(1, min(int(limit), 100))
+    # Base filters applied to all Item queries
+    base_filters: list = [["disabled", "=", 0]]
+    if item_group:
+        base_filters.append(["item_group", "=", item_group])
 
-    name_matches = frappe.get_list(
-        "Item",
-        filters=[["disabled", "=", 0]],
-        or_filters=[
-            ["item_code", "like", f"%{query}%"],
-            ["item_name", "like", f"%{query}%"],
-        ],
-        fields=_ITEM_FIELDS,
-        limit=limit,
-        order_by="item_code asc",
-    )
+    if in_stock:
+        bin_filters: list = [["actual_qty", ">", 0]]
+        if warehouse:
+            bin_filters.append(["warehouse", "=", warehouse])
+        stocked = frappe.get_all(
+            "Bin", filters=bin_filters, pluck="item_code", limit=1000,
+        )
+        if not stocked:
+            return success([])
+        base_filters.append(["item_code", "in", list(set(stocked))])
 
-    barcode_rows = frappe.get_list(
-        "Item Barcode",
-        filters=[["barcode", "=", query]],
-        fields=["parent"],
-        limit=limit,
-    )
-    barcode_item_codes = [row["parent"] for row in barcode_rows]
+    # Exact barcode match — only on page 0, barcode hits always come first
     barcode_matches: list[dict] = []
-    if barcode_item_codes:
-        barcode_matches = frappe.get_list(
+    if query and page == 0:
+        barcode_rows = frappe.get_list(
+            "Item Barcode",
+            filters=[["barcode", "=", query]],
+            fields=["parent"],
+            limit=limit,
+        )
+        bc_codes = [r["parent"] for r in barcode_rows]
+        if bc_codes:
+            barcode_matches = frappe.get_list(
+                "Item",
+                filters=base_filters + [["item_code", "in", bc_codes]],
+                fields=_ITEM_FIELDS,
+                limit=limit,
+            )
+
+    # Text search or browse (empty query with filters)
+    if query:
+        name_matches = frappe.get_list(
             "Item",
-            filters=[
-                ["disabled", "=", 0],
-                ["item_code", "in", barcode_item_codes],
+            filters=base_filters,
+            or_filters=[
+                ["item_code", "like", f"%{query}%"],
+                ["item_name", "like", f"%{query}%"],
             ],
             fields=_ITEM_FIELDS,
             limit=limit,
+            limit_start=page * limit,
+            order_by="item_code asc",
+        )
+    else:
+        name_matches = frappe.get_list(
+            "Item",
+            filters=base_filters,
+            fields=_ITEM_FIELDS,
+            limit=limit,
+            limit_start=page * limit,
+            order_by="item_code asc",
         )
 
     seen: set[str] = set()
@@ -92,6 +131,21 @@ def search(query: str, limit: int = 20) -> dict:
         merged.append(row)
 
     return success(merged[:limit])
+
+
+@_whitelist()
+def list_groups() -> dict:
+    """Return all leaf Item Groups (is_group=0) for the filter chip."""
+    if frappe is None:
+        return failure("Frappe not available.", code="ENV_NO_FRAPPE")
+    groups = frappe.get_all(
+        "Item Group",
+        filters={"is_group": 0},
+        pluck="name",
+        order_by="name asc",
+        limit=200,
+    )
+    return success(groups)
 
 
 @_whitelist()
