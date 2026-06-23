@@ -127,7 +127,7 @@ KPI dashboards, variance analysis, and data export.
 
 ---
 
-## Phase 6 — Role-Based Access & Multi-Entity 🔲
+## Phase 6 — Role-Based Access & Multi-Entity ✅
 
 Enterprise controls for multi-site, multi-company deployments.
 
