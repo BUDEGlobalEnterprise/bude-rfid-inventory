@@ -6,7 +6,15 @@ import '../models/item_stock_model.dart';
 import '../models/stock_ledger_entry_model.dart';
 
 abstract class ItemRemoteDataSource {
-  Future<List<ItemModel>> search(String query, {int limit});
+  Future<List<ItemModel>> search(
+    String query, {
+    int limit,
+    int page,
+    String? warehouse,
+    String? itemGroup,
+    bool inStock,
+  });
+  Future<List<String>> listGroups();
   Future<ItemModel> getByBarcode(String barcode);
   Future<List<ItemStockModel>> getStock(String itemCode, {String? warehouse});
   Future<List<StockLedgerEntryModel>> getLedger(
@@ -21,13 +29,36 @@ class ItemRemoteDataSourceImpl implements ItemRemoteDataSource {
   ItemRemoteDataSourceImpl(this.dio);
 
   @override
-  Future<List<ItemModel>> search(String query, {int limit = 20}) async {
+  Future<List<ItemModel>> search(
+    String query, {
+    int limit = 20,
+    int page = 0,
+    String? warehouse,
+    String? itemGroup,
+    bool inStock = false,
+  }) async {
     final body = await _call(
       '/api/method/bude_api.api.items.search',
-      data: {'query': query, 'limit': limit},
+      data: {
+        'query': query,
+        'limit': limit,
+        'page': page,
+        if (warehouse != null && warehouse.isNotEmpty) 'warehouse': warehouse,
+        if (itemGroup != null && itemGroup.isNotEmpty) 'item_group': itemGroup,
+        if (inStock) 'in_stock': '1',
+      },
     );
     final list = (body['data'] as List).cast<Map<String, dynamic>>();
     return list.map(ItemModel.fromJson).toList();
+  }
+
+  @override
+  Future<List<String>> listGroups() async {
+    final body = await _call(
+      '/api/method/bude_api.api.items.list_groups',
+      data: {},
+    );
+    return (body['data'] as List).cast<String>();
   }
 
   @override

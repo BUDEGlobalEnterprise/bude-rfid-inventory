@@ -1,5 +1,6 @@
 import 'package:bude_inventory/core/errors/exceptions.dart';
 import 'package:bude_inventory/core/errors/failures.dart';
+import 'package:bude_inventory/features/inventory/data/datasources/item_local_data_source.dart';
 import 'package:bude_inventory/features/inventory/data/datasources/item_remote_data_source.dart';
 import 'package:bude_inventory/features/inventory/data/item_repository_impl.dart';
 import 'package:bude_inventory/features/inventory/data/models/item_model.dart';
@@ -9,13 +10,25 @@ import 'package:mocktail/mocktail.dart';
 
 class _MockRemote extends Mock implements ItemRemoteDataSource {}
 
+// ponytail: no-op local so tests exercise the network path only
+class _NoopLocal implements ItemLocalDataSource {
+  @override
+  void putSearchResult(String k, List<ItemModel> items) {}
+  @override
+  List<ItemModel>? getSearchResult(String k) => null;
+  @override
+  void putItem(String itemCode, ItemModel item) {}
+  @override
+  ItemModel? getItem(String itemCode) => null;
+}
+
 void main() {
   late _MockRemote remote;
   late ItemRepositoryImpl repo;
 
   setUp(() {
     remote = _MockRemote();
-    repo = ItemRepositoryImpl(remote: remote);
+    repo = ItemRepositoryImpl(remote: remote, local: _NoopLocal());
   });
 
   group('search', () {

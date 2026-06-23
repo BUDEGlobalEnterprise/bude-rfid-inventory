@@ -7,6 +7,7 @@ class Item extends Equatable {
   final String? stockUom;
   final String? image;
   final bool disabled;
+  final String? itemGroup;
 
   const Item({
     required this.itemCode,
@@ -15,6 +16,7 @@ class Item extends Equatable {
     this.stockUom,
     this.image,
     this.disabled = false,
+    this.itemGroup,
   });
 
   @override
@@ -25,5 +27,6 @@ class Item extends Equatable {
         stockUom,
         image,
         disabled,
+        itemGroup,
       ];
 }

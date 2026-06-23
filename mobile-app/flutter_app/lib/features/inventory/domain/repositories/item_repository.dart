@@ -6,7 +6,14 @@ import '../entities/item_stock.dart';
 import '../entities/stock_ledger_entry.dart';
 
 abstract class ItemRepository {
-  Future<Either<Failure, List<Item>>> search(String query, {int limit = 20});
+  Future<Either<Failure, List<Item>>> search(
+    String query, {
+    int limit = 20,
+    int page = 0,
+    String? warehouse,
+    String? itemGroup,
+    bool inStock = false,
+  });
 
   Future<Either<Failure, Item>> getByBarcode(String barcode);
 
