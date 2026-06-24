@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/hardware/adapters/hardware_exceptions.dart';
 import '../../../core/hardware/entities/scan_event.dart';
+import '../../../core/hardware/providers.dart';
 import '../data/epc_remote_data_source.dart';
 import 'providers/lookup_providers.dart';
 
@@ -27,11 +29,57 @@ class _LookupScreenState extends ConsumerState<LookupScreen> {
     super.dispose();
   }
 
-  Future<void> _scan() async {
+  Future<void> _scanBarcode() async {
     final ev = await context.push<ScanEvent>('/scan');
     if (ev == null || !mounted) return;
     _epcCtrl.text = ev.barcode;
     await _resolve();
+  }
+
+  Future<void> _readRfid() async {
+    final rfid = ref.read(rfidAdapterProvider);
+    if (rfid == null) {
+      setState(() => _error = 'No RFID reader is available.');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+      _match = null;
+    });
+    try {
+      if (!rfid.isConnected) await rfid.connect();
+      final tag = await rfid.readTag();
+      if (!mounted) return;
+      if (tag == null || tag.epc.isEmpty) {
+        setState(() {
+          _loading = false;
+          _error = 'No RFID tag was read.';
+        });
+        return;
+      }
+      _epcCtrl.text = tag.epc;
+      await _resolve();
+    } on VendorSdkUnavailableException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    } on HardwareOperationException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.message;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = '$e';
+      });
+    }
   }
 
   Future<void> _resolve() async {
@@ -72,6 +120,8 @@ class _LookupScreenState extends ConsumerState<LookupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasRfid = ref.watch(rfidAdapterProvider) != null;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Scan / Lookup')),
       body: ListView(
@@ -88,22 +138,25 @@ class _LookupScreenState extends ConsumerState<LookupScreen> {
             onSubmitted: (_) => _resolve(),
           ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 8,
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _loading ? null : _scan,
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Scan'),
+              if (hasRfid)
+                OutlinedButton.icon(
+                  onPressed: _loading ? null : _readRfid,
+                  icon: const Icon(Icons.nfc),
+                  label: const Text('Read RFID'),
                 ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _scanBarcode,
+                icon: const Icon(Icons.qr_code_scanner),
+                label: Text(hasRfid ? 'Scan barcode' : 'Scan'),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _loading ? null : _resolve,
-                  icon: const Icon(Icons.search),
-                  label: const Text('Resolve'),
-                ),
+              FilledButton.icon(
+                onPressed: _loading ? null : _resolve,
+                icon: const Icon(Icons.search),
+                label: const Text('Resolve'),
               ),
             ],
           ),

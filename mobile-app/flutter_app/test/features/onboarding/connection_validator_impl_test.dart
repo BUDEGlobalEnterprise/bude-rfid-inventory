@@ -56,6 +56,43 @@ void main() {
     expect(result, isA<ConnectionUnreachable>());
   });
 
+  test('requires a full URL with scheme', () async {
+    final result = await validator.check('erp.example.com');
+    expect(result, isA<ConnectionUnreachable>());
+    verifyNever(() => dio.get<Map<String, dynamic>>(any()));
+  });
+
+  test('rejects public HTTP URLs before probing the server', () async {
+    final result = await validator.check('http://erp.example.com');
+    expect(result, isA<ConnectionUnreachable>());
+    verifyNever(() => dio.get<Map<String, dynamic>>(any()));
+  });
+
+  test('rejects localhost HTTP when insecure local URLs are disabled',
+      () async {
+    final v = ConnectionValidatorImpl(
+      dioFactory: (_) => dio,
+      allowInsecureLocalNetwork: false,
+    );
+
+    final result = await v.check('http://localhost:8000');
+    expect(result, isA<ConnectionUnreachable>());
+    verifyNever(() => dio.get<Map<String, dynamic>>(any()));
+  });
+
+  test('allows localhost HTTP for development checks', () async {
+    stubFrappePongOk();
+    mockGet(
+      _budePingPath,
+      ok({
+        'message': {'version': '0.2.0'},
+      }),
+    );
+
+    final result = await validator.check('http://localhost:8000');
+    expect(result, isA<ConnectionOk>());
+  });
+
   test('full happy path — both versions propagated', () async {
     stubFrappePongOk();
     mockGet(
@@ -114,7 +151,9 @@ void main() {
     when(() => dio.get<Map<String, dynamic>>(any())).thenAnswer((inv) async {
       final path = inv.positionalArguments.first as String;
       if (path == _frappePingPath) return ok({'message': 'pong'});
-      return ok({'message': {'version': '0.1.0'}});
+      return ok({
+        'message': {'version': '0.1.0'},
+      });
     });
     await v.check('https://erp.example.com/');
     expect(factoryUrls.single, 'https://erp.example.com');

@@ -5,7 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/hardware/adapters/camera_preview_adapter.dart';
+import '../../../core/hardware/entities/scan_event.dart';
 import '../../../core/hardware/providers.dart';
+import '../../../core/ui/empty_state_view.dart';
+import '../../../core/ui/operational_components.dart';
 import '../../../core/utils/locale_ext.dart';
 import '../../inventory/presentation/providers/item_search_notifier.dart';
 import '../domain/scan_session_mode.dart';
@@ -22,7 +25,8 @@ class ScanSessionScreen extends ConsumerStatefulWidget {
 class _ScanSessionScreenState extends ConsumerState<ScanSessionScreen> {
   final List<ScannedItem> _items = [];
   final Set<String> _resolving = {};
-  StreamSubscription<dynamic>? _sub;
+  StreamSubscription<ScanEvent>? _sub;
+  String? _scannerError;
 
   @override
   void initState() {
@@ -33,19 +37,31 @@ class _ScanSessionScreenState extends ConsumerState<ScanSessionScreen> {
   Future<void> _startScanning() async {
     final adapter = ref.read(barcodeAdapterProvider);
     if (adapter == null) return;
-    await adapter.startScan();
-    _sub = adapter.events.listen(_onScanEvent);
+    try {
+      _sub = adapter.events.listen(
+        _onScanEvent,
+        onError: (Object error) {
+          if (!mounted) return;
+          setState(() => _scannerError = error.toString());
+        },
+      );
+      await adapter.startScan();
+      if (mounted) setState(() => _scannerError = null);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _scannerError = error.toString());
+    }
   }
 
   Future<void> _stopScanning() async {
+    final adapter = ref.read(barcodeAdapterProvider);
     await _sub?.cancel();
     _sub = null;
-    final adapter = ref.read(barcodeAdapterProvider);
     await adapter?.stopScan();
   }
 
-  Future<void> _onScanEvent(dynamic event) async {
-    final barcode = event.barcode as String;
+  Future<void> _onScanEvent(ScanEvent event) async {
+    final barcode = event.barcode;
     if (_resolving.contains(barcode)) return;
     if (_items.any((i) => i.barcode == barcode)) {
       // Duplicate — bump qty instead
@@ -92,6 +108,13 @@ class _ScanSessionScreenState extends ConsumerState<ScanSessionScreen> {
 
   void _clear() => setState(() => _items.clear());
 
+  void _undoLast() {
+    if (_items.isEmpty) return;
+    setState(() => _items.removeAt(0));
+  }
+
+  double get _totalQty => _items.fold<double>(0, (sum, item) => sum + item.qty);
+
   @override
   void dispose() {
     _stopScanning();
@@ -110,6 +133,12 @@ class _ScanSessionScreenState extends ConsumerState<ScanSessionScreen> {
         actions: [
           if (_items.isNotEmpty)
             IconButton(
+              icon: const Icon(Icons.undo),
+              tooltip: context.l10n.undoLastScan,
+              onPressed: _undoLast,
+            ),
+          if (_items.isNotEmpty)
+            IconButton(
               icon: const Icon(Icons.clear_all),
               tooltip: 'Clear',
               onPressed: _clear,
@@ -124,15 +153,28 @@ class _ScanSessionScreenState extends ConsumerState<ScanSessionScreen> {
               child: (adapter as CameraPreviewAdapter).buildPreview(),
             ),
           _StatusBar(isResolving: isResolving),
+          _ScanSessionSummary(
+            itemCount: _items.length,
+            totalQty: _totalQty,
+            isResolving: isResolving,
+            hasCamera: hasCamera,
+          ),
+          if (_scannerError != null)
+            MaterialBanner(
+              content: Text(_scannerError!),
+              actions: [
+                TextButton(
+                  onPressed: () => setState(() => _scannerError = null),
+                  child: Text(context.l10n.dismiss),
+                ),
+              ],
+            ),
           Expanded(
             child: _items.isEmpty
-                ? Center(
-                    child: Text(
-                      context.l10n.scanningActive,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
+                ? EmptyStateView(
+                    icon: Icons.qr_code_scanner,
+                    title: context.l10n.scanningActive,
+                    subtitle: context.l10n.scanningActiveSubtitle,
                   )
                 : ListView.separated(
                     itemCount: _items.length,
@@ -148,13 +190,78 @@ class _ScanSessionScreenState extends ConsumerState<ScanSessionScreen> {
           ),
         ],
       ),
-      floatingActionButton: _items.isEmpty
+      bottomNavigationBar: _items.isEmpty
           ? null
-          : FloatingActionButton.extended(
-              icon: const Icon(Icons.check),
-              label: Text(context.l10n.useNItems(_items.length)),
-              onPressed: _useItems,
+          : SafeArea(
+              minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: FilledButton.icon(
+                icon: const Icon(Icons.check),
+                label: Text(context.l10n.useNItems(_items.length)),
+                onPressed: _useItems,
+              ),
             ),
+    );
+  }
+}
+
+class _ScanSessionSummary extends StatelessWidget {
+  final int itemCount;
+  final double totalQty;
+  final bool isResolving;
+  final bool hasCamera;
+
+  const _ScanSessionSummary({
+    required this.itemCount,
+    required this.totalQty,
+    required this.isResolving,
+    required this.hasCamera,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border(
+          bottom:
+              BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.7)),
+        ),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          BudeStatusChip(
+            label: isResolving
+                ? context.l10n.resolvingScan
+                : context.l10n.scannerReady,
+            icon: isResolving ? Icons.sync : Icons.sensors,
+            color: isResolving ? scheme.tertiary : scheme.primary,
+          ),
+          BudeStatusChip(
+            label: hasCamera
+                ? context.l10n.cameraView
+                : context.l10n.hardwareStream,
+            icon: hasCamera ? Icons.camera_alt_outlined : Icons.memory,
+            color: scheme.secondary,
+          ),
+          BudeSummaryPill(
+            icon: Icons.inventory_2_outlined,
+            label: context.l10n.itemsLabel,
+            value: '$itemCount',
+          ),
+          BudeSummaryPill(
+            icon: Icons.functions,
+            label: context.l10n.totalQty,
+            value: formatOperationalQty(totalQty),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -204,37 +311,59 @@ class _ScannedItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(item.item.itemName),
-      subtitle: Text(item.item.itemCode),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 72,
-            child: TextFormField(
-              key: ValueKey(item.barcode),
-              initialValue: _fmt(item.qty),
-              textAlign: TextAlign.end,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(isDense: true),
-              onChanged: (v) {
-                final q = double.tryParse(v);
-                if (q != null && q > 0) onQtyChanged(q);
-              },
-            ),
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.55),
           ),
-          IconButton(
-            icon: const Icon(Icons.remove_circle_outline),
-            onPressed: onRemove,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.item.itemName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      item.item.itemCode,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              BudeQuantityControl(
+                value: item.qty,
+                min: 0.01,
+                onChanged: onQtyChanged,
+              ),
+              IconButton(
+                tooltip: context.l10n.removeItem,
+                icon: const Icon(Icons.remove_circle_outline),
+                onPressed: onRemove,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
-
-  String _fmt(double v) =>
-      v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
 }
-

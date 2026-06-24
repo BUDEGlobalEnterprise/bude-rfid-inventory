@@ -4,13 +4,19 @@ import '../domain/connection_check_result.dart';
 import '../domain/connection_validator.dart';
 
 class ConnectionValidatorImpl implements ConnectionValidator {
+  static const _isProduct = bool.fromEnvironment('dart.vm.product');
+
   /// Factory hook for tests — produces a Dio bound to [baseUrl] with short
   /// timeouts. In production we want a fresh Dio per check so the validator
   /// never leaks state into the shared `ApiClient`.
   final Dio Function(String baseUrl) dioFactory;
+  final bool allowInsecureLocalNetwork;
 
-  ConnectionValidatorImpl({Dio Function(String baseUrl)? dioFactory})
-      : dioFactory = dioFactory ?? _defaultDio;
+  ConnectionValidatorImpl({
+    Dio Function(String baseUrl)? dioFactory,
+    bool? allowInsecureLocalNetwork,
+  })  : dioFactory = dioFactory ?? _defaultDio,
+        allowInsecureLocalNetwork = allowInsecureLocalNetwork ?? !_isProduct;
 
   static Dio _defaultDio(String baseUrl) => Dio(
         BaseOptions(
@@ -30,6 +36,9 @@ class ConnectionValidatorImpl implements ConnectionValidator {
     final cleaned = normalized.endsWith('/')
         ? normalized.substring(0, normalized.length - 1)
         : normalized;
+
+    final urlError = _validateBaseUrl(cleaned);
+    if (urlError != null) return ConnectionUnreachable(urlError);
 
     final dio = dioFactory(cleaned);
 
@@ -113,10 +122,55 @@ class ConnectionValidatorImpl implements ConnectionValidator {
       if (status == 403 || status == 404 || status == 500) {
         return const _PingMissing();
       }
-      return _PingUnknown(e.message ?? 'Network error during capability probe.');
+      return _PingUnknown(
+        e.message ?? 'Network error during capability probe.',
+      );
     } catch (e) {
       return _PingUnknown(e.toString());
     }
+  }
+
+  String? _validateBaseUrl(String baseUrl) {
+    final uri = Uri.tryParse(baseUrl);
+    if (uri == null || uri.host.isEmpty) {
+      return 'Enter a full ERPNext URL, for example https://erp.example.com.';
+    }
+    if (uri.scheme != 'https' && uri.scheme != 'http') {
+      return 'ERPNext URL must start with https://.';
+    }
+    if (uri.scheme == 'https') return null;
+    if (allowInsecureLocalNetwork && _isLocalOrPrivateHost(uri.host)) {
+      return null;
+    }
+    return 'HTTPS is required for ERPNext server URLs.';
+  }
+
+  bool _isLocalOrPrivateHost(String host) {
+    final lower = host.toLowerCase();
+    if (lower == 'localhost' || lower.endsWith('.localhost')) return true;
+
+    final parts = _ipv4Octets(host);
+    if (parts == null) return false;
+
+    final a = parts[0];
+    final b = parts[1];
+    return a == 10 ||
+        a == 127 ||
+        (a == 172 && b >= 16 && b <= 31) ||
+        (a == 192 && b == 168);
+  }
+
+  List<int>? _ipv4Octets(String host) {
+    final chunks = host.split('.');
+    if (chunks.length != 4) return null;
+
+    final octets = <int>[];
+    for (final chunk in chunks) {
+      final value = int.tryParse(chunk);
+      if (value == null || value < 0 || value > 255) return null;
+      octets.add(value);
+    }
+    return octets;
   }
 }
 

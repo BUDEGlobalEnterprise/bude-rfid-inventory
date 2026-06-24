@@ -7,6 +7,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../../core/sync/pending_operation.dart';
 import '../../../core/sync/providers.dart';
 import '../../../core/ui/app_shell.dart';
+import '../../../core/ui/operational_components.dart';
 import '../../../core/ui/sync_status_indicator.dart';
 import '../../../core/utils/locale_ext.dart';
 import '../../alerts/presentation/providers/alerts_providers.dart';
@@ -65,9 +66,8 @@ class DashboardScreen extends ConsumerWidget {
     final isMobile = MediaQuery.sizeOf(context).width < 600;
 
     final prefs = ref.watch(dashboardPrefsNotifierProvider);
-    final visibleSections = prefs.cardOrder
-        .where((id) => !prefs.hiddenCards.contains(id))
-        .toList();
+    final visibleSections =
+        prefs.cardOrder.where((id) => !prefs.hiddenCards.contains(id)).toList();
 
     final sectionWidgets = <Widget>[
       for (final id in visibleSections) ...[
@@ -146,9 +146,12 @@ class DashboardScreen extends ConsumerWidget {
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 16),
+                const _CommandStrip(),
+                const SizedBox(height: 18),
                 if (visibleSections.isEmpty)
                   _EmptyDashboard(
-                      onCustomize: () => showDashboardEditSheet(context),)
+                    onCustomize: () => showDashboardEditSheet(context),
+                  )
                 else
                   ...sectionWidgets,
               ],
@@ -242,11 +245,16 @@ class _EmptyDashboard extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.dashboard_customize_outlined,
-              size: 56, color: scheme.outlineVariant,),
+          Icon(
+            Icons.dashboard_customize_outlined,
+            size: 56,
+            color: scheme.outlineVariant,
+          ),
           const SizedBox(height: 16),
-          Text('Your dashboard is empty',
-              style: Theme.of(context).textTheme.titleMedium,),
+          Text(
+            'Your dashboard is empty',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 8),
           Text(
             'Tap Customize to show sections.',
@@ -265,6 +273,74 @@ class _EmptyDashboard extends StatelessWidget {
 }
 
 // ── AppBar: notifications bell ────────────────────────────────────────────────
+
+class _CommandStrip extends ConsumerWidget {
+  const _CommandStrip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final online = ref.watch(isOnlineProvider).valueOrNull ?? true;
+    final pending = ref.watch(unresolvedOpCountProvider).valueOrNull ?? 0;
+    final alertCount = ref.watch(alertCountProvider);
+    final settings = ref.watch(settingsNotifierProvider);
+    final warehouse =
+        settings.defaultSourceWarehouse ?? context.l10n.noDefaultWarehouse;
+
+    return Material(
+      color: scheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => context.push('/sync'),
+              child: BudeStatusChip(
+                label: pending == 0
+                    ? context.l10n.syncClear
+                    : context.l10n.pendingCountShort(pending),
+                icon: pending == 0 ? Icons.cloud_done : Icons.sync_problem,
+                color: pending == 0 ? scheme.secondary : scheme.error,
+              ),
+            ),
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => context.push('/alerts'),
+              child: BudeStatusChip(
+                label: alertCount == 0
+                    ? context.l10n.noAlerts
+                    : context.l10n.alertsCountShort(alertCount),
+                icon: alertCount == 0
+                    ? Icons.notifications_none
+                    : Icons.notifications_active,
+                color: alertCount == 0 ? scheme.primary : scheme.error,
+              ),
+            ),
+            BudeStatusChip(
+              label: online ? 'Online' : 'Offline',
+              icon: online ? Icons.wifi : Icons.wifi_off,
+              color: online ? scheme.secondary : scheme.error,
+            ),
+            BudeStatusChip(
+              label: warehouse,
+              icon: Icons.warehouse_outlined,
+              color: scheme.tertiary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _NotificationsBell extends ConsumerWidget {
   const _NotificationsBell();
@@ -355,11 +431,8 @@ class _UserMenu extends ConsumerWidget {
   }
 
   static String _initials(String name) {
-    final parts = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((p) => p.isNotEmpty)
-        .toList();
+    final parts =
+        name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.characters.first.toUpperCase();
     return (parts.first.characters.first + parts.last.characters.first)
@@ -794,7 +867,8 @@ class _SystemStatusContent extends ConsumerWidget {
         child: Column(
           children: [
             _StatusRow(
-              icon: online ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
+              icon:
+                  online ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
               label: 'Connection',
               value: online ? 'Online' : 'Offline',
               valueColor: online ? scheme.tertiary : scheme.error,

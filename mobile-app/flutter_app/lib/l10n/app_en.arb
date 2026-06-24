@@ -424,5 +424,114 @@
   "approvalFailed": "Biometric failed — approval not granted.",
   "@approvalFailed": {},
   "pendingApprovalStatus": "Awaiting Approval",
-  "@pendingApprovalStatus": {}
+  "@pendingApprovalStatus": {},
+
+  "filterItems": "Filter items",
+  "@filterItems": {},
+  "clearFilters": "Clear filters",
+  "@clearFilters": {},
+  "scanBarcode": "Scan barcode",
+  "@scanBarcode": {},
+  "loadMore": "Load more",
+  "@loadMore": {},
+  "removeItem": "Remove item",
+  "@removeItem": {},
+  "decreaseQuantity": "Decrease quantity",
+  "@decreaseQuantity": {},
+  "increaseQuantity": "Increase quantity",
+  "@increaseQuantity": {},
+  "findItemFast": "Find an item fast",
+  "@findItemFast": {},
+  "searchWithinFilters": "Search within filters",
+  "@searchWithinFilters": {},
+  "searchFilteredCatalogHint": "Type a code, name, or barcode to search the filtered catalog.",
+  "@searchFilteredCatalogHint": {},
+  "searchItemsDetailedHint": "Search by item code, item name, barcode, or scan from the camera.",
+  "@searchItemsDetailedHint": {},
+  "noItemsMatch": "No items match \"{query}\"",
+  "@noItemsMatch": {
+    "placeholders": {
+      "query": { "type": "String" }
+    }
+  },
+  "noItemsWithActiveFilters": "No items match active filters",
+  "@noItemsWithActiveFilters": {},
+  "adjustSearchOrFilters": "Try another term or adjust filters.",
+  "@adjustSearchOrFilters": {},
+  "disabledStatus": "Disabled",
+  "@disabledStatus": {},
+  "undoLastScan": "Undo last scan",
+  "@undoLastScan": {},
+  "dismiss": "Dismiss",
+  "@dismiss": {},
+  "scanningActiveSubtitle": "Keep scanning. New items will appear here instantly.",
+  "@scanningActiveSubtitle": {},
+  "resolvingScan": "Resolving scan",
+  "@resolvingScan": {},
+  "scannerReady": "Scanner ready",
+  "@scannerReady": {},
+  "cameraView": "Camera view",
+  "@cameraView": {},
+  "hardwareStream": "Hardware stream",
+  "@hardwareStream": {},
+  "totalQty": "Total qty",
+  "@totalQty": {},
+  "lines": "Lines",
+  "@lines": {},
+  "itemsLabel": "Items",
+  "@itemsLabel": {},
+  "ready": "Ready",
+  "@ready": {},
+  "needsDetails": "Needs details",
+  "@needsDetails": {},
+  "needsWarehouse": "Needs warehouse",
+  "@needsWarehouse": {},
+  "stockTransferSubtitle": "Move scanned stock between warehouses.",
+  "@stockTransferSubtitle": {},
+  "receiveStockSubtitle": "Receive scanned stock into a target warehouse.",
+  "@receiveStockSubtitle": {},
+  "stockCountSubtitle": "Count scanned stock and review variance before queueing.",
+  "@stockCountSubtitle": {},
+  "startScanTransferLines": "Start a scan session to add transfer lines.",
+  "@startScanTransferLines": {},
+  "startScanReceiptLines": "Start a scan session as goods arrive.",
+  "@startScanReceiptLines": {},
+  "pickWarehouseFirstSubtitle": "Choose the counting warehouse before scanning items.",
+  "@pickWarehouseFirstSubtitle": {},
+  "startScanCountSubtitle": "Start a scan session to build this count.",
+  "@startScanCountSubtitle": {},
+  "freeReceipt": "Free receipt",
+  "@freeReceipt": {},
+  "purchaseOrderShort": "PO",
+  "@purchaseOrderShort": {},
+  "expectedQtyShort": "Expected {qty}",
+  "@expectedQtyShort": {
+    "placeholders": {
+      "qty": { "type": "String" }
+    }
+  },
+  "varianceQtyShort": "Variance {qty}",
+  "@varianceQtyShort": {
+    "placeholders": {
+      "qty": { "type": "String" }
+    }
+  },
+  "syncClear": "Sync clear",
+  "@syncClear": {},
+  "pendingCountShort": "{count} pending",
+  "@pendingCountShort": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "noAlerts": "No alerts",
+  "@noAlerts": {},
+  "alertsCountShort": "{count} alerts",
+  "@alertsCountShort": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "noDefaultWarehouse": "No default",
+  "@noDefaultWarehouse": {}
 }

@@ -71,7 +71,8 @@ private class ChainwayRfidBridge(
                 })
                 val ok = r.startInventoryTag()
                 inventorying.set(ok)
-                ok
+                require(ok) { "Chainway UHF inventory failed to start" }
+                true
             }
             "stopInventory" -> runIo(result) {
                 stopInventoryInternal()
@@ -86,7 +87,9 @@ private class ChainwayRfidBridge(
                     ?: throw IllegalArgumentException("epc is required")
                 val password = call.argument<String>("accessPassword") ?: "00000000"
                 requireHexPassword(password)
-                getReader().writeDataToEpc(password, epc)
+                getReader().writeDataToEpc(password, epc).also {
+                    require(it) { "Chainway EPC write failed" }
+                }
             }
             "lockTag" -> runIo(result) {
                 ensureConnected()
@@ -95,20 +98,26 @@ private class ChainwayRfidBridge(
                 val password = call.argument<String>("accessPassword")
                     ?: throw IllegalArgumentException("accessPassword is required")
                 requireHexPassword(password)
-                getReader().lockMem(password, lockCodeFor(bank))
+                getReader().lockMem(password, lockCodeFor(bank)).also {
+                    require(it) { "Chainway tag lock failed" }
+                }
             }
             "killTag" -> runIo(result) {
                 ensureConnected()
                 val password = call.argument<String>("killPassword")
                     ?: throw IllegalArgumentException("killPassword is required")
                 requireHexPassword(password)
-                getReader().killTag(password)
+                getReader().killTag(password).also {
+                    require(it) { "Chainway tag kill failed" }
+                }
             }
             "setPowerLevel" -> runIo(result) {
                 ensureConnected()
                 val dbm = call.argument<Int>("dbm")
                     ?: throw IllegalArgumentException("dbm is required")
-                getReader().setPower(dbm)
+                getReader().setPower(dbm).also {
+                    require(it) { "Chainway power-level update failed" }
+                }
             }
             "getPowerLevel" -> runIo(result) {
                 ensureConnected()
@@ -234,11 +243,23 @@ private class ChainwayBarcodeBridge(
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "startScan" -> {
-                ensureOpen()
-                if (scanning.compareAndSet(false, true)) {
-                    executor.execute { scanLoop() }
+                executor.execute {
+                    try {
+                        ensureOpen()
+                        if (scanning.compareAndSet(false, true)) {
+                            executor.execute { scanLoop() }
+                        }
+                        main.post { result.success(true) }
+                    } catch (error: Throwable) {
+                        main.post {
+                            result.error(
+                                error::class.java.simpleName,
+                                error.message ?: "Chainway barcode scanner failed to start",
+                                null,
+                            )
+                        }
+                    }
                 }
-                result.success(true)
             }
             "stopScan" -> {
                 scanning.set(false)

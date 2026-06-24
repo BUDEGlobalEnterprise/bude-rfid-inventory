@@ -33,7 +33,16 @@ void main() {
 
   group('search', () {
     test('maps models to entities on success', () async {
-      when(() => remote.search('widget', limit: 20)).thenAnswer(
+      when(
+        () => remote.search(
+          'widget',
+          limit: 20,
+          page: 0,
+          warehouse: null,
+          itemGroup: null,
+          inStock: false,
+        ),
+      ).thenAnswer(
         (_) async => [
           const ItemModel(itemCode: 'A', itemName: 'Widget A'),
           const ItemModel(itemCode: 'B', itemName: 'Widget B'),
@@ -52,8 +61,16 @@ void main() {
     });
 
     test('maps NetworkException to NetworkFailure', () async {
-      when(() => remote.search(any(), limit: any(named: 'limit')))
-          .thenThrow(const NetworkException('offline'));
+      when(
+        () => remote.search(
+          any(),
+          limit: any(named: 'limit'),
+          page: any(named: 'page'),
+          warehouse: any(named: 'warehouse'),
+          itemGroup: any(named: 'itemGroup'),
+          inStock: any(named: 'inStock'),
+        ),
+      ).thenThrow(const NetworkException('offline'));
 
       final result = await repo.search('q');
 

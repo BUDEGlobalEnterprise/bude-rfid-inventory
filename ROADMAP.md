@@ -178,6 +178,72 @@ Quality-of-life features for high-throughput warehouse operators.
 
 ---
 
+## Phase 9 - End-to-End Product Hardening IN PROGRESS
+
+Goal: make the app production-ready as a complete warehouse operator workflow, not just a set of working screens. This phase is about stability, security, usability, visual consistency, and field confidence across ERPNext, offline sync, and hardware.
+
+### Golden Business Flows
+
+Every release candidate must pass these flows on a clean install and on an existing logged-in install:
+
+| Flow | Happy path | Failure/offline path | Status |
+|------|------------|----------------------|--------|
+| **Tenant + login** | Configure ERPNext URL, verify health, login, restore session after restart | Invalid URL, bad credentials, expired session, tenant reset | PLANNED |
+| **Dashboard command center** | Dashboard loads KPIs, alerts, quick actions, sync status, role-aware nav | Offline dashboard uses cached counts and clear empty/error states | PLANNED |
+| **Item lookup** | Search item, scan barcode, read RFID EPC, open item/asset detail | Scanner unavailable, unknown EPC/barcode, network failure | IN PROGRESS |
+| **Stock transfer** | Scan multiple items, edit qty, choose warehouses, queue transfer, sync to ERPNext | Offline queue, failed sync retry, duplicate barcode handling | PLANNED |
+| **Goods receipt** | Receive free items or against PO, validate warehouse/PO lines, queue and sync | PO mismatch, unknown item, failed submission retry | PLANNED |
+| **Stock reconciliation** | Batch scan/count, compare expected qty, supervisor approval when needed | Large variance approval, failed retry, offline count preservation | PLANNED |
+| **Asset operations** | Find asset, move asset, create repair, view maintenance state | Unknown asset, failed queue op, offline repair/movement draft | PLANNED |
+| **Audit + reporting** | Review submitted/pending/failed ops, export CSV, open ERP references | Missing ERP link, no file permission, empty report states | PLANNED |
+| **Hardware** | Camera fallback, Chainway barcode, Chainway UHF read/write/inventory | SDK missing, device unsupported, reader busy, permission failure | IN PROGRESS |
+
+### Stability Workstream
+
+- Add smoke/widget tests for the golden screens: splash, onboarding, login, dashboard, lookup, scan session, transfer, receipt, reconciliation, assets, sync, settings.
+- Add route-contract tests for every `GoRoute`, including required `extra` values such as reconciliation approval.
+- Add sync queue recovery tests for app restart, duplicate operation IDs, failed operation retry, and pending-approval state.
+- Add hardware fake adapters for barcode/RFID so scanner and lookup flows can be tested without physical devices.
+- Add backend unit tests for newer assets, alerts, reports, and RFID scan endpoints to match existing stock/items coverage.
+- Add one Android build job and one Flutter test/analyze job to CI as release gates.
+
+### Security Workstream
+
+- Enforce HTTPS for production tenant URLs, while allowing localhost/dev hosts only in debug/dev configuration.
+- Keep API keys/session material in `FlutterSecureStorage`; audit Hive/SharedPreferences to ensure no credentials or sensitive ERP payloads are stored there.
+- Add automatic session expiry handling: intercept 401/403, clear stale auth, redirect to login, and preserve pending offline work.
+- Finish role-based access consistently across dashboard cards, shell navigation, direct routes, and backend endpoint permissions.
+- Add server-side permission checks for stock, asset, report, and analytics endpoints; mobile UI gating is convenience only.
+- Add safe logging rules: no passwords, API secrets, authorization headers, or full ERP payload dumps in logs.
+
+### UX And Visual Workstream
+
+- Replace remaining hardcoded user-visible strings with ARB keys in English and Arabic.
+- Standardize loading, empty, error, and retry states using shared components.
+- Polish high-throughput scanner screens for gloves/warehouse use: large tap targets, strong contrast, clear reader status, audible/haptic feedback settings.
+- Align dashboard cards, KPI cards, forms, and list rows to one visual density system; keep operational screens quiet and scannable.
+- Add responsive screenshots or golden checks for phone, tablet, and desktop-width Flutter layouts.
+- Verify RTL layout on Arabic for dashboard, settings, forms, scanner, and reports.
+
+### Hardware Workstream
+
+- Complete physical validation checklist for Chainway C72/C66/R6: device probe, barcode scan, UHF single read, continuous inventory, power level, write EPC, lock/kill safeguards.
+- Keep Chainway SDK artifacts documented with source URL, version/date, checksum, and install steps.
+- Implement Zebra, Urovo, Honeywell, and Generic UHF adapters one vendor at a time, behind existing HAL contracts.
+- Add a device lab test script: install APK, run probe, scan known barcode, read known EPC, submit lookup result.
+- Add production guardrails for destructive RFID operations: write/lock/kill require explicit confirmation and manager role.
+
+### Release Readiness
+
+- `flutter analyze --no-pub` passes.
+- `flutter test --no-pub` passes.
+- Android `:app:assembleDebug` passes, and release build/signing steps are documented.
+- Backend `pytest` passes for `bude_api`.
+- No unresolved high-severity review findings for auth, sync, stock operations, or hardware operations.
+- Field pilot checklist completed on at least one real ERPNext site and one real Chainway device.
+
+---
+
 ## Architecture Constraints
 
 - **No custom DocTypes** — every read/write uses standard ERPNext DocTypes (`Stock Entry`, `Purchase Receipt`, `Stock Reconciliation`, `Bin`, `Stock Ledger Entry`).

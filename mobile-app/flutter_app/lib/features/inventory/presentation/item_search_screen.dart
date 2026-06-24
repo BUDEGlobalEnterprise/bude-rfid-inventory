@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/hardware/entities/scan_event.dart';
+import '../../../core/ui/empty_state_view.dart';
+import '../../../core/ui/loading_shimmer.dart';
+import '../../../core/ui/operational_components.dart';
 import '../../../core/utils/locale_ext.dart';
+import '../../settings/presentation/providers/settings_notifier.dart';
 import '../domain/entities/item.dart';
 import 'providers/item_search_notifier.dart';
 import 'providers/recent_searches_notifier.dart';
-import '../../settings/presentation/providers/settings_notifier.dart';
 import 'widgets/filter_chips_bar.dart';
 
 class ItemSearchScreen extends ConsumerStatefulWidget {
@@ -33,7 +36,6 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Restore persisted filter from settings.
       final settings = ref.read(settingsNotifierProvider);
       final ItemFilter savedFilter = (
         warehouse: settings.lastSearchWarehouse,
@@ -44,7 +46,6 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
         ref.read(itemSearchNotifierProvider.notifier).applyFilter(savedFilter);
       }
 
-      // Pre-fill initial query (from dashboard search bar).
       final q = widget.initialQuery ?? '';
       if (q.isNotEmpty) {
         _queryCtrl.text = q;
@@ -83,12 +84,47 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
 
   void _applyFilter(ItemFilter f) {
     ref.read(itemSearchNotifierProvider.notifier).applyFilter(f);
-    // Persist last-used filter.
     ref.read(settingsNotifierProvider.notifier).setLastSearchFilter(
           warehouse: f.warehouse,
           itemGroup: f.itemGroup,
           inStock: f.inStock,
         );
+  }
+
+  void _openFilters(ItemFilter filter) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.filterItems,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              FilterChipsBar(filter: filter, onChanged: _applyFilter),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    _applyFilter(kEmptyFilter);
+                    Navigator.of(context).pop();
+                  },
+                  icon: const Icon(Icons.clear),
+                  label: Text(context.l10n.clearFilters),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -126,31 +162,34 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
                 : null,
           ),
           onChanged: (v) {
-            setState(() {}); // rebuild suffix icon
+            setState(() {});
             ref.read(itemSearchNotifierProvider.notifier).onQueryChanged(v);
           },
           onSubmitted: _onQuerySubmitted,
         ),
         actions: [
-          if (activeCount > 0)
-            Badge(
-              label: Text('$activeCount'),
-              child: const Icon(Icons.filter_list),
-            )
-          else
-            const Icon(Icons.filter_list),
+          IconButton(
+            tooltip: context.l10n.filterItems,
+            onPressed: () => _openFilters(filter),
+            icon: activeCount > 0
+                ? Badge(
+                    label: Text('$activeCount'),
+                    child: const Icon(Icons.filter_list),
+                  )
+                : const Icon(Icons.filter_list),
+          ),
           const SizedBox(width: 8),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _openScanner,
-        tooltip: 'Scan barcode',
-        child: const Icon(Icons.qr_code_scanner),
+        tooltip: context.l10n.scanBarcode,
+        icon: const Icon(Icons.qr_code_scanner),
+        label: Text(context.l10n.scan),
       ),
       body: Column(
         children: [
           FilterChipsBar(filter: filter, onChanged: _applyFilter),
-          // Recent searches: shown when field focused + query empty.
           if (_fieldFocused && _queryCtrl.text.trim().isEmpty)
             RecentSearchesBar(
               onTap: (q) {
@@ -165,8 +204,6 @@ class _ItemSearchScreenState extends ConsumerState<ItemSearchScreen> {
   }
 }
 
-// ── Results view ──────────────────────────────────────────────────────────────
-
 class _ResultsView extends ConsumerWidget {
   final ItemSearchState state;
   const _ResultsView({required this.state});
@@ -175,22 +212,25 @@ class _ResultsView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return switch (state) {
       ItemSearchIdle(:final filter) => _EmptyIdle(filter: filter),
-      ItemSearchLoading() => const Center(child: CircularProgressIndicator()),
+      ItemSearchLoading() => const ShimmerList(count: 8),
       ItemSearchError(:final message) => Center(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Text(message, textAlign: TextAlign.center),
           ),
         ),
-      ItemSearchResults(:final items, :final query, :final filter, :final hasMore) =>
+      ItemSearchResults(
+        :final items,
+        :final query,
+        :final filter,
+        :final hasMore,
+      ) =>
         items.isEmpty
             ? _EmptyResults(query: query, filter: filter)
             : _ItemList(items: items, hasMore: hasMore),
     };
   }
 }
-
-// ── Empty states ──────────────────────────────────────────────────────────────
 
 class _EmptyIdle extends StatelessWidget {
   final ItemFilter filter;
@@ -199,21 +239,14 @@ class _EmptyIdle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasFilters = activeFilterCount(filter) > 0;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.search, size: 48, color: Theme.of(context).disabledColor),
-          const SizedBox(height: 12),
-          Text(
-            hasFilters
-                ? 'Type to search within active filters'
-                : 'Type to search items by code, name or barcode',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ],
-      ),
+    return EmptyStateView(
+      icon: hasFilters ? Icons.filter_alt_outlined : Icons.manage_search,
+      title: hasFilters
+          ? context.l10n.searchWithinFilters
+          : context.l10n.findItemFast,
+      subtitle: hasFilters
+          ? context.l10n.searchFilteredCatalogHint
+          : context.l10n.searchItemsDetailedHint,
     );
   }
 }
@@ -226,42 +259,22 @@ class _EmptyResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasFilters = activeFilterCount(filter) > 0;
-    final base = query.isNotEmpty ? 'No items match "$query"' : 'No items found';
-    final suffix = hasFilters ? ' with active filters — try clearing filters' : '';
+    final base = query.isNotEmpty
+        ? context.l10n.noItemsMatch(query)
+        : context.l10n.noItemsFound;
+    final hint = filter.inStock
+        ? 'No items in stock match your search.'
+        : context.l10n.adjustSearchOrFilters;
 
-    String hint = '';
-    if (filter.inStock) hint = 'No items in stock match your search.';
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.inventory_2_outlined,
-                size: 48, color: Theme.of(context).disabledColor,),
-            const SizedBox(height: 12),
-            Text(
-              '$base$suffix',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            if (hint.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                hint,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ],
-        ),
-      ),
+    return EmptyStateView(
+      icon: Icons.inventory_2_outlined,
+      title: hasFilters && query.isEmpty
+          ? context.l10n.noItemsWithActiveFilters
+          : base,
+      subtitle: hint,
     );
   }
 }
-
-// ── Item list + load more ─────────────────────────────────────────────────────
 
 class _ItemList extends ConsumerWidget {
   final List<Item> items;
@@ -271,6 +284,7 @@ class _ItemList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: items.length + (hasMore ? 1 : 0),
       separatorBuilder: (_, __) => const Divider(height: 0),
       itemBuilder: (context, i) {
@@ -294,9 +308,9 @@ class _LoadMoreButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextButton(
       onPressed: onTap,
-      child: const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: Text('Load more'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(context.l10n.loadMore),
       ),
     );
   }
@@ -308,14 +322,77 @@ class _ItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(item.itemName),
-      subtitle: Text(
-        [item.itemCode, if (item.itemGroup != null) item.itemGroup!].join(' · '),
+    final scheme = Theme.of(context).colorScheme;
+    final chips = [
+      if (item.itemGroup != null && item.itemGroup!.isNotEmpty)
+        BudeStatusChip(
+          label: item.itemGroup!,
+          icon: Icons.category_outlined,
+          color: scheme.primary,
+        ),
+      if (item.stockUom != null && item.stockUom!.isNotEmpty)
+        BudeStatusChip(
+          label: item.stockUom!,
+          icon: Icons.straighten,
+          color: scheme.tertiary,
+        ),
+      if (item.disabled)
+        BudeStatusChip(
+          label: context.l10n.disabledStatus,
+          icon: Icons.block,
+          color: scheme.error,
+        ),
+    ];
+
+    return InkWell(
+      onTap: () => context.push('/items/${Uri.encodeComponent(item.itemCode)}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.inventory_2_outlined, color: scheme.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.itemName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    item.itemCode,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  if (chips.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Wrap(spacing: 6, runSpacing: 6, children: chips),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+          ],
+        ),
       ),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () =>
-          context.push('/items/${Uri.encodeComponent(item.itemCode)}'),
     );
   }
 }

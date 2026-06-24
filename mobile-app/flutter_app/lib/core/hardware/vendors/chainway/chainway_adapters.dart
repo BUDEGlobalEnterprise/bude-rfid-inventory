@@ -33,12 +33,12 @@ class ChainwayBarcodeAdapter implements BarcodeAdapter {
 
   @override
   Future<void> startScan() async {
-    await _invoke(() => _methods.invokeMethod<bool>('startScan'));
+    await _invokeCommand(() => _methods.invokeMethod<bool>('startScan'));
   }
 
   @override
   Future<void> stopScan() async {
-    await _invoke(() => _methods.invokeMethod<bool>('stopScan'));
+    await _invokeCommand(() => _methods.invokeMethod<bool>('stopScan'));
   }
 
   @override
@@ -57,7 +57,7 @@ class ChainwayBarcodeAdapter implements BarcodeAdapter {
   @override
   Future<void> dispose() async {
     try {
-      await _invoke(() => _methods.invokeMethod<bool>('dispose'));
+      await _invokeCommand(() => _methods.invokeMethod<bool>('dispose'));
     } on VendorSdkUnavailableException {
       // Disposal should stay idempotent in host tests and non-Android builds.
     }
@@ -98,19 +98,19 @@ class ChainwayRfidAdapter implements RfidAdapter {
 
   @override
   Future<void> disconnect() async {
-    await _invoke(() => _methods.invokeMethod<bool>('disconnect'));
+    await _invokeCommand(() => _methods.invokeMethod<bool>('disconnect'));
     _isConnected = false;
   }
 
   @override
   Future<void> startInventory() async {
-    await _invoke(() => _methods.invokeMethod<bool>('startInventory'));
+    await _invokeCommand(() => _methods.invokeMethod<bool>('startInventory'));
     _isConnected = true;
   }
 
   @override
   Future<void> stopInventory() async {
-    await _invoke(() => _methods.invokeMethod<bool>('stopInventory'));
+    await _invokeCommand(() => _methods.invokeMethod<bool>('stopInventory'));
   }
 
   @override
@@ -128,7 +128,7 @@ class ChainwayRfidAdapter implements RfidAdapter {
 
   @override
   Future<void> writeTagEpc(String newEpc, {String? accessPassword}) async {
-    await _invoke(
+    await _invokeCommand(
       () => _methods.invokeMethod<bool>(
         'writeTagEpc',
         {
@@ -144,7 +144,7 @@ class ChainwayRfidAdapter implements RfidAdapter {
     required RfidMemoryBank bank,
     required String accessPassword,
   }) async {
-    await _invoke(
+    await _invokeCommand(
       () => _methods.invokeMethod<bool>(
         'lockTag',
         {'bank': bank.name, 'accessPassword': accessPassword},
@@ -154,7 +154,7 @@ class ChainwayRfidAdapter implements RfidAdapter {
 
   @override
   Future<void> killTag({required String killPassword}) async {
-    await _invoke(
+    await _invokeCommand(
       () => _methods.invokeMethod<bool>(
         'killTag',
         {'killPassword': killPassword},
@@ -164,7 +164,7 @@ class ChainwayRfidAdapter implements RfidAdapter {
 
   @override
   Future<void> setPowerLevel(int dbm) async {
-    await _invoke(
+    await _invokeCommand(
       () => _methods.invokeMethod<bool>('setPowerLevel', {'dbm': dbm}),
     );
   }
@@ -178,11 +178,18 @@ class ChainwayRfidAdapter implements RfidAdapter {
   @override
   Future<void> dispose() async {
     try {
-      await _invoke(() => _methods.invokeMethod<bool>('dispose'));
+      await _invokeCommand(() => _methods.invokeMethod<bool>('dispose'));
     } on VendorSdkUnavailableException {
       // Disposal should stay idempotent in host tests and non-Android builds.
     }
     _isConnected = false;
+  }
+}
+
+Future<void> _invokeCommand(Future<bool?> Function() operation) async {
+  final ok = await _invoke(operation);
+  if (ok == false) {
+    throw const HardwareOperationException('Chainway SDK operation failed.');
   }
 }
 

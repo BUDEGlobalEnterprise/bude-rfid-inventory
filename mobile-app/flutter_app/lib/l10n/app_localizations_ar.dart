@@ -576,4 +576,154 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pendingApprovalStatus => 'في انتظار الموافقة';
+
+  @override
+  String get filterItems => 'Filter items';
+
+  @override
+  String get clearFilters => 'Clear filters';
+
+  @override
+  String get scanBarcode => 'Scan barcode';
+
+  @override
+  String get loadMore => 'Load more';
+
+  @override
+  String get removeItem => 'Remove item';
+
+  @override
+  String get decreaseQuantity => 'Decrease quantity';
+
+  @override
+  String get increaseQuantity => 'Increase quantity';
+
+  @override
+  String get findItemFast => 'Find an item fast';
+
+  @override
+  String get searchWithinFilters => 'Search within filters';
+
+  @override
+  String get searchFilteredCatalogHint =>
+      'Type a code, name, or barcode to search the filtered catalog.';
+
+  @override
+  String get searchItemsDetailedHint =>
+      'Search by item code, item name, barcode, or scan from the camera.';
+
+  @override
+  String noItemsMatch(String query) {
+    return 'No items match \"$query\"';
+  }
+
+  @override
+  String get noItemsWithActiveFilters => 'No items match active filters';
+
+  @override
+  String get adjustSearchOrFilters => 'Try another term or adjust filters.';
+
+  @override
+  String get disabledStatus => 'Disabled';
+
+  @override
+  String get undoLastScan => 'Undo last scan';
+
+  @override
+  String get dismiss => 'Dismiss';
+
+  @override
+  String get scanningActiveSubtitle =>
+      'Keep scanning. New items will appear here instantly.';
+
+  @override
+  String get resolvingScan => 'Resolving scan';
+
+  @override
+  String get scannerReady => 'Scanner ready';
+
+  @override
+  String get cameraView => 'Camera view';
+
+  @override
+  String get hardwareStream => 'Hardware stream';
+
+  @override
+  String get totalQty => 'Total qty';
+
+  @override
+  String get lines => 'Lines';
+
+  @override
+  String get itemsLabel => 'Items';
+
+  @override
+  String get ready => 'Ready';
+
+  @override
+  String get needsDetails => 'Needs details';
+
+  @override
+  String get needsWarehouse => 'Needs warehouse';
+
+  @override
+  String get stockTransferSubtitle => 'Move scanned stock between warehouses.';
+
+  @override
+  String get receiveStockSubtitle =>
+      'Receive scanned stock into a target warehouse.';
+
+  @override
+  String get stockCountSubtitle =>
+      'Count scanned stock and review variance before queueing.';
+
+  @override
+  String get startScanTransferLines =>
+      'Start a scan session to add transfer lines.';
+
+  @override
+  String get startScanReceiptLines => 'Start a scan session as goods arrive.';
+
+  @override
+  String get pickWarehouseFirstSubtitle =>
+      'Choose the counting warehouse before scanning items.';
+
+  @override
+  String get startScanCountSubtitle =>
+      'Start a scan session to build this count.';
+
+  @override
+  String get freeReceipt => 'Free receipt';
+
+  @override
+  String get purchaseOrderShort => 'PO';
+
+  @override
+  String expectedQtyShort(String qty) {
+    return 'Expected $qty';
+  }
+
+  @override
+  String varianceQtyShort(String qty) {
+    return 'Variance $qty';
+  }
+
+  @override
+  String get syncClear => 'Sync clear';
+
+  @override
+  String pendingCountShort(int count) {
+    return '$count pending';
+  }
+
+  @override
+  String get noAlerts => 'No alerts';
+
+  @override
+  String alertsCountShort(int count) {
+    return '$count alerts';
+  }
+
+  @override
+  String get noDefaultWarehouse => 'No default';
 }

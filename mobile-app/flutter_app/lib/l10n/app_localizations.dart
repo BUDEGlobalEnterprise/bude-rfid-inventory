@@ -1123,6 +1123,270 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Awaiting Approval'**
   String get pendingApprovalStatus;
+
+  /// No description provided for @filterItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter items'**
+  String get filterItems;
+
+  /// No description provided for @clearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get clearFilters;
+
+  /// No description provided for @scanBarcode.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan barcode'**
+  String get scanBarcode;
+
+  /// No description provided for @loadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get loadMore;
+
+  /// No description provided for @removeItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove item'**
+  String get removeItem;
+
+  /// No description provided for @decreaseQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease quantity'**
+  String get decreaseQuantity;
+
+  /// No description provided for @increaseQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase quantity'**
+  String get increaseQuantity;
+
+  /// No description provided for @findItemFast.
+  ///
+  /// In en, this message translates to:
+  /// **'Find an item fast'**
+  String get findItemFast;
+
+  /// No description provided for @searchWithinFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Search within filters'**
+  String get searchWithinFilters;
+
+  /// No description provided for @searchFilteredCatalogHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a code, name, or barcode to search the filtered catalog.'**
+  String get searchFilteredCatalogHint;
+
+  /// No description provided for @searchItemsDetailedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by item code, item name, barcode, or scan from the camera.'**
+  String get searchItemsDetailedHint;
+
+  /// No description provided for @noItemsMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No items match \"{query}\"'**
+  String noItemsMatch(String query);
+
+  /// No description provided for @noItemsWithActiveFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'No items match active filters'**
+  String get noItemsWithActiveFilters;
+
+  /// No description provided for @adjustSearchOrFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Try another term or adjust filters.'**
+  String get adjustSearchOrFilters;
+
+  /// No description provided for @disabledStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get disabledStatus;
+
+  /// No description provided for @undoLastScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo last scan'**
+  String get undoLastScan;
+
+  /// No description provided for @dismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get dismiss;
+
+  /// No description provided for @scanningActiveSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep scanning. New items will appear here instantly.'**
+  String get scanningActiveSubtitle;
+
+  /// No description provided for @resolvingScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolving scan'**
+  String get resolvingScan;
+
+  /// No description provided for @scannerReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanner ready'**
+  String get scannerReady;
+
+  /// No description provided for @cameraView.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera view'**
+  String get cameraView;
+
+  /// No description provided for @hardwareStream.
+  ///
+  /// In en, this message translates to:
+  /// **'Hardware stream'**
+  String get hardwareStream;
+
+  /// No description provided for @totalQty.
+  ///
+  /// In en, this message translates to:
+  /// **'Total qty'**
+  String get totalQty;
+
+  /// No description provided for @lines.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines'**
+  String get lines;
+
+  /// No description provided for @itemsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Items'**
+  String get itemsLabel;
+
+  /// No description provided for @ready.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get ready;
+
+  /// No description provided for @needsDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs details'**
+  String get needsDetails;
+
+  /// No description provided for @needsWarehouse.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs warehouse'**
+  String get needsWarehouse;
+
+  /// No description provided for @stockTransferSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move scanned stock between warehouses.'**
+  String get stockTransferSubtitle;
+
+  /// No description provided for @receiveStockSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive scanned stock into a target warehouse.'**
+  String get receiveStockSubtitle;
+
+  /// No description provided for @stockCountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Count scanned stock and review variance before queueing.'**
+  String get stockCountSubtitle;
+
+  /// No description provided for @startScanTransferLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a scan session to add transfer lines.'**
+  String get startScanTransferLines;
+
+  /// No description provided for @startScanReceiptLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a scan session as goods arrive.'**
+  String get startScanReceiptLines;
+
+  /// No description provided for @pickWarehouseFirstSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the counting warehouse before scanning items.'**
+  String get pickWarehouseFirstSubtitle;
+
+  /// No description provided for @startScanCountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a scan session to build this count.'**
+  String get startScanCountSubtitle;
+
+  /// No description provided for @freeReceipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Free receipt'**
+  String get freeReceipt;
+
+  /// No description provided for @purchaseOrderShort.
+  ///
+  /// In en, this message translates to:
+  /// **'PO'**
+  String get purchaseOrderShort;
+
+  /// No description provided for @expectedQtyShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected {qty}'**
+  String expectedQtyShort(String qty);
+
+  /// No description provided for @varianceQtyShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Variance {qty}'**
+  String varianceQtyShort(String qty);
+
+  /// No description provided for @syncClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync clear'**
+  String get syncClear;
+
+  /// No description provided for @pendingCountShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} pending'**
+  String pendingCountShort(int count);
+
+  /// No description provided for @noAlerts.
+  ///
+  /// In en, this message translates to:
+  /// **'No alerts'**
+  String get noAlerts;
+
+  /// No description provided for @alertsCountShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} alerts'**
+  String alertsCountShort(int count);
+
+  /// No description provided for @noDefaultWarehouse.
+  ///
+  /// In en, this message translates to:
+  /// **'No default'**
+  String get noDefaultWarehouse;
 }
 
 class _AppLocalizationsDelegate

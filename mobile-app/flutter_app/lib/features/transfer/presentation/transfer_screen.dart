@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/sync/providers.dart';
+import '../../../core/ui/empty_state_view.dart';
 import '../../../core/ui/error_banner.dart';
+import '../../../core/ui/operational_components.dart';
 import '../../../core/utils/locale_ext.dart';
 import '../../scan_session/domain/scanned_item.dart';
 import '../../settings/presentation/providers/settings_notifier.dart';
@@ -22,21 +24,25 @@ class TransferScreen extends ConsumerWidget {
       appBar: AppBar(title: Text(context.l10n.stockTransfer)),
       body: warehousesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) =>
-            _ErrorView(message: context.l10n.failedToLoadWarehouses(e.toString())),
+        error: (e, _) => _ErrorView(
+          message: context.l10n.failedToLoadWarehouses(e.toString()),
+        ),
         data: (warehouses) => _TransferBody(
           draft: draft,
           warehouses: warehouses,
         ),
       ),
-      floatingActionButton: draft.lines.isEmpty
+      bottomNavigationBar: draft.lines.isEmpty
           ? null
-          : FloatingActionButton.extended(
-              icon: const Icon(Icons.send),
-              label: Text(context.l10n.queueTransfer),
-              onPressed: draft.isSubmittable
-                  ? () => _submit(context, ref, draft)
-                  : null,
+          : SafeArea(
+              minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: FilledButton.icon(
+                icon: const Icon(Icons.send),
+                label: Text(context.l10n.queueTransfer),
+                onPressed: draft.isSubmittable
+                    ? () => _submit(context, ref, draft)
+                    : null,
+              ),
             ),
     );
   }
@@ -77,16 +83,46 @@ class _TransferBody extends ConsumerStatefulWidget {
 }
 
 class _TransferBodyState extends ConsumerState<_TransferBody> {
-
   @override
   Widget build(BuildContext context) {
     final notifier = ref.read(transferDraftProvider.notifier);
     final sameWarehouseError = widget.draft.sourceWarehouse != null &&
         widget.draft.sourceWarehouse == widget.draft.targetWarehouse;
+    final totalQty =
+        widget.draft.lines.fold<double>(0, (sum, line) => sum + line.qty);
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        BudeOperationHeader(
+          icon: Icons.swap_horiz,
+          title: context.l10n.stockTransfer,
+          subtitle: context.l10n.stockTransferSubtitle,
+          pills: [
+            BudeSummaryPill(
+              icon: Icons.inventory_2_outlined,
+              label: context.l10n.lines,
+              value: '${widget.draft.lines.length}',
+            ),
+            BudeSummaryPill(
+              icon: Icons.functions,
+              label: context.l10n.totalQty,
+              value: formatOperationalQty(totalQty),
+            ),
+            BudeStatusChip(
+              label: widget.draft.isSubmittable
+                  ? context.l10n.ready
+                  : context.l10n.needsDetails,
+              icon: widget.draft.isSubmittable
+                  ? Icons.check_circle_outline
+                  : Icons.info_outline,
+              color: widget.draft.isSubmittable
+                  ? Theme.of(context).colorScheme.secondary
+                  : Theme.of(context).colorScheme.tertiary,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
         _WarehouseDropdown(
           label: context.l10n.sourceWarehouse,
           value: widget.draft.sourceWarehouse,
@@ -121,9 +157,15 @@ class _TransferBodyState extends ConsumerState<_TransferBody> {
         ),
         const SizedBox(height: 8),
         if (widget.draft.lines.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Text(context.l10n.noItemsYet),
+          EmptyStateView(
+            icon: Icons.qr_code_scanner,
+            title: context.l10n.noItemsYet,
+            subtitle: context.l10n.startScanTransferLines,
+            action: OutlinedButton.icon(
+              icon: const Icon(Icons.qr_code_scanner),
+              label: Text(context.l10n.startScanSession),
+              onPressed: () => _startScanSession(context),
+            ),
           )
         else
           ...widget.draft.lines.map(
@@ -143,11 +185,13 @@ class _TransferBodyState extends ConsumerState<_TransferBody> {
     if (result == null || result.isEmpty || !context.mounted) return;
     final notifier = ref.read(transferDraftProvider.notifier);
     for (final scanned in result) {
-      notifier.addLine(TransferLine(
-        itemCode: scanned.item.itemCode,
-        itemName: scanned.item.itemName,
-        qty: scanned.qty,
-      ),);
+      notifier.addLine(
+        TransferLine(
+          itemCode: scanned.item.itemCode,
+          itemName: scanned.item.itemName,
+          qty: scanned.qty,
+        ),
+      );
     }
   }
 }
@@ -193,30 +237,58 @@ class _LineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(line.itemCode),
-      subtitle: line.itemName != null ? Text(line.itemName!) : null,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 80,
-            child: TextFormField(
-              initialValue: line.qty.toString(),
-              textAlign: TextAlign.end,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(isDense: true),
-              onChanged: (v) {
-                final q = double.tryParse(v);
-                if (q != null) onQtyChanged(q);
-              },
-            ),
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.55),
           ),
-          IconButton(
-            icon: const Icon(Icons.remove_circle_outline),
-            onPressed: onRemove,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      line.itemCode,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    if (line.itemName != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        line.itemName!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              BudeQuantityControl(
+                value: line.qty,
+                min: 0.01,
+                onChanged: onQtyChanged,
+              ),
+              IconButton(
+                tooltip: context.l10n.removeItem,
+                icon: const Icon(Icons.remove_circle_outline),
+                onPressed: onRemove,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
