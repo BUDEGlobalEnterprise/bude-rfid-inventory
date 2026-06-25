@@ -107,6 +107,14 @@ const allNavigationDestinations = <NavDest>[
     mobilePrimary: true,
   ),
   NavDest(
+    id: 'masters',
+    label: 'Master Data',
+    icon: Icons.category_outlined,
+    selectedIcon: Icons.category,
+    route: '/masters',
+    managerOnly: true,
+  ),
+  NavDest(
     id: 'analytics',
     label: 'Analytics',
     icon: Icons.bar_chart_outlined,

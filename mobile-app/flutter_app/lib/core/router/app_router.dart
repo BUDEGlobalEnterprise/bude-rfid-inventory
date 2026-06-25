@@ -35,6 +35,9 @@ import '../../features/assets/presentation/asset_movement_screen.dart';
 import '../../features/assets/presentation/asset_repair_screen.dart';
 import '../../features/warehouse/presentation/warehouse_detail_screen.dart';
 import '../../features/warehouse/presentation/warehouse_list_screen.dart';
+import '../../features/masters/presentation/masters_hub_screen.dart';
+import '../../features/masters/presentation/master_records_screen.dart';
+import '../../features/masters/presentation/master_form_screen.dart';
 import '../ui/app_shell.dart';
 import '../ui/navigation_config.dart';
 
@@ -210,6 +213,35 @@ final routerProvider = Provider<GoRouter>((ref) {
                 state.pathParameters['name']!,
               ),
             ),
+          ),
+          GoRoute(
+            path: '/masters',
+            builder: (context, state) => const MastersHubScreen(),
+            routes: [
+              GoRoute(
+                path: ':key',
+                builder: (context, state) => MasterRecordsScreen(
+                  masterKey: state.pathParameters['key']!,
+                ),
+                routes: [
+                  GoRoute(
+                    path: 'new',
+                    builder: (context, state) => MasterFormScreen(
+                      masterKey: state.pathParameters['key']!,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'edit/:name',
+                    builder: (context, state) => MasterFormScreen(
+                      masterKey: state.pathParameters['key']!,
+                      recordName: Uri.decodeComponent(
+                        state.pathParameters['name']!,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           GoRoute(
             path: '/analytics',
