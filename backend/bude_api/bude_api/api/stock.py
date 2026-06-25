@@ -27,6 +27,32 @@ def _whitelist(allow_guest: bool = False):
     return frappe.whitelist(allow_guest=allow_guest, methods=["POST"])
 
 
+def _insert_and_submit(doc_data: dict) -> dict:
+    """Insert + submit a doc, turning ERPNext validation errors (which Frappe
+    would otherwise surface as a raw HTTP 417 with no usable message) into a
+    clean VALIDATION_ERPNEXT failure envelope. Rolls back so a rejected submit
+    never leaves a stray draft behind.
+    """
+    doc = frappe.get_doc(doc_data)
+    try:
+        doc.insert(ignore_permissions=False)
+        doc.submit()
+    except frappe.ValidationError as exc:
+        frappe.db.rollback()
+        return failure(_erpnext_message(exc), code="VALIDATION_ERPNEXT")
+    return success({"name": doc.name, "docstatus": doc.docstatus})
+
+
+def _erpnext_message(exc: Exception) -> str:
+    msg = (str(exc) or "").strip() or "ERPNext rejected the document."
+    try:  # Frappe messages can carry HTML; strip it for a clean mobile string.
+        from frappe.utils import strip_html_tags
+        msg = strip_html_tags(msg).strip() or msg
+    except Exception:
+        pass
+    return msg
+
+
 @_whitelist()
 def create_transfer(
     items: list,
@@ -88,11 +114,7 @@ def create_transfer(
     }
     if company:
         doc_data["company"] = company
-    doc = frappe.get_doc(doc_data)
-    doc.insert(ignore_permissions=False)
-    doc.submit()
-
-    return success({"name": doc.name, "docstatus": doc.docstatus})
+    return _insert_and_submit(doc_data)
 
 
 def _validate_inputs(
@@ -243,10 +265,7 @@ def _create_material_receipt(items, target_warehouse, posting_date, company=None
     }
     if company:
         doc_data["company"] = company
-    doc = frappe.get_doc(doc_data)
-    doc.insert(ignore_permissions=False)
-    doc.submit()
-    return success({"name": doc.name, "docstatus": doc.docstatus})
+    return _insert_and_submit(doc_data)
 
 
 def _create_purchase_receipt(items, target_warehouse, against_po, posting_date, company=None) -> dict:
@@ -263,7 +282,7 @@ def _create_purchase_receipt(items, target_warehouse, against_po, posting_date, 
         )
 
     # Build a lookup of {item_code: po_detail_name, po_qty} from the PO lines.
-    po_lines = frappe.get_list(
+    po_lines = frappe.get_all(
         "Purchase Order Item",
         filters=[["parent", "=", against_po]],
         fields=["name", "item_code", "qty"],
@@ -297,10 +316,7 @@ def _create_purchase_receipt(items, target_warehouse, against_po, posting_date, 
     }
     if company:
         pr_data["company"] = company
-    pr = frappe.get_doc(pr_data)
-    pr.insert(ignore_permissions=False)
-    pr.submit()
-    return success({"name": pr.name, "docstatus": pr.docstatus})
+    return _insert_and_submit(pr_data)
 
 
 # ---------------------------------------------------------------------------
@@ -362,10 +378,7 @@ def create_reconciliation(
     }
     if company:
         doc_data["company"] = company
-    doc = frappe.get_doc(doc_data)
-    doc.insert(ignore_permissions=False)
-    doc.submit()
-    return success({"name": doc.name, "docstatus": doc.docstatus})
+    return _insert_and_submit(doc_data)
 
 
 def _validate_reconciliation_inputs(counts, warehouse) -> Optional[dict]:

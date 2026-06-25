@@ -63,12 +63,13 @@ def test_search_returns_name_and_barcode_matches_deduped(mock_frappe):
 @patch("bude_api.api.items.frappe")
 def test_search_respects_limit_bounds(mock_frappe):
     mock_frappe.get_list.return_value = []
+    mock_frappe.get_all.return_value = []
     items_api.search("x", limit=500)
     args, kwargs = mock_frappe.get_list.call_args_list[0]
     assert kwargs["limit"] == 100
 
     items_api.search("x", limit=0)
-    args, kwargs = mock_frappe.get_list.call_args_list[2]
+    args, kwargs = mock_frappe.get_list.call_args_list[1]
     assert kwargs["limit"] == 1
 
 

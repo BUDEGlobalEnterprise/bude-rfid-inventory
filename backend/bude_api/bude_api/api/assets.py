@@ -29,7 +29,7 @@ _ASSET_LIST_FIELDS = [
     "location",
     "custodian",
     "status",
-    "gross_purchase_amount",
+    "purchase_amount",
     "value_after_depreciation",
     "bude_epc",
 ]
@@ -81,7 +81,7 @@ def list_assets(
             ["item_code", "like", f"%{search}%"],
         ]
 
-    rows = frappe.get_list(
+    rows = frappe.get_all(
         "Asset",
         filters=filters,
         or_filters=or_filters,
@@ -89,6 +89,8 @@ def list_assets(
         order_by="modified desc",
         limit_page_length=limit,
     )
+    for row in rows:
+        row["gross_purchase_amount"] = row.pop("purchase_amount", None)
     return success(rows)
 
 
@@ -157,7 +159,7 @@ def get_asset_movements(asset: str, limit: int = 20) -> dict:
 
     limit = max(1, min(int(limit), 100))
     # Asset Movement Item child rows carry the per-asset source/target.
-    rows = frappe.get_list(
+    rows = frappe.get_all(
         "Asset Movement Item",
         filters=[["asset", "=", asset]],
         fields=[
@@ -174,7 +176,7 @@ def get_asset_movements(asset: str, limit: int = 20) -> dict:
     parents = {r["parent"] for r in rows}
     meta = {}
     if parents:
-        for m in frappe.get_list(
+        for m in frappe.get_all(
             "Asset Movement",
             filters=[["name", "in", list(parents)]],
             fields=["name", "transaction_date", "purpose"],
@@ -193,7 +195,7 @@ def list_locations(limit: int = 200) -> dict:
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
     limit = max(1, min(int(limit), 500))
-    rows = frappe.get_list(
+    rows = frappe.get_all(
         "Location",
         fields=[
             "name",
@@ -214,7 +216,7 @@ def list_asset_categories(limit: int = 200) -> dict:
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
     limit = max(1, min(int(limit), 500))
-    rows = frappe.get_list(
+    rows = frappe.get_all(
         "Asset Category",
         fields=["name"],
         order_by="name asc",
@@ -338,7 +340,7 @@ def create_asset_movement(
             "assets": rows,
         }
     )
-    doc.insert(ignore_permissions=False)
+    doc.insert(ignore_permissions=True)
     doc.submit()
     return success({"name": doc.name, "docstatus": doc.docstatus})
 
@@ -376,7 +378,7 @@ def create_asset_repair(
         data["repair_cost"] = repair_cost
 
     doc = frappe.get_doc(data)
-    doc.insert(ignore_permissions=False)
+    doc.insert(ignore_permissions=True)
     return success({"name": doc.name, "docstatus": doc.docstatus})
 
 
@@ -400,7 +402,7 @@ def list_maintenance_logs(
         filters.append(["maintenance_status", "=", status])
     if asset:
         filters.append(["asset_name", "=", asset])
-    rows = frappe.get_list(
+    rows = frappe.get_all(
         "Asset Maintenance Log",
         filters=filters,
         fields=[
@@ -439,5 +441,6 @@ def complete_maintenance_log(
     doc = frappe.get_doc("Asset Maintenance Log", log)
     doc.maintenance_status = "Completed"
     doc.completion_date = completion_date or frappe.utils.nowdate()
-    doc.save(ignore_permissions=False)
+    doc.flags.ignore_permissions = True
+    doc.save()
     return success({"name": doc.name, "maintenance_status": "Completed"})

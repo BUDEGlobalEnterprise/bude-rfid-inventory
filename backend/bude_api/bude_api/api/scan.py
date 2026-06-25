@@ -66,26 +66,26 @@ def resolve_epc(epc: str) -> dict:
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
-    asset = frappe.get_list(
+    asset = frappe.get_all(
         "Asset", filters=[["bude_epc", "=", epc]], fields=_ASSET_FIELDS, limit=1
     )
     if asset:
         return success({"match_type": "asset", "asset": asset[0]})
 
-    serial = frappe.get_list(
+    serial = frappe.get_all(
         "Serial No", filters=[["bude_epc", "=", epc]], fields=_SERIAL_FIELDS, limit=1
     )
     if serial:
         return success({"match_type": "serial", "serial": serial[0]})
 
-    item = frappe.get_list(
+    item = frappe.get_all(
         "Item", filters=[["bude_epc", "=", epc]], fields=_ITEM_FIELDS, limit=1
     )
     if item:
         return success({"match_type": "item", "item": item[0]})
 
     # Fallback: a plain barcode stored on the Item Barcode child table.
-    barcode_rows = frappe.get_list(
+    barcode_rows = frappe.get_all(
         "Item Barcode", filters=[["barcode", "=", epc]], fields=["parent"], limit=1
     )
     if barcode_rows:

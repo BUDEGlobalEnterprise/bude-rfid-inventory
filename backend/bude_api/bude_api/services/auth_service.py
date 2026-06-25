@@ -22,7 +22,14 @@ class AuthService:
     def login(self, username: str, password: str) -> dict:
         """Authenticate against Frappe and return a session dict.
 
-        Returns: { "user": str, "full_name": str, "api_key": str, "api_secret": str }
+        Returns: {
+            "user": str,
+            "full_name": str,
+            "api_key": str,
+            "api_secret": str,
+            "roles": list[str],
+            "default_warehouse": str,
+        }
         """
         if frappe is None:
             raise RuntimeError("Frappe is not available — run inside a Frappe bench.")
@@ -44,6 +51,11 @@ class AuthService:
             "full_name": user_doc.full_name,
             "api_key": api_key,
             "api_secret": api_secret,
+            "roles": frappe.get_roles(user_name),
+            "default_warehouse": (
+                frappe.db.get_value("User", user_name, "default_warehouse")
+                or ""
+            ),
         }
 
     def logout(self) -> None:

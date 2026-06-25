@@ -61,7 +61,7 @@ def list_alerts(limit: int = 200) -> dict:
 
 def _maintenance_due() -> list:
     today = frappe.utils.nowdate()
-    rows = frappe.get_list(
+    rows = frappe.get_all(
         "Asset Maintenance Log",
         filters=[
             ["maintenance_status", "in", ["Planned", "Overdue"]],
@@ -85,7 +85,7 @@ def _maintenance_due() -> list:
 
 
 def _assets_in_maintenance() -> list:
-    rows = frappe.get_list(
+    rows = frappe.get_all(
         "Asset",
         filters=[["status", "in", ["In Maintenance", "Out of Order"]]],
         fields=["name", "asset_name", "status", "location"],

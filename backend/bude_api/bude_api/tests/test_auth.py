@@ -17,6 +17,8 @@ def test_login_returns_session_dict_with_api_keys(mock_frappe):
     user_doc.get_password.return_value = "existing_secret"
     user_doc.full_name = "Alice Example"
     mock_frappe.get_doc.return_value = user_doc
+    mock_frappe.get_roles.return_value = ["Stock Manager", "System Manager"]
+    mock_frappe.db.get_value.return_value = "Stores - A"
 
     result = AuthService().login("alice@example.com", "hunter2")
 
@@ -27,6 +29,8 @@ def test_login_returns_session_dict_with_api_keys(mock_frappe):
         "full_name": "Alice Example",
         "api_key": "existing_key",
         "api_secret": "existing_secret",
+        "roles": ["Stock Manager", "System Manager"],
+        "default_warehouse": "Stores - A",
     }
 
 
@@ -42,6 +46,8 @@ def test_login_generates_keys_when_missing(mock_frappe):
     user_doc.get_password.return_value = None
     user_doc.full_name = "Bob Example"
     mock_frappe.get_doc.return_value = user_doc
+    mock_frappe.get_roles.return_value = ["Stock User"]
+    mock_frappe.db.get_value.return_value = ""
 
     result = AuthService().login("bob@example.com", "hunter2")
 

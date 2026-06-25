@@ -96,7 +96,7 @@ def _resolve_address(company: Optional[dict]) -> Optional[str]:
         return None
     # Use the standard Address dynamic-link pattern: Address links to the
     # Company via Dynamic Link. Pull the first display string we can find.
-    rows = frappe.get_list(
+    rows = frappe.get_all(
         "Dynamic Link",
         filters=[
             ["link_doctype", "=", "Company"],
@@ -108,7 +108,7 @@ def _resolve_address(company: Optional[dict]) -> Optional[str]:
     )
     if not rows:
         return None
-    address = frappe.get_list(
+    address = frappe.get_all(
         "Address",
         filters=[["name", "=", rows[0]["parent"]]],
         fields=["address_line1", "address_line2", "city", "state", "country", "pincode"],

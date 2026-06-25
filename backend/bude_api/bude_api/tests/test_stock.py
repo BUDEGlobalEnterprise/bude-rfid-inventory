@@ -3,6 +3,10 @@ from unittest.mock import MagicMock, patch
 from bude_api.api import stock as stock_api
 
 
+class _FakeValidationError(Exception):
+    """Stand-in for frappe.ValidationError in unit tests (no Frappe installed)."""
+
+
 def test_create_transfer_requires_source_warehouse():
     result = stock_api.create_transfer(
         items=[{"item_code": "A", "qty": 1}],
@@ -75,6 +79,7 @@ def test_create_transfer_rejects_unknown_source_warehouse(mock_frappe):
         return []
 
     mock_frappe.get_list.side_effect = get_list
+    mock_frappe.get_all.side_effect = get_list
     result = stock_api.create_transfer(
         items=[{"item_code": "A", "qty": 1}],
         source_warehouse="Bad - X",
@@ -106,6 +111,7 @@ def test_create_transfer_rejects_unknown_items(mock_frappe):
         return []
 
     mock_frappe.get_list.side_effect = get_list
+    mock_frappe.get_all.side_effect = get_list
     result = stock_api.create_transfer(
         items=[
             {"item_code": "A", "qty": 1},
@@ -163,6 +169,40 @@ def test_create_transfer_submits_stock_entry_on_happy_path(mock_frappe):
     }
     doc.insert.assert_called_once()
     doc.submit.assert_called_once()
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_transfer_converts_erpnext_validation_error(mock_frappe):
+    # ERPNext rejects the submit (e.g. insufficient stock). Frappe would raise
+    # ValidationError → raw HTTP 417; we convert it to a clean envelope and
+    # roll back the half-created draft.
+    mock_frappe.ValidationError = _FakeValidationError
+
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [{"name": "X"}]
+        if doctype == "Item":
+            return [{"item_code": "A"}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+    doc = MagicMock()
+    doc.submit.side_effect = _FakeValidationError(
+        "Insufficient stock for Item A in Finished Goods - BUDE",
+    )
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_transfer(
+        items=[{"item_code": "A", "qty": 1}],
+        source_warehouse="Finished Goods - BUDE",
+        target_warehouse="Stores - BUDE",
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_ERPNEXT"
+    assert "Insufficient stock" in result["message"]
+    doc.insert.assert_called_once()
+    mock_frappe.db.rollback.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +318,7 @@ def test_create_receipt_against_po_rejects_line_mismatch(mock_frappe):
         return []
 
     mock_frappe.get_list.side_effect = get_list
+    mock_frappe.get_all.side_effect = get_list
     mock_frappe.db.get_value.return_value = {
         "name": "PO-001",
         "supplier": "Acme Supplies",
@@ -309,6 +350,7 @@ def test_create_receipt_against_po_happy_path(mock_frappe):
         return []
 
     mock_frappe.get_list.side_effect = get_list
+    mock_frappe.get_all.side_effect = get_list
     mock_frappe.db.get_value.return_value = {
         "name": "PO-001",
         "supplier": "Acme Supplies",

@@ -78,7 +78,7 @@ def asset_register(
     if category:
         filters.append(["asset_category", "=", category])
 
-    rows = frappe.get_list(
+    rows = frappe.get_all(
         "Asset",
         filters=filters,
         fields=[
@@ -90,7 +90,7 @@ def asset_register(
             "custodian",
             "status",
             "purchase_date",
-            "gross_purchase_amount",
+            "purchase_amount",
             "value_after_depreciation",
         ],
         order_by="asset_category asc, name asc",
@@ -98,6 +98,7 @@ def asset_register(
     )
     for r in rows:
         r["purchase_date"] = str(r.get("purchase_date") or "")
+        r["gross_purchase_amount"] = r.pop("purchase_amount", None)
     return success(rows)
 
 
@@ -114,7 +115,7 @@ def maintenance_history(asset: Optional[str] = None, limit: int = 100) -> dict:
         log_filters.append(["asset_name", "=", asset])
         repair_filters.append(["asset", "=", asset])
 
-    logs = frappe.get_list(
+    logs = frappe.get_all(
         "Asset Maintenance Log",
         filters=log_filters,
         fields=[
@@ -128,7 +129,7 @@ def maintenance_history(asset: Optional[str] = None, limit: int = 100) -> dict:
         order_by="modified desc",
         limit_page_length=limit,
     )
-    repairs = frappe.get_list(
+    repairs = frappe.get_all(
         "Asset Repair",
         filters=repair_filters,
         fields=[

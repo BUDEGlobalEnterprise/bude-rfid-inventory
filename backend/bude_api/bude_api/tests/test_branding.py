@@ -32,6 +32,7 @@ def test_get_returns_full_payload_when_company_and_address_present(
         return []
 
     mock_frappe.get_list.side_effect = get_list
+    mock_frappe.get_all.side_effect = get_list
     mock_frappe.get_installed_apps.return_value = ["frappe", "erpnext"]
     mock_get_versions.return_value = {"erpnext": {"version": "15.0.0"}}
 
@@ -71,6 +72,7 @@ def test_get_falls_back_to_first_company_when_no_default(
         return []
 
     mock_frappe.get_list.side_effect = get_list
+    mock_frappe.get_all.side_effect = get_list
     mock_frappe.get_installed_apps.return_value = ["frappe", "erpnext"]
     mock_get_versions.return_value = {"erpnext": {"version": "15.0.0"}}
 
@@ -87,6 +89,7 @@ def test_get_falls_back_to_first_company_when_no_default(
 def test_get_handles_no_company_at_all(mock_get_versions, mock_frappe):
     mock_frappe.db.get_default.return_value = None
     mock_frappe.get_list.return_value = []
+    mock_frappe.get_all.return_value = []
     mock_frappe.get_installed_apps.return_value = ["frappe", "erpnext"]
     mock_get_versions.return_value = {"erpnext": {"version": "15.0.0"}}
 
@@ -104,6 +107,7 @@ def test_get_handles_no_company_at_all(mock_get_versions, mock_frappe):
 def test_get_tolerates_versions_helper_raising(mock_get_versions, mock_frappe):
     mock_frappe.db.get_default.return_value = None
     mock_frappe.get_list.return_value = []
+    mock_frappe.get_all.return_value = []
     mock_frappe.get_installed_apps.return_value = ["frappe", "erpnext"]
     mock_get_versions.side_effect = RuntimeError("boom")
 

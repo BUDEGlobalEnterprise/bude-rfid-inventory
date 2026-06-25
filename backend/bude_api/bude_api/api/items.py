@@ -82,7 +82,7 @@ def search(
     # Exact barcode match — only on page 0, barcode hits always come first
     barcode_matches: list[dict] = []
     if query and page == 0:
-        barcode_rows = frappe.get_list(
+        barcode_rows = frappe.get_all(
             "Item Barcode",
             filters=[["barcode", "=", query]],
             fields=["parent"],
@@ -157,7 +157,7 @@ def get_by_barcode(barcode: str) -> dict:
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
-    rows = frappe.get_list(
+    rows = frappe.get_all(
         "Item Barcode",
         filters=[["barcode", "=", barcode]],
         fields=["parent"],

@@ -46,17 +46,18 @@ def get_stock_aging(warehouse: str, threshold_days: int = 30, limit: int = 100) 
         """
         SELECT
             b.item_code,
-            b.item_name,
+            i.item_name,
             b.actual_qty,
             MAX(sle.posting_date) AS last_movement_date,
             DATEDIFF(CURDATE(), MAX(sle.posting_date)) AS days_idle
         FROM `tabBin` b
+        JOIN `tabItem` i ON i.name = b.item_code
         LEFT JOIN `tabStock Ledger Entry` sle
                ON sle.item_code = b.item_code
               AND sle.warehouse  = %(warehouse)s
               AND sle.is_cancelled = 0
         WHERE b.warehouse = %(warehouse)s
-        GROUP BY b.item_code, b.item_name, b.actual_qty
+        GROUP BY b.item_code, i.item_name, b.actual_qty
         HAVING days_idle >= %(threshold_days)s OR last_movement_date IS NULL
         ORDER BY days_idle DESC, b.item_code ASC
         LIMIT %(limit)s
