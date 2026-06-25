@@ -8,7 +8,31 @@ void main() {
       hiddenIds: const [],
     );
 
-    expect(dests.map((d) => d.id), containsAll(['warehouses', 'reports']));
+    expect(
+      dests.map((d) => d.id),
+      containsAll(['warehouses', 'masters', 'reports']),
+    );
+  });
+
+  test('stock manager can see master data', () {
+    final dests = navigationDestsFor(
+      roles: const {'Stock Manager'},
+      hiddenIds: const [],
+    );
+
+    expect(dests.map((d) => d.id), contains('masters'));
+  });
+
+  test('administrator username can see manager destinations without roles', () {
+    final dests = navigationDestsFor(
+      roles: const {},
+      hiddenIds: const [],
+      username: 'Administrator',
+    );
+
+    expect(dests.map((d) => d.id), contains('masters'));
+    expect(canAccessManagerDestinations(const {}, username: 'Administrator'),
+        isTrue);
   });
 
   test('non-manager does not see manager-only destinations', () {
@@ -18,6 +42,7 @@ void main() {
     );
 
     expect(dests.map((d) => d.id), isNot(contains('reports')));
+    expect(dests.map((d) => d.id), isNot(contains('masters')));
     expect(dests.map((d) => d.id), contains('transfer'));
   });
 

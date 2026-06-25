@@ -7,6 +7,7 @@ import '../domain/auth_repository.dart';
 import '../domain/auth_session.dart';
 import 'datasources/auth_local_data_source.dart';
 import 'datasources/auth_remote_data_source.dart';
+import 'models/auth_session_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remote;
@@ -55,6 +56,42 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final cached = await local.getCachedSession();
       return Right(cached?.toEntity());
+    } on CacheException catch (e) {
+      return Left(CacheFailure(e.message));
+    }
+  }
+
+  @override
+  Future<Either<Failure, AuthSession?>> refreshSession() async {
+    try {
+      final cached = await local.getCachedSession();
+      if (cached == null) return const Right(null);
+
+      // session_info returns roles/full_name/default_warehouse but not the api
+      // keys — keep those from the cache and overlay the server's fresh values.
+      final info = await remote.sessionInfo();
+      final rawRoles = info['roles'];
+      final roles = rawRoles is List
+          ? rawRoles.whereType<String>().toList()
+          : cached.roles;
+      final dw = info['default_warehouse'] as String?;
+      final updated = AuthSessionModel(
+        user: cached.user,
+        apiKey: cached.apiKey,
+        apiSecret: cached.apiSecret,
+        fullName: (info['full_name'] as String?) ?? cached.fullName,
+        roles: roles,
+        defaultWarehouse:
+            (dw == null || dw.isEmpty) ? cached.defaultWarehouse : dw,
+      );
+      await local.cacheSession(updated);
+      return Right(updated.toEntity());
+    } on AuthException catch (e) {
+      return Left(AuthFailure(e.message));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message, statusCode: e.statusCode));
     } on CacheException catch (e) {
       return Left(CacheFailure(e.message));
     }

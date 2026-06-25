@@ -76,8 +76,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         // Role guard: manager-only routes are off-limits to non-managers even
         // by direct URL. The shell hides the nav items; this stops deep links.
         final roles = ref.read(rolesProvider);
-        final isManager =
-            isNavigationAdmin(roles) || roles.contains('Stock Manager');
+        final isManager = canAccessManagerDestinations(
+          roles,
+          username: authState.session.username,
+        );
         if (!isManager) {
           final blocked = allNavigationDestinations
                   .where((d) => d.managerOnly)

@@ -201,14 +201,22 @@ bool isNavigationAdmin(Set<String> roles, {String? username}) {
       roles.contains('System Manager');
 }
 
+bool canAccessManagerDestinations(Set<String> roles, {String? username}) {
+  return isNavigationAdmin(roles, username: username) ||
+      roles.contains('Stock Manager');
+}
+
 /// Role tiers an admin can configure visibility for. A user is mapped to
 /// exactly one (highest-priority first) via [navigationBucketFor].
-const navigationRoleBuckets = <String>['Stock Manager', 'Stock User', 'Default'];
+const navigationRoleBuckets = <String>[
+  'Stock Manager',
+  'Stock User',
+  'Default'
+];
 
 /// The single config bucket a user falls into, by role priority.
 String navigationBucketFor(Set<String> roles, {String? username}) {
-  if (isNavigationAdmin(roles, username: username) ||
-      roles.contains('Stock Manager')) {
+  if (canAccessManagerDestinations(roles, username: username)) {
     return 'Stock Manager';
   }
   if (roles.contains('Stock User')) return 'Stock User';
@@ -257,9 +265,8 @@ List<NavDest> _applyOrder(List<NavDest> dests, List<String>? order) {
   return [for (final e in indexed) e.value];
 }
 
-bool _canUseDestination(NavDest dest, Set<String> roles) {
-  final isAdmin = isNavigationAdmin(roles);
-  final isManager = isAdmin || roles.contains('Stock Manager');
+bool _canUseDestination(NavDest dest, Set<String> roles, {String? username}) {
+  final isManager = canAccessManagerDestinations(roles, username: username);
   final isStockUser = roles.contains('Stock User');
   final canUseOps = isManager || isStockUser || roles.isEmpty;
 
@@ -273,10 +280,11 @@ List<NavDest> navigationDestsFor({
   required Iterable<String> hiddenIds,
   List<String>? order,
   bool mobile = false,
+  String? username,
 }) {
   final hidden = hiddenIds.toSet();
   final filtered = allNavigationDestinations.where((dest) {
-    if (!_canUseDestination(dest, roles)) return false;
+    if (!_canUseDestination(dest, roles, username: username)) return false;
     if (dest.mandatory) return true;
     return !hidden.contains(dest.id);
   }).toList();

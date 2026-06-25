@@ -32,11 +32,13 @@ class AppShell extends ConsumerWidget {
       hiddenIds: hidden,
       order: order,
       mobile: true,
+      username: username,
     );
     final railDests = navigationDestsFor(
       roles: roles,
       hiddenIds: hidden,
       order: order,
+      username: username,
     );
     final location = GoRouterState.of(context).matchedLocation;
 
@@ -271,6 +273,7 @@ class AppNavDrawer extends ConsumerWidget {
       roles: roles,
       hiddenIds: resolveNavHidden(nav, roles, username: username),
       order: resolveNavOrder(nav),
+      username: username,
     );
     final location = GoRouterState.of(context).matchedLocation;
     final selected = locationToIndex(location, dests);

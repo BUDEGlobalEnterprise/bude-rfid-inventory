@@ -12,6 +12,7 @@ import '../../domain/auth_session.dart';
 import '../../domain/usecases/get_current_session_usecase.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/logout_usecase.dart';
+import '../../domain/usecases/refresh_session_usecase.dart';
 
 sealed class AuthState extends Equatable {
   const AuthState();
@@ -68,6 +69,7 @@ final authNotifierProvider =
     loginUseCase: LoginUseCase(repo),
     logoutUseCase: LogoutUseCase(repo),
     getCurrentSessionUseCase: GetCurrentSessionUseCase(repo),
+    refreshSessionUseCase: RefreshSessionUseCase(repo),
     apiClient: apiClient,
     ref: ref,
   );
@@ -84,6 +86,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final LoginUseCase loginUseCase;
   final LogoutUseCase logoutUseCase;
   final GetCurrentSessionUseCase getCurrentSessionUseCase;
+  final RefreshSessionUseCase refreshSessionUseCase;
   final ApiClient apiClient;
   final Ref _ref;
 
@@ -91,6 +94,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required this.loginUseCase,
     required this.logoutUseCase,
     required this.getCurrentSessionUseCase,
+    required this.refreshSessionUseCase,
     required this.apiClient,
     required Ref ref,
   })  : _ref = ref,
@@ -99,15 +103,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> bootstrap() async {
     state = const AuthLoading();
     final result = await getCurrentSessionUseCase(const NoParams());
-    state = result.fold(
-      (failure) => const Unauthenticated(),
-      (session) {
-        if (session == null) return const Unauthenticated();
-        apiClient.setAuthToken(session.token);
-        _applyDefaultWarehouse(session);
-        return Authenticated(session);
-      },
-    );
+    final cached = result.fold((_) => null, (session) => session);
+    if (cached == null) {
+      state = const Unauthenticated();
+      return;
+    }
+
+    // Token must be set before session_info (it requires auth).
+    apiClient.setAuthToken(cached.token);
+
+    // Refresh roles from the backend so manager gating reflects the server,
+    // not a stale/empty cached role list. Fall back to the cached session when
+    // offline so the app still opens.
+    final refreshed = await refreshSessionUseCase(const NoParams());
+    final session = refreshed.fold((_) => cached, (s) => s ?? cached);
+
+    _applyDefaultWarehouse(session);
+    state = Authenticated(session);
   }
 
   Future<void> login(String username, String password) async {
@@ -115,12 +127,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final result = await loginUseCase(
       LoginParams(username: username, password: password),
     );
-    state = result.fold(
-      (failure) => AuthFailed(failure.message),
-      (session) {
+    await result.fold(
+      (failure) async {
+        state = AuthFailed(failure.message);
+      },
+      (session) async {
+        // Token must be active before session_info can refresh server roles.
         apiClient.setAuthToken(session.token);
-        _applyDefaultWarehouse(session);
-        return Authenticated(session);
+        final refreshed = await refreshSessionUseCase(const NoParams());
+        final effective = refreshed.fold((_) => session, (s) => s ?? session);
+        _applyDefaultWarehouse(effective);
+        state = Authenticated(effective);
       },
     );
   }
@@ -136,7 +153,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (dw == null || dw.isEmpty) return;
     final settings = _ref.read(settingsNotifierProvider);
     if (settings.defaultSourceWarehouse == null) {
-      _ref.read(settingsNotifierProvider.notifier).setDefaultSourceWarehouse(dw);
+      _ref
+          .read(settingsNotifierProvider.notifier)
+          .setDefaultSourceWarehouse(dw);
     }
   }
 }

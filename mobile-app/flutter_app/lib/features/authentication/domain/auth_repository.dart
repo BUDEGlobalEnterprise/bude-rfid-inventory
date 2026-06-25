@@ -13,6 +13,12 @@ abstract class AuthRepository {
 
   Future<Either<Failure, AuthSession?>> currentSession();
 
+  /// Refreshes the cached session's roles / full name / default warehouse from
+  /// the backend (`auth.session_info`). Returns the cached api keys merged with
+  /// the server's fresh role list, and re-caches it. Requires the auth token to
+  /// already be set on the client.
+  Future<Either<Failure, AuthSession?>> refreshSession();
+
   /// Validates a supervisor's credentials for second-user approval.
   /// Returns `(user, isSupervisor)` on success.
   Future<Either<Failure, (String, bool)>> validateSupervisor({
