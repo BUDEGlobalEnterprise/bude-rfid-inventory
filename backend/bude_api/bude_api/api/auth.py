@@ -1,8 +1,9 @@
 """Authentication endpoints.
 
-    POST /api/method/bude_api.api.auth.login         (guest)
-    POST /api/method/bude_api.api.auth.logout        (auth required)
-    GET  /api/method/bude_api.api.auth.session_info  (auth required)
+    POST /api/method/bude_api.api.auth.login                (guest)
+    POST /api/method/bude_api.api.auth.logout               (auth required)
+    GET  /api/method/bude_api.api.auth.session_info         (auth required)
+    POST /api/method/bude_api.api.auth.validate_supervisor  (auth required)
 """
 
 try:
@@ -60,3 +61,21 @@ def session_info() -> dict:
         "roles": roles,
         "default_warehouse": default_warehouse,
     })
+
+
+@_whitelist(allow_guest=False)
+def validate_supervisor(usr: str, pwd: str) -> dict:
+    """Validate a supervisor's credentials without creating a new session.
+
+    Used by the reconciliation approval flow: a second user authorizes a
+    large-variance op while the current device session stays intact.
+    """
+    if frappe is None:
+        return failure("Server unavailable.", code="AUTH_NO_SESSION")
+    from frappe.utils.password import check_password
+    try:
+        check_password(usr, pwd)
+    except frappe.AuthenticationError:
+        return failure("Invalid credentials.", code="AUTH_INVALID_CREDENTIALS")
+    is_supervisor = "Stock Manager" in frappe.get_roles(usr)
+    return success({"user": usr, "is_supervisor": is_supervisor})

@@ -389,7 +389,48 @@ class _ItemTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+            PopupMenuButton<String>(
+              tooltip: context.l10n.itemActions,
+              icon: Icon(Icons.more_vert, color: scheme.onSurfaceVariant),
+              onSelected: (value) {
+                final route = switch (value) {
+                  'transfer' => '/transfer',
+                  'receipt' => '/receipt',
+                  'count' => '/reconcile',
+                  _ => null,
+                };
+                if (route != null) context.push(route, extra: item);
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'transfer',
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.swap_horiz),
+                    title: Text(context.l10n.transfer),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'receipt',
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.input),
+                    title: Text(context.l10n.receive),
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'count',
+                  child: ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.fact_check),
+                    title: Text(context.l10n.count),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

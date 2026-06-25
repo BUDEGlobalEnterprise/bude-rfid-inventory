@@ -46,9 +46,15 @@ class TransferDraftNotifier extends StateNotifier<TransferDraft> {
       return;
     }
     final updated = [...state.lines];
-    updated[existingIndex] =
-        updated[existingIndex].copyWith(qty: updated[existingIndex].qty + line.qty);
+    updated[existingIndex] = updated[existingIndex]
+        .copyWith(qty: updated[existingIndex].qty + line.qty);
     state = state.copyWith(lines: updated);
+  }
+
+  void addLineIfAbsent(TransferLine line) {
+    final exists = state.lines.any((l) => l.itemCode == line.itemCode);
+    if (exists) return;
+    state = state.copyWith(lines: [...state.lines, line]);
   }
 
   void updateQty(String itemCode, double qty) {

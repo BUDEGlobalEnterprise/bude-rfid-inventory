@@ -16,8 +16,7 @@ final purchaseOrderRemoteProvider =
   return PurchaseOrderRemoteDataSource(apiClient.dio);
 });
 
-final purchaseOrdersProvider =
-    FutureProvider.autoDispose<List<String>>((ref) {
+final purchaseOrdersProvider = FutureProvider.autoDispose<List<String>>((ref) {
   return ref.watch(purchaseOrderRemoteProvider).listOpen();
 });
 
@@ -52,9 +51,15 @@ class ReceiptDraftNotifier extends StateNotifier<ReceiptDraft> {
       return;
     }
     final updated = [...state.lines];
-    updated[existingIndex] =
-        updated[existingIndex].copyWith(qty: updated[existingIndex].qty + line.qty);
+    updated[existingIndex] = updated[existingIndex]
+        .copyWith(qty: updated[existingIndex].qty + line.qty);
     state = state.copyWith(lines: updated);
+  }
+
+  void addLineIfAbsent(ReceiptLine line) {
+    final exists = state.lines.any((l) => l.itemCode == line.itemCode);
+    if (exists) return;
+    state = state.copyWith(lines: [...state.lines, line]);
   }
 
   void updateQty(String itemCode, double qty) {
@@ -75,4 +80,3 @@ class ReceiptDraftNotifier extends StateNotifier<ReceiptDraft> {
     state = const ReceiptDraft();
   }
 }
-

@@ -12,6 +12,13 @@ abstract class AuthRemoteDataSource {
   Future<void> logout();
 
   Future<Map<String, dynamic>> sessionInfo();
+
+  /// Validates a supervisor's credentials without starting a new session.
+  /// Returns `(user, isSupervisor)`. Throws [AuthException] on invalid creds.
+  Future<(String, bool)> validateSupervisor({
+    required String username,
+    required String password,
+  });
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -67,6 +74,33 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         throw const AuthException('No active session.');
       }
       return (body['data'] as Map).cast<String, dynamic>();
+    } on DioException catch (e) {
+      throw _mapDioError(e);
+    }
+  }
+
+  @override
+  Future<(String, bool)> validateSupervisor({
+    required String username,
+    required String password,
+  }) async {
+    try {
+      final response = await dio.post<Map<String, dynamic>>(
+        '/api/method/bude_api.api.auth.validate_supervisor',
+        data: {'usr': username, 'pwd': password},
+      );
+
+      final body = _unwrapEnvelope(response.data);
+      if (body['ok'] != true) {
+        throw AuthException(
+          (body['message'] as String?) ?? 'Invalid credentials.',
+        );
+      }
+      final data = (body['data'] as Map).cast<String, dynamic>();
+      return (
+        data['user'] as String,
+        (data['is_supervisor'] as bool?) ?? false,
+      );
     } on DioException catch (e) {
       throw _mapDioError(e);
     }

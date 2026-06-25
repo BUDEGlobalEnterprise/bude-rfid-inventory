@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/authentication/presentation/providers/auth_notifier.dart';
+import '../../features/company/domain/entities/company.dart';
+import '../../features/company/presentation/providers/company_providers.dart';
+import '../../features/settings/presentation/providers/settings_notifier.dart';
 import '../../features/tenant/presentation/providers/tenant_notifier.dart';
+import 'navigation_config.dart';
 import 'offline_banner.dart';
 
 /// User override for rail expansion. `null` → follow the breakpoint default
@@ -17,10 +21,23 @@ class AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final roles = ref.watch(rolesProvider);
-    final isManager = roles.contains('Stock Manager');
+    final auth = ref.watch(authNotifierProvider);
+    final username = auth is Authenticated ? auth.session.username : null;
+    final nav = ref.watch(currentBrandingProvider)?.navigation;
+    final hidden = resolveNavHidden(nav, roles, username: username);
+    final order = resolveNavOrder(nav);
 
-    final mobileDests = _mobileDests(isManager);
-    final railDests = navDests(isManager);
+    final mobileDests = navigationDestsFor(
+      roles: roles,
+      hiddenIds: hidden,
+      order: order,
+      mobile: true,
+    );
+    final railDests = navigationDestsFor(
+      roles: roles,
+      hiddenIds: hidden,
+      order: order,
+    );
     final location = GoRouterState.of(context).matchedLocation;
 
     return LayoutBuilder(
@@ -32,6 +49,7 @@ class AppShell extends ConsumerWidget {
             body: Column(
               children: [
                 const OfflineBanner(),
+                const _CompanyBanner(),
                 Expanded(child: child),
               ],
             ),
@@ -77,6 +95,7 @@ class AppShell extends ConsumerWidget {
                 child: Column(
                   children: [
                     const OfflineBanner(),
+                    const _CompanyBanner(),
                     Expanded(child: child),
                   ],
                 ),
@@ -87,107 +106,84 @@ class AppShell extends ConsumerWidget {
       },
     );
   }
-
-  // Mobile shows only primary destinations (NavigationBar supports max 5).
-  static List<NavDest> _mobileDests(bool isManager) => [
-        const NavDest(
-          'Dashboard',
-          Icons.dashboard_outlined,
-          Icons.dashboard,
-          '/',
-        ),
-        const NavDest('Search', Icons.search_outlined, Icons.search, '/items'),
-        if (isManager) ...[
-          const NavDest(
-            'Warehouses',
-            Icons.warehouse_outlined,
-            Icons.warehouse,
-            '/warehouses',
-          ),
-          const NavDest(
-            'Analytics',
-            Icons.bar_chart_outlined,
-            Icons.bar_chart,
-            '/analytics',
-          ),
-        ],
-        const NavDest(
-          'Settings',
-          Icons.settings_outlined,
-          Icons.settings,
-          '/settings',
-        ),
-      ];
 }
 
-/// Full destination list (rail + drawer). Mobile bottom-nav uses a subset.
-List<NavDest> navDests(bool isManager) => [
-      const NavDest(
-        'Dashboard',
-        Icons.dashboard_outlined,
-        Icons.dashboard,
-        '/',
-      ),
-      const NavDest('Search', Icons.search_outlined, Icons.search, '/items'),
-      const NavDest(
-        'Assets',
-        Icons.precision_manufacturing_outlined,
-        Icons.precision_manufacturing,
-        '/assets',
-      ),
-      if (isManager) ...[
-        const NavDest(
-          'Warehouses',
-          Icons.warehouse_outlined,
-          Icons.warehouse,
-          '/warehouses',
-        ),
-        const NavDest(
-          'Analytics',
-          Icons.bar_chart_outlined,
-          Icons.bar_chart,
-          '/analytics',
-        ),
-        const NavDest(
-          'Reports',
-          Icons.assessment_outlined,
-          Icons.assessment,
-          '/reports',
-        ),
-      ],
-      const NavDest(
-        'Audit Trail',
-        Icons.history_outlined,
-        Icons.history,
-        '/audit',
-      ),
-      const NavDest('Sync', Icons.sync_outlined, Icons.sync, '/sync'),
-      const NavDest(
-        'Settings',
-        Icons.settings_outlined,
-        Icons.settings,
-        '/settings',
-      ),
-    ];
+/// Active-company chip shown above content. Tap opens a switcher sheet.
+/// Hidden when fewer than two companies exist (nothing to switch).
+class _CompanyBanner extends ConsumerWidget {
+  const _CompanyBanner();
 
-int locationToIndex(String location, List<NavDest> dests) {
-  for (int i = 0; i < dests.length; i++) {
-    final route = dests[i].route;
-    if (route == '/' ? location == '/' : location.startsWith(route)) return i;
-  }
-  if (location.startsWith('/warehouse/')) {
-    final i = dests.indexWhere((d) => d.route == '/warehouses');
-    if (i >= 0) return i;
-  }
-  return 0;
-}
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final companies = ref.watch(companiesProvider).valueOrNull ?? const [];
+    if (companies.length < 2) return const SizedBox.shrink();
 
-class NavDest {
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-  final String route;
-  const NavDest(this.label, this.icon, this.selectedIcon, this.route);
+    final active = ref.watch(
+      settingsNotifierProvider.select((s) => s.activeCompany),
+    );
+    final scheme = Theme.of(context).colorScheme;
+    final label = active == null
+        ? 'Select company'
+        : companies
+            .firstWhere(
+              (c) => c.name == active,
+              orElse: () => companies.first,
+            )
+            .companyName;
+
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      child: InkWell(
+        onTap: () => _showSwitcher(context, ref, companies, active),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Icon(Icons.business_outlined, size: 18, color: scheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(Icons.unfold_more, size: 18, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSwitcher(
+    BuildContext context,
+    WidgetRef ref,
+    List<Company> companies,
+    String? active,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final c in companies)
+              ListTile(
+                title: Text(c.companyName),
+                trailing: c.name == active ? const Icon(Icons.check) : null,
+                onTap: () {
+                  ref
+                      .read(settingsNotifierProvider.notifier)
+                      .setActiveCompany(c.name);
+                  Navigator.of(sheetContext).pop();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _RailLeading extends ConsumerWidget {
@@ -268,8 +264,14 @@ class AppNavDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final roles = ref.watch(rolesProvider);
-    final isManager = roles.contains('Stock Manager');
-    final dests = navDests(isManager);
+    final auth = ref.watch(authNotifierProvider);
+    final username = auth is Authenticated ? auth.session.username : null;
+    final nav = ref.watch(currentBrandingProvider)?.navigation;
+    final dests = navigationDestsFor(
+      roles: roles,
+      hiddenIds: resolveNavHidden(nav, roles, username: username),
+      order: resolveNavOrder(nav),
+    );
     final location = GoRouterState.of(context).matchedLocation;
     final selected = locationToIndex(location, dests);
 

@@ -533,5 +533,33 @@
     }
   },
   "noDefaultWarehouse": "No default",
-  "@noDefaultWarehouse": {}
+  "@noDefaultWarehouse": {},
+  "itemActions": "Item actions",
+  "@itemActions": {},
+  "itemAddedToDraft": "Added {item} to draft",
+  "@itemAddedToDraft": {
+    "placeholders": {
+      "item": { "type": "String" }
+    }
+  },
+  "alreadyInDraft": "{item} already in draft",
+  "@alreadyInDraft": {
+    "placeholders": {
+      "item": { "type": "String" }
+    }
+  },
+  "pickWarehouseToCountItem": "Pick warehouse to count {item}",
+  "@pickWarehouseToCountItem": {
+    "placeholders": {
+      "item": { "type": "String" }
+    }
+  },
+  "needsSource": "Needs source",
+  "@needsSource": {},
+  "needsTarget": "Needs target",
+  "@needsTarget": {},
+  "needsItems": "Needs items",
+  "@needsItems": {},
+  "poOptional": "PO optional",
+  "@poOptional": {}
 }

@@ -59,4 +59,24 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(CacheFailure(e.message));
     }
   }
+
+  @override
+  Future<Either<Failure, (String, bool)>> validateSupervisor({
+    required String username,
+    required String password,
+  }) async {
+    try {
+      final result = await remote.validateSupervisor(
+        username: username,
+        password: password,
+      );
+      return Right(result);
+    } on AuthException catch (e) {
+      return Left(AuthFailure(e.message));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message, statusCode: e.statusCode));
+    }
+  }
 }

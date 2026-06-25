@@ -1387,6 +1387,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No default'**
   String get noDefaultWarehouse;
+
+  /// No description provided for @itemActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Item actions'**
+  String get itemActions;
+
+  /// No description provided for @itemAddedToDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {item} to draft'**
+  String itemAddedToDraft(String item);
+
+  /// No description provided for @alreadyInDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'{item} already in draft'**
+  String alreadyInDraft(String item);
+
+  /// No description provided for @pickWarehouseToCountItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick warehouse to count {item}'**
+  String pickWarehouseToCountItem(String item);
+
+  /// No description provided for @needsSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs source'**
+  String get needsSource;
+
+  /// No description provided for @needsTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs target'**
+  String get needsTarget;
+
+  /// No description provided for @needsItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs items'**
+  String get needsItems;
+
+  /// No description provided for @poOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'PO optional'**
+  String get poOptional;
 }
 
 class _AppLocalizationsDelegate

@@ -39,11 +39,18 @@ class SyncQueue {
   }
 
   /// Promote a pendingApproval op to pending so the sync engine picks it up.
-  Future<void> approve(String id) async {
+  ///
+  /// [approvedBy] records the supervisor's username in the payload so it
+  /// reaches ERPNext and shows in the audit trail.
+  Future<void> approve(String id, {String? approvedBy}) async {
     final op = getById(id);
     if (op == null || op.status != OpStatus.pendingApproval) return;
+    final payload = approvedBy == null
+        ? op.payload
+        : {...op.payload, 'approved_by': approvedBy};
     await update(
       op.copyWith(
+        payload: payload,
         status: OpStatus.pending,
         clearError: true,
         clearNextRetry: true,

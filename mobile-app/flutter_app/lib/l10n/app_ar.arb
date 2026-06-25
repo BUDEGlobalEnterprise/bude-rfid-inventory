@@ -214,5 +214,13 @@
     "noAlerts":  "No alerts",
     "alertsCountShort":  "{count} alerts",
     "noDefaultWarehouse":  "No default",
+    "itemActions":  "Item actions",
+    "itemAddedToDraft":  "Added {item} to draft",
+    "alreadyInDraft":  "{item} already in draft",
+    "pickWarehouseToCountItem":  "Pick warehouse to count {item}",
+    "needsSource":  "Needs source",
+    "needsTarget":  "Needs target",
+    "needsItems":  "Needs items",
+    "poOptional":  "PO optional",
     "itemsLabel":  "Items"
 }

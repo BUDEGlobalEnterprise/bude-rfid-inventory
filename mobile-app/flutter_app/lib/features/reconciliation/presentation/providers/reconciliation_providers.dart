@@ -43,6 +43,12 @@ class ReconciliationDraftNotifier extends StateNotifier<ReconciliationDraft> {
     state = state.copyWith(lines: updated);
   }
 
+  void addLineIfAbsent(CountLine line) {
+    final exists = state.lines.any((l) => l.itemCode == line.itemCode);
+    if (exists) return;
+    state = state.copyWith(lines: [...state.lines, line]);
+  }
+
   void setCount(String itemCode, double qty) {
     state = state.copyWith(
       lines: state.lines

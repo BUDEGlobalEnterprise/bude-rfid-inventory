@@ -5,8 +5,10 @@ import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_version.dart';
 import '../../../core/ui/bude_section_header.dart';
+import '../../../core/ui/navigation_config.dart';
 import '../../../core/utils/locale_ext.dart';
 import '../../authentication/presentation/providers/auth_notifier.dart';
+import '../../navigation/data/navigation_config_remote.dart';
 import '../../tenant/presentation/providers/tenant_notifier.dart';
 import '../../company/presentation/providers/company_providers.dart';
 import '../../transfer/presentation/providers/transfer_providers.dart';
@@ -41,6 +43,13 @@ class _SettingsBody extends ConsumerWidget {
     final settings = ref.watch(settingsNotifierProvider);
     final notifier = ref.read(settingsNotifierProvider.notifier);
     final warehousesAsync = ref.watch(warehousesProvider);
+    final roles = ref.watch(rolesProvider);
+    final auth = ref.watch(authNotifierProvider);
+    final username = auth is Authenticated ? auth.session.username : null;
+    final canConfigureNavigation = isNavigationAdmin(
+      roles,
+      username: username,
+    );
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -64,6 +73,10 @@ class _SettingsBody extends ConsumerWidget {
           notifier: notifier,
           warehousesAsync: warehousesAsync,
         ),
+        if (canConfigureNavigation) ...[
+          const BudeSectionHeader('Navigation'),
+          const _NavigationSection(),
+        ],
 
         // ── Scanning ────────────────────────────────────────────────────────
         BudeSectionHeader(context.l10n.scanning),
@@ -369,7 +382,8 @@ class _DefaultsSection extends ConsumerWidget {
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.warning_amber_outlined),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               initialValue: s.reconciliationVarianceThreshold == 0.0
                   ? ''
                   : s.reconciliationVarianceThreshold.toString(),
@@ -388,6 +402,195 @@ class _DefaultsSection extends ConsumerWidget {
 // ═══════════════════════════════════════════════════════════════════════════════
 // Scanning section
 // ═══════════════════════════════════════════════════════════════════════════════
+
+/// Admin-only editor for the per-role sidebar config. Visibility is per role
+/// bucket; order is shared across roles. Saves to the backend, then refreshes
+/// branding so the new config applies immediately.
+class _NavigationSection extends ConsumerStatefulWidget {
+  const _NavigationSection();
+
+  @override
+  ConsumerState<_NavigationSection> createState() => _NavigationSectionState();
+}
+
+class _NavigationSectionState extends ConsumerState<_NavigationSection> {
+  late List<String> _order;
+  late Map<String, Set<String>> _hiddenByBucket;
+  String _bucket = navigationRoleBuckets.first;
+  bool _saving = false;
+  bool _dirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFromConfig(ref.read(currentBrandingProvider)?.navigation);
+  }
+
+  void _loadFromConfig(Map<String, dynamic>? nav) {
+    final saved = resolveNavOrder(nav) ?? const <String>[];
+    final known = allNavigationDestinations.map((d) => d.id).toList();
+    _order = [
+      ...saved.where(known.contains),
+      ...known.where((id) => !saved.contains(id)),
+    ];
+    _hiddenByBucket = {
+      for (final b in navigationRoleBuckets)
+        b: resolveNavHidden(nav, _rolesForBucket(b)),
+    };
+  }
+
+  Set<String> _rolesForBucket(String bucket) => switch (bucket) {
+        'Stock Manager' => {'Stock Manager'},
+        'Stock User' => {'Stock User'},
+        _ => <String>{},
+      };
+
+  Map<String, dynamic> _toConfig() => {
+        'order': _order,
+        'buckets': {
+          for (final b in navigationRoleBuckets)
+            b: {'hidden': _hiddenByBucket[b]!.toList()..sort()},
+        },
+      };
+
+  void _toggle(String id, bool visible) {
+    setState(() {
+      final set = _hiddenByBucket[_bucket]!;
+      if (visible) {
+        set.remove(id);
+      } else {
+        set.add(id);
+      }
+      _dirty = true;
+    });
+  }
+
+  void _reorder(int oldIndex, int newIndex) {
+    // onReorderItem already adjusts newIndex for the removed item.
+    setState(() {
+      final id = _order.removeAt(oldIndex);
+      _order.insert(newIndex, id);
+      _dirty = true;
+    });
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await ref.read(navigationConfigRemoteProvider).save(_toConfig());
+      await ref.read(tenantNotifierProvider.notifier).refreshBranding();
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _dirty = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Navigation saved.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Save failed: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hidden = _hiddenByBucket[_bucket]!;
+
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            child: Text(
+              'Order is shared across roles; visibility is per role.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: SegmentedButton<String>(
+              segments: [
+                for (final b in navigationRoleBuckets)
+                  ButtonSegment(value: b, label: Text(b)),
+              ],
+              selected: {_bucket},
+              showSelectedIcon: false,
+              onSelectionChanged: (v) => setState(() => _bucket = v.first),
+            ),
+          ),
+          const Divider(height: 0),
+          ReorderableListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            onReorderItem: _reorder,
+            children: [
+              for (var i = 0; i < _order.length; i++)
+                _buildRow(_order[i], i, hidden),
+            ],
+          ),
+          const Divider(height: 0),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Row(
+              children: [
+                TextButton.icon(
+                  icon: const Icon(Icons.restore),
+                  label: const Text('Show all'),
+                  onPressed: hidden.isEmpty
+                      ? null
+                      : () => setState(() {
+                            hidden.clear();
+                            _dirty = true;
+                          }),
+                ),
+                const Spacer(),
+                FilledButton.icon(
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined),
+                  label: const Text('Save'),
+                  onPressed: (_dirty && !_saving) ? _save : null,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRow(String id, int index, Set<String> hidden) {
+    final dest = allNavigationDestinations.firstWhere((d) => d.id == id);
+    final visible = dest.mandatory || !hidden.contains(id);
+    return ListTile(
+      key: ValueKey(id),
+      contentPadding: const EdgeInsets.only(left: 16, right: 8),
+      leading: Switch(
+        value: visible,
+        onChanged: dest.mandatory ? null : (v) => _toggle(id, v),
+      ),
+      title: Text(dest.label),
+      subtitle: Text(dest.route),
+      trailing: ReorderableDragStartListener(
+        index: index,
+        child: const Icon(Icons.drag_handle),
+      ),
+    );
+  }
+}
 
 class _ScanningSection extends ConsumerWidget {
   final dynamic settings;
@@ -547,8 +750,7 @@ class _AccountSection extends ConsumerWidget {
             child: FilledButton.tonalIcon(
               icon: const Icon(Icons.logout),
               label: Text(context.l10n.signOut),
-              onPressed: () =>
-                  ref.read(authNotifierProvider.notifier).logout(),
+              onPressed: () => ref.read(authNotifierProvider.notifier).logout(),
             ),
           ),
           Padding(

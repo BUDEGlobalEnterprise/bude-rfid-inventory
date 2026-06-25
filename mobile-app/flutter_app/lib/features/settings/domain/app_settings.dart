@@ -89,8 +89,8 @@ class AppSettings extends Equatable {
       activeCompany: activeCompany == _sentinel
           ? this.activeCompany
           : activeCompany as String?,
-      reconciliationVarianceThreshold:
-          reconciliationVarianceThreshold ?? this.reconciliationVarianceThreshold,
+      reconciliationVarianceThreshold: reconciliationVarianceThreshold ??
+          this.reconciliationVarianceThreshold,
       scanSound: scanSound ?? this.scanSound,
       scanVibration: scanVibration ?? this.scanVibration,
       continuousScanMode: continuousScanMode ?? this.continuousScanMode,

@@ -7,13 +7,16 @@ import '../../../core/ui/empty_state_view.dart';
 import '../../../core/ui/error_banner.dart';
 import '../../../core/ui/operational_components.dart';
 import '../../../core/utils/locale_ext.dart';
+import '../../inventory/domain/entities/item.dart';
 import '../../scan_session/domain/scanned_item.dart';
 import '../../settings/presentation/providers/settings_notifier.dart';
 import '../domain/receipt_draft.dart';
 import 'providers/receipt_providers.dart';
 
 class ReceiptScreen extends ConsumerWidget {
-  const ReceiptScreen({super.key});
+  final Item? initialItem;
+
+  const ReceiptScreen({super.key, this.initialItem});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,6 +35,7 @@ class ReceiptScreen extends ConsumerWidget {
           draft: draft,
           warehouses: warehouses,
           poAsync: poAsync,
+          initialItem: initialItem,
         ),
       ),
       bottomNavigationBar: draft.lines.isEmpty
@@ -78,11 +82,13 @@ class _ReceiptBody extends ConsumerStatefulWidget {
   final ReceiptDraft draft;
   final List<String> warehouses;
   final AsyncValue<List<String>> poAsync;
+  final Item? initialItem;
 
   const _ReceiptBody({
     required this.draft,
     required this.warehouses,
     required this.poAsync,
+    required this.initialItem,
   });
 
   @override
@@ -90,11 +96,77 @@ class _ReceiptBody extends ConsumerStatefulWidget {
 }
 
 class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
+  bool _seedAttempted = false;
+  bool _defaultsAttempted = false;
+  bool _initialItemAlreadyInDraft = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _seedInitialItem());
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReceiptBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialItem?.itemCode != widget.initialItem?.itemCode) {
+      _seedAttempted = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _seedInitialItem());
+    }
+  }
+
+  void _seedInitialItem() {
+    final item = widget.initialItem;
+    if (!mounted || item == null || _seedAttempted) return;
+
+    final draft = ref.read(receiptDraftProvider);
+    final exists = draft.lines.any((line) => line.itemCode == item.itemCode);
+    _seedAttempted = true;
+    _initialItemAlreadyInDraft = exists;
+
+    if (!exists) {
+      ref.read(receiptDraftProvider.notifier).addLineIfAbsent(
+            ReceiptLine(
+              itemCode: item.itemCode,
+              itemName: item.itemName,
+              qty: 1,
+            ),
+          );
+    } else {
+      setState(() {});
+    }
+  }
+
+  void _applyWarehouseDefaults() {
+    if (!mounted || _defaultsAttempted) return;
+
+    final settings = ref.read(settingsNotifierProvider);
+    final draft = ref.read(receiptDraftProvider);
+    final defaultTarget = settings.defaultTargetWarehouse;
+    if (draft.targetWarehouse != null ||
+        defaultTarget == null ||
+        !widget.warehouses.contains(defaultTarget)) {
+      return;
+    }
+    _defaultsAttempted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || ref.read(receiptDraftProvider).targetWarehouse != null) {
+        return;
+      }
+      ref.read(receiptDraftProvider.notifier).setTarget(defaultTarget);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.watch(settingsNotifierProvider);
+    _applyWarehouseDefaults();
     final notifier = ref.read(receiptDraftProvider.notifier);
     final totalQty =
         widget.draft.lines.fold<double>(0, (sum, line) => sum + line.qty);
+    final seededItemCode = widget.initialItem?.itemCode;
+    final seededItemInDraft = seededItemCode != null &&
+        widget.draft.lines.any((line) => line.itemCode == seededItemCode);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -134,6 +206,33 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
                   ? Theme.of(context).colorScheme.secondary
                   : Theme.of(context).colorScheme.tertiary,
             ),
+            if (widget.draft.targetWarehouse == null)
+              BudeStatusChip(
+                label: context.l10n.needsTarget,
+                icon: Icons.move_to_inbox_outlined,
+                color: Theme.of(context).colorScheme.tertiary,
+              ),
+            if (widget.draft.lines.isEmpty)
+              BudeStatusChip(
+                label: context.l10n.needsItems,
+                icon: Icons.inventory_2_outlined,
+                color: Theme.of(context).colorScheme.tertiary,
+              ),
+            BudeStatusChip(
+              label: context.l10n.poOptional,
+              icon: Icons.assignment_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            if (seededItemInDraft)
+              BudeStatusChip(
+                label: _initialItemAlreadyInDraft
+                    ? context.l10n.alreadyInDraft(widget.initialItem!.itemCode)
+                    : context.l10n.itemAddedToDraft(
+                        widget.initialItem!.itemCode,
+                      ),
+                icon: Icons.add_task,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
           ],
         ),
         const SizedBox(height: 16),

@@ -38,7 +38,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
     final prefs = await SharedPreferences.getInstance();
     final url = await _secure.read(key: _apiUrlKey);
 
-    final themeModeIndex = prefs.getInt(_themeModeKey) ?? ThemeMode.system.index;
+    final themeModeIndex =
+        prefs.getInt(_themeModeKey) ?? ThemeMode.system.index;
     final locale = prefs.getString(_localeKey);
     final highContrast = prefs.getBool(_highContrastKey) ?? false;
     final textScale = prefs.getDouble(_textScaleKey) ?? 1.0;
@@ -58,7 +59,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
 
     return AppSettings(
       apiBaseUrl: url,
-      themeMode: ThemeMode.values[themeModeIndex.clamp(0, ThemeMode.values.length - 1)],
+      themeMode: ThemeMode
+          .values[themeModeIndex.clamp(0, ThemeMode.values.length - 1)],
       locale: locale,
       highContrast: highContrast,
       textScaleFactor: textScale,
@@ -114,7 +116,9 @@ class SettingsRepositoryImpl implements SettingsRepository {
       await prefs.remove(_activeCompanyKey);
     }
     await prefs.setDouble(
-        _varianceThresholdKey, settings.reconciliationVarianceThreshold,);
+      _varianceThresholdKey,
+      settings.reconciliationVarianceThreshold,
+    );
     await prefs.setBool(_scanSoundKey, settings.scanSound);
     await prefs.setBool(_scanVibKey, settings.scanVibration);
     await prefs.setBool(_continuousScanKey, settings.continuousScanMode);

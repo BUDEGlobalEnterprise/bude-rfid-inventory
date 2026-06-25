@@ -81,9 +81,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     required String? itemGroup,
     required bool inStock,
   }) =>
-      _persist(state.copyWith(
-        lastSearchWarehouse: warehouse,
-        lastSearchItemGroup: itemGroup,
-        lastSearchInStock: inStock,
-      ),);
+      _persist(
+        state.copyWith(
+          lastSearchWarehouse: warehouse,
+          lastSearchItemGroup: itemGroup,
+          lastSearchInStock: inStock,
+        ),
+      );
 }

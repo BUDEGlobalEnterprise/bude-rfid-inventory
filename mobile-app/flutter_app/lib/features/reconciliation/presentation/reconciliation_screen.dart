@@ -7,13 +7,16 @@ import '../../../core/sync/providers.dart';
 import '../../../core/ui/empty_state_view.dart';
 import '../../../core/ui/operational_components.dart';
 import '../../../core/utils/locale_ext.dart';
+import '../../inventory/domain/entities/item.dart';
 import '../../scan_session/domain/scanned_item.dart';
 import '../../settings/presentation/providers/settings_notifier.dart';
 import '../domain/reconciliation_draft.dart';
 import 'providers/reconciliation_providers.dart';
 
 class ReconciliationScreen extends ConsumerWidget {
-  const ReconciliationScreen({super.key});
+  final Item? initialItem;
+
+  const ReconciliationScreen({super.key, this.initialItem});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,7 +33,11 @@ class ReconciliationScreen extends ConsumerWidget {
             child: Text(context.l10n.failedToLoadWarehouses(e.toString())),
           ),
         ),
-        data: (warehouses) => _Body(draft: draft, warehouses: warehouses),
+        data: (warehouses) => _Body(
+          draft: draft,
+          warehouses: warehouses,
+          initialItem: initialItem,
+        ),
       ),
       bottomNavigationBar: draft.lines.isEmpty
           ? null
@@ -91,21 +98,93 @@ class ReconciliationScreen extends ConsumerWidget {
 class _Body extends ConsumerStatefulWidget {
   final ReconciliationDraft draft;
   final List<String> warehouses;
+  final Item? initialItem;
 
-  const _Body({required this.draft, required this.warehouses});
+  const _Body({
+    required this.draft,
+    required this.warehouses,
+    required this.initialItem,
+  });
 
   @override
   ConsumerState<_Body> createState() => _BodyState();
 }
 
 class _BodyState extends ConsumerState<_Body> {
+  bool _defaultsAttempted = false;
+  bool _seedAttempted = false;
+  bool _initialItemAlreadyInDraft = false;
+
+  @override
+  void didUpdateWidget(covariant _Body oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialItem?.itemCode != widget.initialItem?.itemCode) {
+      _seedAttempted = false;
+      _initialItemAlreadyInDraft = false;
+    }
+  }
+
+  void _maybeSeedInitialItem() {
+    final item = widget.initialItem;
+    if (item == null || widget.draft.warehouse == null || _seedAttempted) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _seedAttempted) return;
+      final draft = ref.read(reconciliationDraftProvider);
+      if (draft.warehouse == null) return;
+
+      final exists = draft.lines.any((line) => line.itemCode == item.itemCode);
+      _seedAttempted = true;
+      _initialItemAlreadyInDraft = exists;
+
+      if (!exists) {
+        ref.read(reconciliationDraftProvider.notifier).addLineIfAbsent(
+              CountLine(
+                itemCode: item.itemCode,
+                itemName: item.itemName,
+                countedQty: 1,
+              ),
+            );
+      } else {
+        setState(() {});
+      }
+    });
+  }
+
+  void _maybeApplyWarehouseDefault() {
+    if (!mounted || _defaultsAttempted) return;
+
+    final draft = ref.read(reconciliationDraftProvider);
+    final defaultWarehouse =
+        ref.read(settingsNotifierProvider).defaultSourceWarehouse;
+    if (draft.warehouse != null ||
+        defaultWarehouse == null ||
+        !widget.warehouses.contains(defaultWarehouse)) {
+      return;
+    }
+    _defaultsAttempted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(reconciliationDraftProvider.notifier).setWarehouse(
+            defaultWarehouse,
+          );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.watch(settingsNotifierProvider);
+    _maybeApplyWarehouseDefault();
+    _maybeSeedInitialItem();
     final notifier = ref.read(reconciliationDraftProvider.notifier);
     final totalCounted = widget.draft.lines.fold<double>(
       0,
       (sum, line) => sum + line.countedQty,
     );
+    final seededItemCode = widget.initialItem?.itemCode;
+    final seededItemInDraft = seededItemCode != null &&
+        widget.draft.lines.any((line) => line.itemCode == seededItemCode);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -136,6 +215,36 @@ class _BodyState extends ConsumerState<_Body> {
                   ? Theme.of(context).colorScheme.secondary
                   : Theme.of(context).colorScheme.tertiary,
             ),
+            if (widget.draft.warehouse == null)
+              BudeStatusChip(
+                label: context.l10n.needsWarehouse,
+                icon: Icons.warehouse_outlined,
+                color: Theme.of(context).colorScheme.tertiary,
+              ),
+            if (widget.draft.lines.isEmpty)
+              BudeStatusChip(
+                label: context.l10n.needsItems,
+                icon: Icons.inventory_2_outlined,
+                color: Theme.of(context).colorScheme.tertiary,
+              ),
+            if (widget.initialItem != null && widget.draft.warehouse == null)
+              BudeStatusChip(
+                label: context.l10n.pickWarehouseToCountItem(
+                  widget.initialItem!.itemCode,
+                ),
+                icon: Icons.add_location_alt_outlined,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            if (seededItemInDraft)
+              BudeStatusChip(
+                label: _initialItemAlreadyInDraft
+                    ? context.l10n.alreadyInDraft(widget.initialItem!.itemCode)
+                    : context.l10n.itemAddedToDraft(
+                        widget.initialItem!.itemCode,
+                      ),
+                icon: Icons.add_task,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
           ],
         ),
         const SizedBox(height: 16),

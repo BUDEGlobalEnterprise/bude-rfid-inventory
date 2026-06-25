@@ -8,6 +8,7 @@ import '../../features/barcode/presentation/scanner_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/inventory/presentation/item_detail_screen.dart';
 import '../../features/inventory/presentation/item_search_screen.dart';
+import '../../features/inventory/domain/entities/item.dart';
 import '../../features/lookup/presentation/lookup_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/onboarding/presentation/company_setup_screen.dart';
@@ -35,6 +36,7 @@ import '../../features/assets/presentation/asset_repair_screen.dart';
 import '../../features/warehouse/presentation/warehouse_detail_screen.dart';
 import '../../features/warehouse/presentation/warehouse_list_screen.dart';
 import '../ui/app_shell.dart';
+import '../ui/navigation_config.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
@@ -67,6 +69,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             location == '/onboarding' ||
             location == '/login') {
           return '/';
+        }
+        // Role guard: manager-only routes are off-limits to non-managers even
+        // by direct URL. The shell hides the nav items; this stops deep links.
+        final roles = ref.read(rolesProvider);
+        final isManager =
+            isNavigationAdmin(roles) || roles.contains('Stock Manager');
+        if (!isManager) {
+          final blocked = allNavigationDestinations
+                  .where((d) => d.managerOnly)
+                  .any((d) => location.startsWith(d.route)) ||
+              location.startsWith('/warehouse/');
+          if (blocked) return '/';
         }
         return null;
       }
@@ -110,15 +124,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/transfer',
-        builder: (context, state) => const TransferScreen(),
+        builder: (context, state) => TransferScreen(
+          initialItem: state.extra is Item ? state.extra! as Item : null,
+        ),
       ),
       GoRoute(
         path: '/receipt',
-        builder: (context, state) => const ReceiptScreen(),
+        builder: (context, state) => ReceiptScreen(
+          initialItem: state.extra is Item ? state.extra! as Item : null,
+        ),
       ),
       GoRoute(
         path: '/reconcile',
-        builder: (context, state) => const ReconciliationScreen(),
+        builder: (context, state) => ReconciliationScreen(
+          initialItem: state.extra is Item ? state.extra! as Item : null,
+        ),
       ),
       GoRoute(
         path: '/reconcile/approve',

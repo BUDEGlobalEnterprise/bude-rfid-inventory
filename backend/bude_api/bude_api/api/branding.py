@@ -8,6 +8,7 @@ info screen. Reads only standard ERPNext DocTypes (Company, Address) plus
 the Frappe version helper — no custom DocTypes.
 """
 
+import json
 from typing import Optional
 
 try:
@@ -19,6 +20,9 @@ except ImportError:
 
 from .. import __version__
 from ..utils.response import success
+
+# Frappe default key holding the site-wide per-role navigation config JSON.
+NAV_CONFIG_KEY = "bude_nav_config"
 
 
 def _whitelist(allow_guest: bool = False):
@@ -51,7 +55,21 @@ def get() -> dict:
         "erpnext_version": _resolve_erpnext_version(),
         "bude_api_version": __version__,
         "feature_flags": _resolve_feature_flags(),
+        "navigation": _resolve_navigation(),
     })
+
+
+def _resolve_navigation() -> Optional[dict]:
+    """Return the admin-configured per-role navigation config, or None."""
+    if frappe is None:
+        return None
+    raw = frappe.db.get_default(NAV_CONFIG_KEY)
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except (ValueError, TypeError):
+        return None
 
 
 def _resolve_company_name() -> Optional[str]:

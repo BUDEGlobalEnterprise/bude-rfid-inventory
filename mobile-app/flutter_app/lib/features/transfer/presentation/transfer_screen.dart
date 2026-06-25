@@ -7,13 +7,16 @@ import '../../../core/ui/empty_state_view.dart';
 import '../../../core/ui/error_banner.dart';
 import '../../../core/ui/operational_components.dart';
 import '../../../core/utils/locale_ext.dart';
+import '../../inventory/domain/entities/item.dart';
 import '../../scan_session/domain/scanned_item.dart';
 import '../../settings/presentation/providers/settings_notifier.dart';
 import '../domain/transfer_draft.dart';
 import 'providers/transfer_providers.dart';
 
 class TransferScreen extends ConsumerWidget {
-  const TransferScreen({super.key});
+  final Item? initialItem;
+
+  const TransferScreen({super.key, this.initialItem});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,6 +33,7 @@ class TransferScreen extends ConsumerWidget {
         data: (warehouses) => _TransferBody(
           draft: draft,
           warehouses: warehouses,
+          initialItem: initialItem,
         ),
       ),
       bottomNavigationBar: draft.lines.isEmpty
@@ -76,20 +80,101 @@ void unawaited(Future<void> _) {}
 class _TransferBody extends ConsumerStatefulWidget {
   final TransferDraft draft;
   final List<String> warehouses;
-  const _TransferBody({required this.draft, required this.warehouses});
+  final Item? initialItem;
+  const _TransferBody({
+    required this.draft,
+    required this.warehouses,
+    required this.initialItem,
+  });
 
   @override
   ConsumerState<_TransferBody> createState() => _TransferBodyState();
 }
 
 class _TransferBodyState extends ConsumerState<_TransferBody> {
+  bool _seedAttempted = false;
+  bool _defaultsAttempted = false;
+  bool _initialItemAlreadyInDraft = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _seedInitialItem());
+  }
+
+  @override
+  void didUpdateWidget(covariant _TransferBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialItem?.itemCode != widget.initialItem?.itemCode) {
+      _seedAttempted = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _seedInitialItem());
+    }
+  }
+
+  void _seedInitialItem() {
+    final item = widget.initialItem;
+    if (!mounted || item == null || _seedAttempted) return;
+
+    final draft = ref.read(transferDraftProvider);
+    final exists = draft.lines.any((line) => line.itemCode == item.itemCode);
+    _seedAttempted = true;
+    _initialItemAlreadyInDraft = exists;
+
+    if (!exists) {
+      ref.read(transferDraftProvider.notifier).addLineIfAbsent(
+            TransferLine(
+              itemCode: item.itemCode,
+              itemName: item.itemName,
+              qty: 1,
+            ),
+          );
+    } else {
+      setState(() {});
+    }
+  }
+
+  void _applyWarehouseDefaults() {
+    if (!mounted || _defaultsAttempted) return;
+
+    final settings = ref.read(settingsNotifierProvider);
+    final notifier = ref.read(transferDraftProvider.notifier);
+    final warehouses = widget.warehouses.toSet();
+    final defaultSource = settings.defaultSourceWarehouse;
+    final defaultTarget = settings.defaultTargetWarehouse;
+    if (defaultSource == null && defaultTarget == null) return;
+
+    _defaultsAttempted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final latest = ref.read(transferDraftProvider);
+      if (latest.sourceWarehouse == null &&
+          defaultSource != null &&
+          warehouses.contains(defaultSource)) {
+        notifier.setSource(defaultSource);
+      }
+
+      final effectiveSource = latest.sourceWarehouse ?? defaultSource;
+      if (latest.targetWarehouse == null &&
+          defaultTarget != null &&
+          warehouses.contains(defaultTarget) &&
+          defaultTarget != effectiveSource) {
+        notifier.setTarget(defaultTarget);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.watch(settingsNotifierProvider);
+    _applyWarehouseDefaults();
     final notifier = ref.read(transferDraftProvider.notifier);
     final sameWarehouseError = widget.draft.sourceWarehouse != null &&
         widget.draft.sourceWarehouse == widget.draft.targetWarehouse;
     final totalQty =
         widget.draft.lines.fold<double>(0, (sum, line) => sum + line.qty);
+    final seededItemCode = widget.initialItem?.itemCode;
+    final seededItemInDraft = seededItemCode != null &&
+        widget.draft.lines.any((line) => line.itemCode == seededItemCode);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -120,6 +205,34 @@ class _TransferBodyState extends ConsumerState<_TransferBody> {
                   ? Theme.of(context).colorScheme.secondary
                   : Theme.of(context).colorScheme.tertiary,
             ),
+            if (widget.draft.sourceWarehouse == null)
+              BudeStatusChip(
+                label: context.l10n.needsSource,
+                icon: Icons.outbox_outlined,
+                color: Theme.of(context).colorScheme.tertiary,
+              ),
+            if (widget.draft.targetWarehouse == null)
+              BudeStatusChip(
+                label: context.l10n.needsTarget,
+                icon: Icons.move_to_inbox_outlined,
+                color: Theme.of(context).colorScheme.tertiary,
+              ),
+            if (widget.draft.lines.isEmpty)
+              BudeStatusChip(
+                label: context.l10n.needsItems,
+                icon: Icons.inventory_2_outlined,
+                color: Theme.of(context).colorScheme.tertiary,
+              ),
+            if (seededItemInDraft)
+              BudeStatusChip(
+                label: _initialItemAlreadyInDraft
+                    ? context.l10n.alreadyInDraft(widget.initialItem!.itemCode)
+                    : context.l10n.itemAddedToDraft(
+                        widget.initialItem!.itemCode,
+                      ),
+                icon: Icons.add_task,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
           ],
         ),
         const SizedBox(height: 16),

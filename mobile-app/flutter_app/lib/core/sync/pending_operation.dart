@@ -34,6 +34,7 @@ class PendingOperation extends Equatable {
   });
 
   PendingOperation copyWith({
+    Map<String, dynamic>? payload,
     OpStatus? status,
     int? attempts,
     String? lastError,
@@ -45,7 +46,7 @@ class PendingOperation extends Equatable {
     return PendingOperation(
       id: id,
       type: type,
-      payload: payload,
+      payload: payload ?? this.payload,
       createdAt: createdAt,
       status: status ?? this.status,
       attempts: attempts ?? this.attempts,

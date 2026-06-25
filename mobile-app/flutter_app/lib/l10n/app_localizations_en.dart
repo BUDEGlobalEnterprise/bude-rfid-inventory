@@ -731,4 +731,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noDefaultWarehouse => 'No default';
+
+  @override
+  String get itemActions => 'Item actions';
+
+  @override
+  String itemAddedToDraft(String item) {
+    return 'Added $item to draft';
+  }
+
+  @override
+  String alreadyInDraft(String item) {
+    return '$item already in draft';
+  }
+
+  @override
+  String pickWarehouseToCountItem(String item) {
+    return 'Pick warehouse to count $item';
+  }
+
+  @override
+  String get needsSource => 'Needs source';
+
+  @override
+  String get needsTarget => 'Needs target';
+
+  @override
+  String get needsItems => 'Needs items';
+
+  @override
+  String get poOptional => 'PO optional';
 }

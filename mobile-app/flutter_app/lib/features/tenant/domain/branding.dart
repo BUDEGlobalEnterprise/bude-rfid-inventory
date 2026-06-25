@@ -8,6 +8,10 @@ class Branding extends Equatable {
   final String? budeApiVersion;
   final Map<String, bool> featureFlags;
 
+  /// Admin-configured per-role navigation config: `{order: [...],
+  /// buckets: {role: {hidden: [...]}}}`. Null when never configured.
+  final Map<String, dynamic>? navigation;
+
   const Branding({
     this.companyName,
     this.logoPath,
@@ -15,6 +19,7 @@ class Branding extends Equatable {
     this.erpnextVersion,
     this.budeApiVersion,
     this.featureFlags = const {},
+    this.navigation,
   });
 
   /// Absolute URL for the logo given the active ERP base URL, or null if no
@@ -37,6 +42,7 @@ class Branding extends Equatable {
         'erpnext_version': erpnextVersion,
         'bude_api_version': budeApiVersion,
         'feature_flags': featureFlags,
+        'navigation': navigation,
       };
 
   static Branding fromJson(Map<String, dynamic> json) {
@@ -47,6 +53,7 @@ class Branding extends Equatable {
         if (k is String && v is bool) flags[k] = v;
       });
     }
+    final rawNav = json['navigation'];
     return Branding(
       companyName: json['company_name'] as String?,
       logoPath: json['company_logo'] as String?,
@@ -54,10 +61,18 @@ class Branding extends Equatable {
       erpnextVersion: json['erpnext_version'] as String?,
       budeApiVersion: json['bude_api_version'] as String?,
       featureFlags: flags,
+      navigation: rawNav is Map ? rawNav.cast<String, dynamic>() : null,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [companyName, logoPath, address, erpnextVersion, budeApiVersion, featureFlags];
+  List<Object?> get props => [
+        companyName,
+        logoPath,
+        address,
+        erpnextVersion,
+        budeApiVersion,
+        featureFlags,
+        navigation,
+      ];
 }
