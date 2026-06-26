@@ -100,6 +100,7 @@ Activate real vendor SDKs behind the existing HAL interfaces. Each vendor is an 
 | **Urovo** | `UrovoBarcodeAdapter` + `UrovoRfidAdapter` | DT40 RFID, i9000s | 🔲 |
 | **Honeywell** | `HoneywellBarcodeAdapter` | CT40, EDA52, EDA61k | 🔲 |
 | **Generic UHF** | `GenericUhfRfidAdapter` | BLE / USB / LLRP readers | 🔲 |
+| **Demo RFID** | `DemoRfidAdapter` | No-reader development / demo mode | ✅ |
 
 **Deliverables per vendor**
 - Replace stub `throw VendorSdkUnavailableException()` bodies with real SDK calls
@@ -112,7 +113,8 @@ Activate real vendor SDKs behind the existing HAL interfaces. Each vendor is an 
 - Bundled `DeviceAPI_ver20251103_release.aar` into `mobile-app/flutter_app/android/app/libs/`.
 - Added Android method/event channels for Chainway barcode and UHF RFID.
 - Replaced Chainway Dart stubs with real HAL adapters.
-- Still requires validation on a C72/C66/R6 unit before marking complete.
+- Still requires validation on a C72/C66/R6 unit before marking complete; this is blocked until reader hardware is available.
+- Added no-reader `DemoRfidAdapter` so EPC lookup and future inventory flows can be tested without physical RFID hardware.
 
 ---
 
@@ -197,6 +199,8 @@ Every release candidate must pass these flows on a clean install and on an exist
 | **Asset operations** | Find asset, move asset, create repair, view maintenance state | Unknown asset, failed queue op, offline repair/movement draft | PLANNED |
 | **Audit + reporting** | Review submitted/pending/failed ops, export CSV, open ERP references | Missing ERP link, no file permission, empty report states | PLANNED |
 | **Hardware** | Camera fallback, Chainway barcode, Chainway UHF read/write/inventory | SDK missing, device unsupported, reader busy, permission failure | IN PROGRESS |
+
+Note: physical RFID validation is blocked until a reader is available. Until then, no-reader demo mode covers lookup and adapter-level tests.
 
 ### Stability Workstream
 

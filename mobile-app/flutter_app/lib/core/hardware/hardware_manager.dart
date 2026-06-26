@@ -12,7 +12,8 @@ import 'hardware_registry.dart';
 ///
 /// Resolution order for both adapter kinds:
 ///   1. A registered [HardwarePlugin] whose `matches(deviceInfo)` returns true.
-///   2. For barcode only: the [fallbackBarcode] adapter (typically camera).
+///   2. The optional fallback adapter for that kind (camera for barcode,
+///      demo RFID in non-production builds).
 ///   3. Otherwise: null.
 class HardwareManager {
   final HardwareRegistry registry;
@@ -22,6 +23,7 @@ class HardwareManager {
   /// Always-available barcode adapter. Camera scanner is wired in
   /// `main.dart` so that even unknown devices can scan via the rear camera.
   final BarcodeAdapter? fallbackBarcode;
+  final RfidAdapter? fallbackRfid;
 
   DeviceInfo? _deviceInfo;
   BarcodeAdapter? _barcode;
@@ -33,6 +35,7 @@ class HardwareManager {
     required this.probe,
     this.deviceAdapter,
     this.fallbackBarcode,
+    this.fallbackRfid,
   });
 
   DeviceInfo? get deviceInfo => _deviceInfo;
@@ -52,7 +55,7 @@ class HardwareManager {
     final plugin = registry.findFor(info);
 
     _barcode = plugin?.barcodeFactory?.call() ?? fallbackBarcode;
-    _rfid = plugin?.rfidFactory?.call();
+    _rfid = plugin?.rfidFactory?.call() ?? fallbackRfid;
 
     _initialized = true;
   }

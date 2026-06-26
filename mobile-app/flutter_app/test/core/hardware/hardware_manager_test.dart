@@ -5,7 +5,9 @@ import 'package:bude_inventory/core/hardware/entities/device_info.dart';
 import 'package:bude_inventory/core/hardware/entities/scan_event.dart';
 import 'package:bude_inventory/core/hardware/hardware_manager.dart';
 import 'package:bude_inventory/core/hardware/hardware_registry.dart';
+import 'package:bude_inventory/core/hardware/providers.dart';
 import 'package:bude_inventory/core/hardware/vendors/chainway/chainway_adapters.dart';
+import 'package:bude_inventory/core/hardware/vendors/demo/demo_rfid_adapter.dart';
 import 'package:bude_inventory/core/hardware/vendors/registered_plugins.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -31,7 +33,9 @@ class _FakeBarcodeAdapter implements BarcodeAdapter {
   @override
   Future<void> stopScan() async {}
   @override
-  Future<ScanEvent?> scanSingle({Duration timeout = const Duration(seconds: 30)}) async => null;
+  Future<ScanEvent?> scanSingle(
+          {Duration timeout = const Duration(seconds: 30)}) async =>
+      null;
   @override
   Future<void> dispose() async {
     disposed = true;
@@ -59,6 +63,45 @@ void main() {
     expect(manager.barcode, same(fallback));
     expect(manager.rfid, isNull);
     expect(manager.deviceInfo!.manufacturer, 'unknown');
+  });
+
+  test('initialize uses fallback RFID when no real RFID is selected', () async {
+    final manager = HardwareManager(
+      registry: HardwareRegistry.instance,
+      probe: const _FixedProbe(
+        DeviceInfo(manufacturer: 'unknown', model: 'unknown'),
+      ),
+      fallbackRfid: DemoRfidAdapter(),
+    );
+
+    await manager.initialize();
+
+    expect(manager.rfid, isA<DemoRfidAdapter>());
+    expect(manager.rfid!.vendor, 'demo');
+  });
+
+  test('bootstrap can disable demo RFID for production behavior', () async {
+    final manager = await bootstrapHardwareManager(
+      probe: const _FixedProbe(
+        DeviceInfo(manufacturer: 'unknown', model: 'unknown'),
+      ),
+      enableDemoRfid: false,
+    );
+
+    expect(manager.rfid, isNull);
+    await manager.dispose();
+  });
+
+  test('bootstrap can enable demo RFID for development behavior', () async {
+    final manager = await bootstrapHardwareManager(
+      probe: const _FixedProbe(
+        DeviceInfo(manufacturer: 'unknown', model: 'unknown'),
+      ),
+      enableDemoRfid: true,
+    );
+
+    expect(manager.rfid, isA<DemoRfidAdapter>());
+    await manager.dispose();
   });
 
   test('initialize picks matching vendor plugin over fallback', () async {
@@ -187,8 +230,7 @@ void main() {
     );
   });
 
-  test('Generic UHF plugin matches devices with BLE RFID capability',
-      () async {
+  test('Generic UHF plugin matches devices with BLE RFID capability', () async {
     registerBuiltInHardwarePlugins();
     final manager = HardwareManager(
       registry: HardwareRegistry.instance,

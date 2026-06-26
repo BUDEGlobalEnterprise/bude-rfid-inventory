@@ -33,7 +33,7 @@ A warehouse operator can scan items, move stock between locations, receive goods
 | 4 | **Enterprise Foundation** — Material 3 theming, i18n EN/AR RTL, settings | ✅ Live | *Settings* screen |
 | 5 | **Operational Intelligence** — item ledger history, warehouse stock overview, bulk scan sessions | ✅ Live | *Warehouses*, *Item Detail* |
 | 6 | **Analytics & Reporting** — stock aging, variance dashboard, transfer throughput, CSV export | ✅ Live | *Analytics* screen |
-| 7 | **RFID Hardware Integration** — Chainway, Zebra, Urovo, Honeywell, Generic UHF | 🔲 Planned | Phase 4 |
+| 7 | **RFID Hardware Integration** — no-reader demo mode live; real readers pending hardware | 🔄 In Progress | Phase 4 |
 | 8 | **Role-Based Access & Multi-Entity** — role-scoped screens, multi-company, biometric | 🔲 Planned | Phase 6 |
 | 9 | **Additional ERP Connectors** — Zoho, SAP B1, NetSuite, Dynamics 365 | 💡 Idea | Phase 7 |
 | 10 | **Power-User Experience** — command palette, print labels, batch RFID count, push notifications | 💡 Idea | Phase 8 |
@@ -113,7 +113,7 @@ All hardware-specific code lives in `lib/core/hardware/vendors/`. Business code 
 
 **Barcode adapters** — `BarcodeAdapter` interface with a `startScan()` stream. Camera adapter is always available (`CameraBarcodeAdapter` via `mobile_scanner`). Vendor adapters delegate to the manufacturer SDK.
 
-**RFID adapters** — `RfidAdapter` interface with a `startInventory()` stream of EPC strings. Vendor adapters are stubs today (Phase 4 will wire the real SDKs).
+**RFID adapters** — `RfidAdapter` interface with a `startInventory()` stream of EPC strings. A development/demo adapter is available when no physical reader is present; real vendor validation remains blocked until reader hardware is available.
 
 **Device probe** — `AndroidDeviceProbe` interrogates the device at launch via `bude.hardware/probe` method channel and selects the correct adapters automatically. No manual configuration needed on Chainway, Zebra, or Urovo devices.
 
@@ -124,6 +124,7 @@ All hardware-specific code lives in `lib/core/hardware/vendors/`. Business code 
 | **Urovo** | ✅ Stub | ✅ Stub | DT40 RFID, i9000s | 🔲 Real SDK — Phase 4 |
 | **Honeywell** | ✅ Stub | — | CT40, EDA52, EDA61k | 🔲 Real SDK — Phase 4 |
 | **Generic UHF** | — | ✅ Stub | BLE / USB / LLRP readers | 🔲 Real SDK — Phase 4 |
+| **Demo RFID** | — | ✅ Simulated | Dev / demo without reader | ✅ Live |
 
 ---
 

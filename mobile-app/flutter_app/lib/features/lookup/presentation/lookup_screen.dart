@@ -120,13 +120,19 @@ class _LookupScreenState extends ConsumerState<LookupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasRfid = ref.watch(rfidAdapterProvider) != null;
+    final rfid = ref.watch(rfidAdapterProvider);
+    final hasRfid = rfid != null;
+    final isDemoRfid = rfid?.vendor == 'demo';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Scan / Lookup')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (isDemoRfid) ...[
+            _DemoRfidBanner(),
+            const SizedBox(height: 12),
+          ],
           TextField(
             controller: _epcCtrl,
             autofocus: true,
@@ -173,6 +179,34 @@ class _LookupScreenState extends ConsumerState<LookupScreen> {
           if (_match != null && !_loading)
             _ResultView(match: _match!, onBind: _bind),
         ],
+      ),
+    );
+  }
+}
+
+class _DemoRfidBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(Icons.sensors, color: scheme.onSecondaryContainer),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Demo RFID reader active. Reads use sample EPC tags.',
+                style: TextStyle(color: scheme.onSecondaryContainer),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
