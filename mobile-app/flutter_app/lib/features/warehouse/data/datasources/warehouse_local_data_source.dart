@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:hive/hive.dart';
 
 abstract class WarehouseLocalDataSource {
-  void putList(List<String> warehouses);
-  List<String>? getList();
+  void putList(List<String> warehouses, {String? company});
+  List<String>? getList({String? company});
 }
 
 class WarehouseLocalDataSourceImpl implements WarehouseLocalDataSource {
@@ -17,9 +17,9 @@ class WarehouseLocalDataSourceImpl implements WarehouseLocalDataSource {
   WarehouseLocalDataSourceImpl(this._box);
 
   @override
-  void putList(List<String> warehouses) {
+  void putList(List<String> warehouses, {String? company}) {
     _box.put(
-      _listKey,
+      _cacheKey(company),
       jsonEncode({
         'd': warehouses,
         't': DateTime.now().millisecondsSinceEpoch,
@@ -28,15 +28,22 @@ class WarehouseLocalDataSourceImpl implements WarehouseLocalDataSource {
   }
 
   @override
-  List<String>? getList() {
-    final raw = _box.get(_listKey);
+  List<String>? getList({String? company}) {
+    final key = _cacheKey(company);
+    final raw = _box.get(key);
     if (raw == null) return null;
     final j = jsonDecode(raw) as Map<String, dynamic>;
     final cachedAt = DateTime.fromMillisecondsSinceEpoch(j['t'] as int);
     if (DateTime.now().difference(cachedAt).inMinutes >= _ttlMinutes) {
-      _box.delete(_listKey);
+      _box.delete(key);
       return null;
     }
     return (j['d'] as List).cast<String>();
+  }
+
+  String _cacheKey(String? company) {
+    final scope =
+        (company == null || company.trim().isEmpty) ? 'all' : company.trim();
+    return '$_listKey.$scope';
   }
 }

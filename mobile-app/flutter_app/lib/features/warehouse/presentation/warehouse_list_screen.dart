@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/ui/empty_state_view.dart';
 import '../../../core/ui/loading_shimmer.dart';
 import '../../../core/utils/locale_ext.dart';
+import '../../transfer/presentation/providers/transfer_providers.dart'
+    show CompanySelectionRequiredException;
 import 'providers/warehouse_providers.dart';
 
 class WarehouseListScreen extends ConsumerWidget {
@@ -18,15 +20,21 @@ class WarehouseListScreen extends ConsumerWidget {
       appBar: AppBar(title: Text(context.l10n.warehouses)),
       body: warehousesAsync.when(
         loading: () => const ShimmerList(count: 10),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              context.l10n.failedToLoadWarehouses(e.toString()),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
+        error: (e, _) => e is CompanySelectionRequiredException
+            ? EmptyStateView(
+                icon: Icons.business_outlined,
+                title: context.l10n.selectCompany,
+                subtitle: 'Select a company before viewing warehouses.',
+              )
+            : Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    context.l10n.failedToLoadWarehouses(e.toString()),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
         data: (names) => names.isEmpty
             ? EmptyStateView(
                 icon: Icons.warehouse_outlined,

@@ -16,14 +16,15 @@ class WarehouseRepositoryImpl implements WarehouseRepository {
   @override
   Future<Either<Failure, List<String>>> listWarehouses({
     int limit = 100,
+    String? company,
   }) async {
     // Cache-first: warehouse list rarely changes.
-    final cached = local.getList();
+    final cached = local.getList(company: company);
     if (cached != null) return Right(cached);
 
     try {
-      final names = await remote.listWarehouses(limit: limit);
-      local.putList(names);
+      final names = await remote.listWarehouses(limit: limit, company: company);
+      local.putList(names, company: company);
       return Right(names);
     } on NetworkException {
       return const Left(NetworkFailure('No internet connection.'));

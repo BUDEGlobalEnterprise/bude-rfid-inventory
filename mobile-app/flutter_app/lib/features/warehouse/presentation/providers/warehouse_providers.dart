@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../authentication/presentation/providers/auth_notifier.dart';
+import '../../../transfer/presentation/providers/transfer_providers.dart'
+    show operationCompanyProvider;
 import '../../../../core/sync/providers.dart';
 import '../../data/datasources/warehouse_local_data_source.dart';
 import '../../data/datasources/warehouse_remote_data_source.dart';
@@ -19,7 +21,8 @@ final warehouseRepositoryProvider = Provider<WarehouseRepository>((ref) {
 final warehouseListProvider =
     FutureProvider.autoDispose<List<String>>((ref) async {
   final repo = ref.watch(warehouseRepositoryProvider);
-  final result = await repo.listWarehouses();
+  final company = await ref.watch(operationCompanyProvider.future);
+  final result = await repo.listWarehouses(company: company);
   return result.fold(
     (failure) => throw failure,
     (names) => names,

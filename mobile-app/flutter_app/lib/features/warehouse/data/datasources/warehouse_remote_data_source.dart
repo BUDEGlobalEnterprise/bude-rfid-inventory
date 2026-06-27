@@ -4,7 +4,10 @@ import '../../../../core/errors/exceptions.dart';
 import '../models/warehouse_stock_line_model.dart';
 
 abstract class WarehouseRemoteDataSource {
-  Future<List<String>> listWarehouses({int limit = 100});
+  Future<List<String>> listWarehouses({
+    int limit = 100,
+    String? company,
+  });
   Future<List<WarehouseStockLineModel>> getStock(
     String warehouse, {
     int limit = 100,
@@ -16,11 +19,18 @@ class WarehouseRemoteDataSourceImpl implements WarehouseRemoteDataSource {
   WarehouseRemoteDataSourceImpl(this.dio);
 
   @override
-  Future<List<String>> listWarehouses({int limit = 100}) async {
+  Future<List<String>> listWarehouses({
+    int limit = 100,
+    String? company,
+  }) async {
     try {
+      final queryParameters = <String, dynamic>{'limit': limit};
+      if (company != null && company.trim().isNotEmpty) {
+        queryParameters['company'] = company.trim();
+      }
       final response = await dio.get<Map<String, dynamic>>(
         '/api/method/bude_api.api.warehouses.list',
-        queryParameters: {'limit': limit},
+        queryParameters: queryParameters,
       );
       final envelope = response.data?['message'];
       if (envelope is! Map) {

@@ -64,8 +64,17 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Future<void> setAutoLogoutMinutes(int minutes) =>
       _persist(state.copyWith(autoLogoutMinutes: minutes));
 
-  Future<void> setActiveCompany(String? name) =>
-      _persist(state.copyWith(activeCompany: name));
+  Future<void> setActiveCompany(String? name) {
+    if (state.activeCompany == name) return Future.value();
+    return _persist(
+      state.copyWith(
+        activeCompany: name,
+        defaultSourceWarehouse: null,
+        defaultTargetWarehouse: null,
+        lastSearchWarehouse: null,
+      ),
+    );
+  }
 
   Future<void> setReconciliationVarianceThreshold(double threshold) =>
       _persist(state.copyWith(reconciliationVarianceThreshold: threshold));
