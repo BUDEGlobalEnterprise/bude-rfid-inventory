@@ -31,11 +31,39 @@ def test_list_passes_disabled_filter(mock_frappe):
 
 
 @patch("bude_api.api.warehouses.frappe")
+def test_list_filters_by_company_when_given(mock_frappe):
+    mock_frappe.get_list.return_value = [{"name": "Stores - A"}]
+    result = warehouses_api.list(company="Company A")
+    assert result["ok"] is True
+    _, kwargs = mock_frappe.get_list.call_args
+    assert kwargs["filters"] == {"disabled": 0, "company": "Company A"}
+
+
+@patch("bude_api.api.warehouses.frappe")
 def test_list_respects_limit(mock_frappe):
     mock_frappe.get_list.return_value = []
     warehouses_api.list(limit=25)
     _, kwargs = mock_frappe.get_list.call_args
     assert kwargs["limit_page_length"] == 25
+
+
+@patch("bude_api.api.warehouses.frappe")
+def test_list_respects_limit_bounds(mock_frappe):
+    mock_frappe.get_list.return_value = []
+    warehouses_api.list(limit=9999)
+    _, kwargs = mock_frappe.get_list.call_args
+    assert kwargs["limit_page_length"] == 500
+
+    warehouses_api.list(limit=0)
+    _, kwargs = mock_frappe.get_list.call_args
+    assert kwargs["limit_page_length"] == 1
+
+
+@patch("bude_api.api.warehouses.frappe")
+def test_list_rejects_bad_limit(mock_frappe):
+    result = warehouses_api.list(limit="bad")
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_BAD_LIMIT"
 
 
 # ── get_stock ─────────────────────────────────────────────────────────────────
@@ -94,3 +122,53 @@ def test_get_stock_respects_limit_bounds(mock_frappe):
     warehouses_api.get_stock("Stores - X", limit=0)
     _, kwargs = mock_frappe.get_list.call_args
     assert kwargs["limit_page_length"] == 1
+
+
+def test_list_locations_requires_warehouse():
+    result = warehouses_api.list_locations("   ")
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_REQUIRED"
+
+
+@patch("bude_api.api.warehouses.frappe")
+def test_list_locations_filters_by_parent_and_company(mock_frappe):
+    mock_frappe.get_list.return_value = [
+        {"name": "Rack A - A"},
+        {"name": "Staging - A"},
+    ]
+
+    result = warehouses_api.list_locations(
+        warehouse="Stores - A",
+        company="Company A",
+        limit=25,
+    )
+
+    assert result["ok"] is True
+    assert result["data"] == ["Rack A - A", "Staging - A"]
+    _, kwargs = mock_frappe.get_list.call_args
+    assert kwargs["filters"] == {
+        "disabled": 0,
+        "parent_warehouse": "Stores - A",
+        "company": "Company A",
+    }
+    assert kwargs["limit_page_length"] == 25
+
+
+@patch("bude_api.api.warehouses.frappe")
+def test_list_locations_respects_limit_bounds(mock_frappe):
+    mock_frappe.get_list.return_value = []
+
+    warehouses_api.list_locations("Stores - X", limit=9999)
+    _, kwargs = mock_frappe.get_list.call_args
+    assert kwargs["limit_page_length"] == 500
+
+    warehouses_api.list_locations("Stores - X", limit=0)
+    _, kwargs = mock_frappe.get_list.call_args
+    assert kwargs["limit_page_length"] == 1
+
+
+@patch("bude_api.api.warehouses.frappe")
+def test_list_locations_rejects_bad_limit(mock_frappe):
+    result = warehouses_api.list_locations("Stores - X", limit="bad")
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_BAD_LIMIT"

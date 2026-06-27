@@ -54,15 +54,64 @@ def get_stock(warehouse: str, limit: int = 100) -> dict:
 
 
 @_whitelist()
-def list(limit: int = 100) -> dict:
+def list(limit: int = 100, company: str | None = None) -> dict:
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
+    try:
+        limit = max(1, min(int(limit), 500))
+    except (TypeError, ValueError):
+        return failure("limit must be an integer.", code="VALIDATION_BAD_LIMIT")
+
+    filters = {"disabled": 0}
+    company = (company or "").strip()
+    if company:
+        filters["company"] = company
+
     rows = frappe.get_list(
         "Warehouse",
-        filters={"disabled": 0},
+        filters=filters,
         fields=["name"],
         order_by="name asc",
-        limit_page_length=int(limit),
+        limit_page_length=limit,
+    )
+    return success([r["name"] for r in rows])
+
+
+@_whitelist()
+def list_locations(
+    warehouse: str,
+    limit: int = 100,
+    company: str | None = None,
+) -> dict:
+    """Return enabled child warehouses used as bin/location choices.
+
+    ERPNext represents physical sub-locations as child Warehouse records. The
+    mobile app keeps the parent warehouse selection for compatibility, then can
+    optionally submit one of these child warehouses as the effective stock
+    warehouse for the operation.
+    """
+    warehouse = (warehouse or "").strip()
+    if not warehouse:
+        return failure("warehouse is required.", code="VALIDATION_REQUIRED")
+    if frappe is None:
+        return failure("Frappe not available.", code="ENV_NO_FRAPPE")
+
+    try:
+        limit = max(1, min(int(limit), 500))
+    except (TypeError, ValueError):
+        return failure("limit must be an integer.", code="VALIDATION_BAD_LIMIT")
+
+    filters = {"disabled": 0, "parent_warehouse": warehouse}
+    company = (company or "").strip()
+    if company:
+        filters["company"] = company
+
+    rows = frappe.get_list(
+        "Warehouse",
+        filters=filters,
+        fields=["name"],
+        order_by="name asc",
+        limit_page_length=limit,
     )
     return success([r["name"] for r in rows])
