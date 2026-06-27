@@ -7,6 +7,35 @@ class _FakeValidationError(Exception):
     """Stand-in for frappe.ValidationError in unit tests (no Frappe installed)."""
 
 
+def _get_list_with_companies(
+    warehouse_companies: dict[str, str],
+    items: set[str] | None = None,
+    warehouse_parents: dict[str, str] | None = None,
+):
+    items = items or {"A"}
+    warehouse_parents = warehouse_parents or {}
+
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            filters = kwargs.get("filters", [])
+            name = filters[0][2] if filters else None
+            if name in warehouse_companies:
+                return [
+                    {
+                        "name": name,
+                        "company": warehouse_companies[name],
+                        "parent_warehouse": warehouse_parents.get(name),
+                    }
+                ]
+            return []
+        if doctype == "Item":
+            codes = kwargs.get("filters", [])[0][2]
+            return [{"item_code": code} for code in codes if code in items]
+        return []
+
+    return get_list
+
+
 def test_create_transfer_requires_source_warehouse():
     result = stock_api.create_transfer(
         items=[{"item_code": "A", "qty": 1}],
@@ -172,6 +201,120 @@ def test_create_transfer_submits_stock_entry_on_happy_path(mock_frappe):
 
 
 @patch("bude_api.api.stock.frappe")
+def test_create_transfer_rejects_cross_company_warehouses(mock_frappe):
+    mock_frappe.get_list.side_effect = _get_list_with_companies(
+        {"Src - A": "Company A", "Tgt - B": "Company B"}
+    )
+
+    result = stock_api.create_transfer(
+        items=[{"item_code": "A", "qty": 1}],
+        source_warehouse="Src - A",
+        target_warehouse="Tgt - B",
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_WAREHOUSE_COMPANY_MISMATCH"
+    assert "Company A" in result["message"]
+    assert "Company B" in result["message"]
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_transfer_rejects_requested_company_mismatch(mock_frappe):
+    mock_frappe.get_list.side_effect = _get_list_with_companies(
+        {"Src - A": "Company A", "Tgt - A": "Company A"}
+    )
+
+    result = stock_api.create_transfer(
+        items=[{"item_code": "A", "qty": 1}],
+        source_warehouse="Src - A",
+        target_warehouse="Tgt - A",
+        company="Company B",
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_WAREHOUSE_COMPANY_MISMATCH"
+    assert "Company A" in result["message"]
+    assert "Company B" in result["message"]
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_transfer_infers_company_from_warehouses(mock_frappe):
+    mock_frappe.get_list.side_effect = _get_list_with_companies(
+        {"Src - A": "Company A", "Tgt - A": "Company A"}
+    )
+    doc = MagicMock()
+    doc.name = "STE-2026-00001"
+    doc.docstatus = 1
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_transfer(
+        items=[{"item_code": "A", "qty": 1}],
+        source_warehouse="Src - A",
+        target_warehouse="Tgt - A",
+    )
+
+    assert result["ok"] is True
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert payload["company"] == "Company A"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_transfer_uses_valid_locations_as_effective_warehouses(mock_frappe):
+    mock_frappe.get_list.side_effect = _get_list_with_companies(
+        {
+            "Src - A": "Company A",
+            "Tgt - A": "Company A",
+            "Src Rack 1 - A": "Company A",
+            "Tgt Staging - A": "Company A",
+        },
+        warehouse_parents={
+            "Src Rack 1 - A": "Src - A",
+            "Tgt Staging - A": "Tgt - A",
+        },
+    )
+    doc = MagicMock()
+    doc.name = "STE-2026-00002"
+    doc.docstatus = 1
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_transfer(
+        items=[{"item_code": "A", "qty": 1}],
+        source_warehouse="Src - A",
+        target_warehouse="Tgt - A",
+        source_location="Src Rack 1 - A",
+        target_location="Tgt Staging - A",
+    )
+
+    assert result["ok"] is True
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert payload["items"][0]["s_warehouse"] == "Src Rack 1 - A"
+    assert payload["items"][0]["t_warehouse"] == "Tgt Staging - A"
+    assert payload["company"] == "Company A"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_transfer_rejects_location_outside_parent_scope(mock_frappe):
+    mock_frappe.get_list.side_effect = _get_list_with_companies(
+        {
+            "Src - A": "Company A",
+            "Tgt - A": "Company A",
+            "Other Rack - A": "Company A",
+        },
+        warehouse_parents={"Other Rack - A": "Other Warehouse - A"},
+    )
+
+    result = stock_api.create_transfer(
+        items=[{"item_code": "A", "qty": 1}],
+        source_warehouse="Src - A",
+        target_warehouse="Tgt - A",
+        source_location="Other Rack - A",
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_LOCATION_SCOPE"
+
+
+@patch("bude_api.api.stock.frappe")
 def test_create_transfer_converts_erpnext_validation_error(mock_frappe):
     # ERPNext rejects the submit (e.g. insufficient stock). Frappe would raise
     # ValidationError → raw HTTP 417; we convert it to a clean envelope and
@@ -285,6 +428,68 @@ def test_create_receipt_material_receipt_happy_path(mock_frappe):
 
 
 @patch("bude_api.api.stock.frappe")
+def test_create_receipt_rejects_company_mismatch(mock_frappe):
+    mock_frappe.get_list.side_effect = _get_list_with_companies(
+        {"Receiving - A": "Company A"}
+    )
+
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 1}],
+        target_warehouse="Receiving - A",
+        company="Company B",
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_WAREHOUSE_COMPANY_MISMATCH"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_receipt_infers_company_from_warehouse(mock_frappe):
+    mock_frappe.get_list.side_effect = _get_list_with_companies(
+        {"Receiving - A": "Company A"}
+    )
+    doc = MagicMock()
+    doc.name = "STE-MR-2026-00001"
+    doc.docstatus = 1
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 1}],
+        target_warehouse="Receiving - A",
+    )
+
+    assert result["ok"] is True
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert payload["company"] == "Company A"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_receipt_uses_valid_location_as_effective_warehouse(mock_frappe):
+    mock_frappe.get_list.side_effect = _get_list_with_companies(
+        {
+            "Receiving - A": "Company A",
+            "Receiving Rack 1 - A": "Company A",
+        },
+        warehouse_parents={"Receiving Rack 1 - A": "Receiving - A"},
+    )
+    doc = MagicMock()
+    doc.name = "STE-MR-2026-00002"
+    doc.docstatus = 1
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 1}],
+        target_warehouse="Receiving - A",
+        target_location="Receiving Rack 1 - A",
+    )
+
+    assert result["ok"] is True
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert payload["items"][0]["t_warehouse"] == "Receiving Rack 1 - A"
+    assert payload["company"] == "Company A"
+
+
+@patch("bude_api.api.stock.frappe")
 def test_create_receipt_against_po_rejects_unknown_po(mock_frappe):
     def get_list(doctype, **kwargs):
         if doctype == "Warehouse":
@@ -336,6 +541,27 @@ def test_create_receipt_against_po_rejects_line_mismatch(mock_frappe):
     assert result["ok"] is False
     assert result["code"] == "VALIDATION_PO_LINE_MISMATCH"
     assert "B" in result["message"]
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_receipt_against_po_rejects_company_mismatch(mock_frappe):
+    mock_frappe.get_list.side_effect = _get_list_with_companies(
+        {"Receiving - A": "Company A"}
+    )
+    mock_frappe.db.get_value.return_value = {
+        "name": "PO-001",
+        "supplier": "Acme Supplies",
+        "company": "Company B",
+    }
+
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 1}],
+        target_warehouse="Receiving - A",
+        against_po="PO-001",
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_PO_COMPANY_MISMATCH"
 
 
 @patch("bude_api.api.stock.frappe")
@@ -439,6 +665,68 @@ def test_create_reconciliation_allows_zero_qty(mock_frappe):
 
     assert result["ok"] is True
     assert result["data"]["name"] == "RECON-2026-00001"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_reconciliation_rejects_company_mismatch(mock_frappe):
+    mock_frappe.get_list.side_effect = _get_list_with_companies(
+        {"Stores - A": "Company A"}
+    )
+
+    result = stock_api.create_reconciliation(
+        counts=[{"item_code": "A", "qty": 1}],
+        warehouse="Stores - A",
+        company="Company B",
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_WAREHOUSE_COMPANY_MISMATCH"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_reconciliation_infers_company_from_warehouse(mock_frappe):
+    mock_frappe.get_list.side_effect = _get_list_with_companies(
+        {"Stores - A": "Company A"}
+    )
+    doc = MagicMock()
+    doc.name = "RECON-2026-00001"
+    doc.docstatus = 1
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_reconciliation(
+        counts=[{"item_code": "A", "qty": 1}],
+        warehouse="Stores - A",
+    )
+
+    assert result["ok"] is True
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert payload["company"] == "Company A"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_reconciliation_uses_valid_location_as_effective_warehouse(mock_frappe):
+    mock_frappe.get_list.side_effect = _get_list_with_companies(
+        {
+            "Stores - A": "Company A",
+            "Rack Count 1 - A": "Company A",
+        },
+        warehouse_parents={"Rack Count 1 - A": "Stores - A"},
+    )
+    doc = MagicMock()
+    doc.name = "RECON-2026-00003"
+    doc.docstatus = 1
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_reconciliation(
+        counts=[{"item_code": "A", "qty": 1}],
+        warehouse="Stores - A",
+        location="Rack Count 1 - A",
+    )
+
+    assert result["ok"] is True
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert payload["items"][0]["warehouse"] == "Rack Count 1 - A"
+    assert payload["company"] == "Company A"
 
 
 @patch("bude_api.api.stock.frappe")

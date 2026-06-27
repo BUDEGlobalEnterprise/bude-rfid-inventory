@@ -9,7 +9,6 @@ Receipt, Stock Reconciliation, Warehouse, Item, Purchase Order) — no
 custom DocTypes.
 """
 
-from typing import Optional
 
 try:
     import frappe
@@ -58,8 +57,10 @@ def create_transfer(
     items: list,
     source_warehouse: str,
     target_warehouse: str,
-    posting_date: Optional[str] = None,
-    company: Optional[str] = None,
+    posting_date: str | None = None,
+    company: str | None = None,
+    source_location: str | None = None,
+    target_location: str | None = None,
 ) -> dict:
     """Create + submit a Stock Entry of type Material Transfer.
 
@@ -74,21 +75,41 @@ def create_transfer(
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
-    if not _warehouse_exists(source_warehouse):
-        return failure(
-            f"Source warehouse '{source_warehouse}' does not exist.",
-            code="VALIDATION_UNKNOWN_WAREHOUSE",
-        )
-    if not _warehouse_exists(target_warehouse):
-        return failure(
-            f"Target warehouse '{target_warehouse}' does not exist.",
-            code="VALIDATION_UNKNOWN_WAREHOUSE",
-        )
-    if source_warehouse == target_warehouse:
+    source_or_error = _resolve_effective_warehouse(
+        source_warehouse,
+        source_location,
+        company,
+        label="Source",
+    )
+    if isinstance(source_or_error, dict):
+        return source_or_error
+    effective_source, source_company = source_or_error
+
+    target_or_error = _resolve_effective_warehouse(
+        target_warehouse,
+        target_location,
+        company,
+        label="Target",
+    )
+    if isinstance(target_or_error, dict):
+        return target_or_error
+    effective_target, target_company = target_or_error
+
+    if effective_source == effective_target:
         return failure(
             "Source and target warehouses must differ.",
             code="VALIDATION_SAME_WAREHOUSE",
         )
+    resolved_company_or_error = _resolve_transfer_company(
+        source_warehouse,
+        source_company,
+        target_warehouse,
+        target_company,
+        company,
+    )
+    if isinstance(resolved_company_or_error, dict):
+        return resolved_company_or_error
+    resolved_company = resolved_company_or_error
 
     missing = _missing_items([row["item_code"] for row in items])
     if missing:
@@ -106,20 +127,20 @@ def create_transfer(
             {
                 "item_code": row["item_code"],
                 "qty": row["qty"],
-                "s_warehouse": source_warehouse,
-                "t_warehouse": target_warehouse,
+                "s_warehouse": effective_source,
+                "t_warehouse": effective_target,
             }
             for row in items
         ],
     }
-    if company:
-        doc_data["company"] = company
+    if resolved_company:
+        doc_data["company"] = resolved_company
     return _insert_and_submit(doc_data)
 
 
 def _validate_inputs(
     items, source_warehouse, target_warehouse,
-) -> Optional[dict]:
+) -> dict | None:
     if not source_warehouse or not source_warehouse.strip():
         return failure("source_warehouse is required.", code="VALIDATION_REQUIRED")
     if not target_warehouse or not target_warehouse.strip():
@@ -148,14 +169,130 @@ def _validate_inputs(
     return None
 
 
-def _warehouse_exists(name: str) -> bool:
+def _warehouse_info(name: str) -> dict | None:
     rows = frappe.get_list(
         "Warehouse",
         filters=[["name", "=", name]],
-        fields=["name"],
+        fields=["name", "company", "parent_warehouse"],
         limit=1,
     )
-    return bool(rows)
+    return rows[0] if rows else None
+
+
+def _warehouse_exists(name: str) -> bool:
+    return _warehouse_info(name) is not None
+
+
+def _clean_company(company: str | None) -> str | None:
+    company = (company or "").strip()
+    return company or None
+
+
+def _warehouse_company_mismatch(message: str) -> dict:
+    return failure(message, code="VALIDATION_WAREHOUSE_COMPANY_MISMATCH")
+
+
+def _location_scope_mismatch(message: str) -> dict:
+    return failure(message, code="VALIDATION_LOCATION_SCOPE")
+
+
+def _resolve_effective_warehouse(
+    warehouse: str,
+    location: str | None,
+    company: str | None,
+    label: str = "Warehouse",
+) -> tuple[str, str | None] | dict:
+    parent = _warehouse_info(warehouse)
+    if parent is None:
+        return failure(
+            f"{label} warehouse '{warehouse}' does not exist.",
+            code="VALIDATION_UNKNOWN_WAREHOUSE",
+        )
+
+    resolved_company_or_error = _resolve_warehouse_company(
+        warehouse,
+        parent.get("company"),
+        company,
+        label=f"{label} warehouse",
+    )
+    if isinstance(resolved_company_or_error, dict):
+        return resolved_company_or_error
+    resolved_company = resolved_company_or_error
+
+    location = (location or "").strip()
+    if not location:
+        return warehouse, resolved_company
+
+    child = _warehouse_info(location)
+    if child is None:
+        return failure(
+            f"{label} location '{location}' does not exist.",
+            code="VALIDATION_UNKNOWN_WAREHOUSE",
+        )
+    if child.get("parent_warehouse") != warehouse:
+        return _location_scope_mismatch(
+            f"{label} location '{location}' is not under warehouse '{warehouse}'."
+        )
+
+    child_company_or_error = _resolve_warehouse_company(
+        location,
+        child.get("company"),
+        resolved_company,
+        label=f"{label} location",
+    )
+    if isinstance(child_company_or_error, dict):
+        return child_company_or_error
+
+    return location, child_company_or_error
+
+
+def _resolve_transfer_company(
+    source_warehouse: str,
+    source_company: str | None,
+    target_warehouse: str,
+    target_company: str | None,
+    company: str | None,
+) -> str | dict | None:
+    source_company = _clean_company(source_company)
+    target_company = _clean_company(target_company)
+    requested_company = _clean_company(company)
+
+    if source_company and target_company and source_company != target_company:
+        return _warehouse_company_mismatch(
+            f"Source warehouse '{source_warehouse}' belongs to '{source_company}', "
+            f"but target warehouse '{target_warehouse}' belongs to '{target_company}'."
+        )
+
+    inferred_company = source_company or target_company
+    if requested_company:
+        for label, warehouse, warehouse_company in (
+            ("Source", source_warehouse, source_company),
+            ("Target", target_warehouse, target_company),
+        ):
+            if warehouse_company and warehouse_company != requested_company:
+                return _warehouse_company_mismatch(
+                    f"{label} warehouse '{warehouse}' belongs to "
+                    f"'{warehouse_company}', not '{requested_company}'."
+                )
+        return requested_company
+
+    return inferred_company
+
+
+def _resolve_warehouse_company(
+    warehouse: str,
+    warehouse_company: str | None,
+    company: str | None,
+    label: str = "Warehouse",
+) -> str | dict | None:
+    warehouse_company = _clean_company(warehouse_company)
+    requested_company = _clean_company(company)
+    if requested_company and warehouse_company and requested_company != warehouse_company:
+        return _warehouse_company_mismatch(
+            f"{label} '{warehouse}' belongs to '{warehouse_company}', "
+            f"not '{requested_company}'."
+        )
+    return requested_company or warehouse_company
 
 
 def _missing_items(codes: list) -> list:
@@ -180,9 +317,10 @@ def _missing_items(codes: list) -> list:
 def create_receipt(
     items: list,
     target_warehouse: str,
-    against_po: Optional[str] = None,
-    posting_date: Optional[str] = None,
-    company: Optional[str] = None,
+    against_po: str | None = None,
+    posting_date: str | None = None,
+    company: str | None = None,
+    target_location: str | None = None,
 ) -> dict:
     """Receive stock into [target_warehouse].
 
@@ -202,11 +340,15 @@ def create_receipt(
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
-    if not _warehouse_exists(target_warehouse):
-        return failure(
-            f"Target warehouse '{target_warehouse}' does not exist.",
-            code="VALIDATION_UNKNOWN_WAREHOUSE",
-        )
+    target_or_error = _resolve_effective_warehouse(
+        target_warehouse,
+        target_location,
+        company,
+        label="Target",
+    )
+    if isinstance(target_or_error, dict):
+        return target_or_error
+    effective_target, resolved_company = target_or_error
 
     missing = _missing_items([row["item_code"] for row in items])
     if missing:
@@ -216,12 +358,14 @@ def create_receipt(
         )
 
     if against_po:
-        return _create_purchase_receipt(items, target_warehouse, against_po, posting_date, company)
+        return _create_purchase_receipt(
+            items, effective_target, against_po, posting_date, resolved_company
+        )
 
-    return _create_material_receipt(items, target_warehouse, posting_date, company)
+    return _create_material_receipt(items, effective_target, posting_date, resolved_company)
 
 
-def _validate_receipt_inputs(items, target_warehouse) -> Optional[dict]:
+def _validate_receipt_inputs(items, target_warehouse) -> dict | None:
     if not target_warehouse or not target_warehouse.strip():
         return failure("target_warehouse is required.", code="VALIDATION_REQUIRED")
     if not items:
@@ -272,7 +416,7 @@ def _create_purchase_receipt(items, target_warehouse, against_po, posting_date, 
     po_doc = frappe.db.get_value(
         "Purchase Order",
         {"name": against_po, "docstatus": 1},
-        fieldname=["name", "supplier"],
+        fieldname=["name", "supplier", "company"],
         as_dict=True,
     )
     if not po_doc:
@@ -280,6 +424,14 @@ def _create_purchase_receipt(items, target_warehouse, against_po, posting_date, 
             f"Purchase Order '{against_po}' not found or not submitted.",
             code="VALIDATION_UNKNOWN_PO",
         )
+    po_company = _clean_company(po_doc.get("company"))
+    company = _clean_company(company)
+    if company and po_company and company != po_company:
+        return failure(
+            f"Purchase Order '{against_po}' belongs to '{po_company}', not '{company}'.",
+            code="VALIDATION_PO_COMPANY_MISMATCH",
+        )
+    company = company or po_company
 
     # Build a lookup of {item_code: po_detail_name, po_qty} from the PO lines.
     po_lines = frappe.get_all(
@@ -328,8 +480,9 @@ def _create_purchase_receipt(items, target_warehouse, against_po, posting_date, 
 def create_reconciliation(
     counts: list,
     warehouse: str,
-    posting_date: Optional[str] = None,
-    company: Optional[str] = None,
+    posting_date: str | None = None,
+    company: str | None = None,
+    location: str | None = None,
 ) -> dict:
     """Submit a Stock Reconciliation that snapshots actual counted quantities.
 
@@ -350,11 +503,15 @@ def create_reconciliation(
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
-    if not _warehouse_exists(warehouse):
-        return failure(
-            f"Warehouse '{warehouse}' does not exist.",
-            code="VALIDATION_UNKNOWN_WAREHOUSE",
-        )
+    warehouse_or_error = _resolve_effective_warehouse(
+        warehouse,
+        location,
+        company,
+        label="Count",
+    )
+    if isinstance(warehouse_or_error, dict):
+        return warehouse_or_error
+    effective_warehouse, resolved_company = warehouse_or_error
 
     missing = _missing_items([row["item_code"] for row in counts])
     if missing:
@@ -370,18 +527,18 @@ def create_reconciliation(
         "items": [
             {
                 "item_code": row["item_code"],
-                "warehouse": warehouse,
+                "warehouse": effective_warehouse,
                 "qty": row["qty"],
             }
             for row in counts
         ],
     }
-    if company:
-        doc_data["company"] = company
+    if resolved_company:
+        doc_data["company"] = resolved_company
     return _insert_and_submit(doc_data)
 
 
-def _validate_reconciliation_inputs(counts, warehouse) -> Optional[dict]:
+def _validate_reconciliation_inputs(counts, warehouse) -> dict | None:
     if not warehouse or not warehouse.strip():
         return failure("warehouse is required.", code="VALIDATION_REQUIRED")
     if not counts:
