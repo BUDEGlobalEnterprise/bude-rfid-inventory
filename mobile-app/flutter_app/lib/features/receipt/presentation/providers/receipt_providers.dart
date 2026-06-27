@@ -8,7 +8,11 @@ import '../../domain/submit_receipt_usecase.dart';
 
 // Warehouses come from the same provider Transfer uses — no duplication.
 export '../../../transfer/presentation/providers/transfer_providers.dart'
-    show warehousesProvider;
+    show
+        CompanySelectionRequiredException,
+        operationCompanyProvider,
+        warehouseLocationsProvider,
+        warehousesProvider;
 
 final purchaseOrderRemoteProvider =
     Provider<PurchaseOrderRemoteDataSource>((ref) {
@@ -32,8 +36,13 @@ final receiptDraftProvider =
 class ReceiptDraftNotifier extends StateNotifier<ReceiptDraft> {
   ReceiptDraftNotifier() : super(const ReceiptDraft());
 
-  void setTarget(String? warehouse) =>
-      state = state.copyWith(targetWarehouse: warehouse);
+  void setTarget(String? warehouse) => state = state.copyWith(
+        targetWarehouse: warehouse,
+        targetLocation: null,
+      );
+
+  void setTargetLocation(String? location) =>
+      state = state.copyWith(targetLocation: location);
 
   void setAgainstPo(String? po) {
     if (po == null || po.isEmpty) {

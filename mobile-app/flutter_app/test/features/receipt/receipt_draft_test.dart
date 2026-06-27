@@ -39,11 +39,13 @@ void main() {
     test('omits against_po when null (Material Receipt mode)', () {
       const draft = ReceiptDraft(
         targetWarehouse: 'Tgt - X',
+        targetLocation: 'Rack 1 - X',
         lines: [ReceiptLine(itemCode: 'A', qty: 2)],
       );
       final payload = draft.toPayload();
       expect(payload.containsKey('against_po'), isFalse);
       expect(payload['target_warehouse'], 'Tgt - X');
+      expect(payload['target_location'], 'Rack 1 - X');
       expect(payload['items'], [
         {'item_code': 'A', 'qty': 2.0},
       ]);

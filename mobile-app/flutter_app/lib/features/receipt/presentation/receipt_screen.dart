@@ -23,14 +23,17 @@ class ReceiptScreen extends ConsumerWidget {
     final draft = ref.watch(receiptDraftProvider);
     final warehousesAsync = ref.watch(warehousesProvider);
     final poAsync = ref.watch(purchaseOrdersProvider);
+    final canSubmit = draft.isSubmittable && warehousesAsync.hasValue;
 
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.receiveStock)),
       body: warehousesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _ErrorView(
-          message: context.l10n.failedToLoadWarehouses(e.toString()),
-        ),
+        error: (e, _) => e is CompanySelectionRequiredException
+            ? const _CompanyRequiredView()
+            : _ErrorView(
+                message: context.l10n.failedToLoadWarehouses(e.toString()),
+              ),
         data: (warehouses) => _ReceiptBody(
           draft: draft,
           warehouses: warehouses,
@@ -45,9 +48,8 @@ class ReceiptScreen extends ConsumerWidget {
               child: FilledButton.icon(
                 icon: const Icon(Icons.send),
                 label: Text(context.l10n.queueReceipt),
-                onPressed: draft.isSubmittable
-                    ? () => _submit(context, ref, draft)
-                    : null,
+                onPressed:
+                    canSubmit ? () => _submit(context, ref, draft) : null,
               ),
             ),
     );
@@ -58,10 +60,11 @@ class ReceiptScreen extends ConsumerWidget {
     WidgetRef ref,
     ReceiptDraft draft,
   ) async {
-    final settings = ref.read(settingsNotifierProvider);
+    final company = ref.read(operationCompanyProvider).valueOrNull ??
+        ref.read(settingsNotifierProvider).activeCompany;
     final id = await ref
         .read(submitReceiptUseCaseProvider)
-        .call(draft.copyWith(company: settings.activeCompany));
+        .call(draft.copyWith(company: company));
     // ignore: discarded_futures
     ref.read(syncEngineProvider).kick();
     ref.read(receiptDraftProvider.notifier).clear();
@@ -157,9 +160,23 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
     });
   }
 
+  void _clearInvalidWarehouse() {
+    final target = ref.read(receiptDraftProvider).targetWarehouse;
+    if (target == null || widget.warehouses.contains(target)) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final latest = ref.read(receiptDraftProvider).targetWarehouse;
+      if (latest != null && !widget.warehouses.contains(latest)) {
+        ref.read(receiptDraftProvider.notifier).setTarget(null);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.watch(settingsNotifierProvider);
+    _clearInvalidWarehouse();
     _applyWarehouseDefaults();
     final notifier = ref.read(receiptDraftProvider.notifier);
     final totalQty =
@@ -242,6 +259,15 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
           options: widget.warehouses,
           onChanged: notifier.setTarget,
         ),
+        if (widget.draft.targetWarehouse != null) ...[
+          const SizedBox(height: 12),
+          _LocationDropdown(
+            label: context.l10n.targetLocation,
+            warehouse: widget.draft.targetWarehouse!,
+            value: widget.draft.targetLocation,
+            onChanged: notifier.setTargetLocation,
+          ),
+        ],
         const SizedBox(height: 12),
         widget.poAsync.when(
           loading: () => const LinearProgressIndicator(),
@@ -328,6 +354,8 @@ class _Dropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveValue =
+        value == null || options.contains(value) ? value : null;
     final items = [
       if (allowClear)
         DropdownMenuItem<String>(
@@ -337,14 +365,50 @@ class _Dropdown extends StatelessWidget {
       ...options.map((w) => DropdownMenuItem(value: w, child: Text(w))),
     ];
     return DropdownButtonFormField<String>(
-      key: ValueKey('$label-$value'),
-      initialValue: value,
+      key: ValueKey('$label-$effectiveValue'),
+      initialValue: effectiveValue,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
       ),
       items: items,
       onChanged: onChanged,
+    );
+  }
+}
+
+class _LocationDropdown extends ConsumerWidget {
+  final String label;
+  final String warehouse;
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  const _LocationDropdown({
+    required this.label,
+    required this.warehouse,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locationsAsync = ref.watch(warehouseLocationsProvider(warehouse));
+    return locationsAsync.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (e, _) => ErrorText(e.toString()),
+      data: (locations) {
+        if (value != null && !locations.contains(value)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => onChanged(null));
+        }
+        if (locations.isEmpty) return const SizedBox.shrink();
+        return _Dropdown(
+          label: label,
+          value: value,
+          options: locations,
+          allowClear: true,
+          onChanged: onChanged,
+        );
+      },
     );
   }
 }
@@ -430,6 +494,19 @@ class _ErrorView extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Text(message, textAlign: TextAlign.center),
       ),
+    );
+  }
+}
+
+class _CompanyRequiredView extends StatelessWidget {
+  const _CompanyRequiredView();
+
+  @override
+  Widget build(BuildContext context) {
+    return EmptyStateView(
+      icon: Icons.business_outlined,
+      title: context.l10n.selectCompany,
+      subtitle: 'Select a company before choosing warehouses.',
     );
   }
 }
