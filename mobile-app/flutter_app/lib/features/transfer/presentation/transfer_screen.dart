@@ -22,14 +22,17 @@ class TransferScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final draft = ref.watch(transferDraftProvider);
     final warehousesAsync = ref.watch(warehousesProvider);
+    final canSubmit = draft.isSubmittable && warehousesAsync.hasValue;
 
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.stockTransfer)),
       body: warehousesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _ErrorView(
-          message: context.l10n.failedToLoadWarehouses(e.toString()),
-        ),
+        error: (e, _) => e is CompanySelectionRequiredException
+            ? const _CompanyRequiredView()
+            : _ErrorView(
+                message: context.l10n.failedToLoadWarehouses(e.toString()),
+              ),
         data: (warehouses) => _TransferBody(
           draft: draft,
           warehouses: warehouses,
@@ -43,9 +46,8 @@ class TransferScreen extends ConsumerWidget {
               child: FilledButton.icon(
                 icon: const Icon(Icons.send),
                 label: Text(context.l10n.queueTransfer),
-                onPressed: draft.isSubmittable
-                    ? () => _submit(context, ref, draft)
-                    : null,
+                onPressed:
+                    canSubmit ? () => _submit(context, ref, draft) : null,
               ),
             ),
     );
@@ -56,10 +58,11 @@ class TransferScreen extends ConsumerWidget {
     WidgetRef ref,
     TransferDraft draft,
   ) async {
-    final settings = ref.read(settingsNotifierProvider);
+    final company = ref.read(operationCompanyProvider).valueOrNull ??
+        ref.read(settingsNotifierProvider).activeCompany;
     final id = await ref
         .read(submitTransferUseCaseProvider)
-        .call(draft.copyWith(company: settings.activeCompany));
+        .call(draft.copyWith(company: company));
     unawaited(ref.read(syncEngineProvider).kick());
     ref.read(transferDraftProvider.notifier).clear();
     if (!context.mounted) return;
@@ -163,9 +166,34 @@ class _TransferBodyState extends ConsumerState<_TransferBody> {
     });
   }
 
+  void _clearInvalidWarehouses() {
+    final allowed = widget.warehouses.toSet();
+    final draft = ref.read(transferDraftProvider);
+    final invalidSource = draft.sourceWarehouse != null &&
+        !allowed.contains(draft.sourceWarehouse);
+    final invalidTarget = draft.targetWarehouse != null &&
+        !allowed.contains(draft.targetWarehouse);
+    if (!invalidSource && !invalidTarget) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final latest = ref.read(transferDraftProvider);
+      final notifier = ref.read(transferDraftProvider.notifier);
+      if (latest.sourceWarehouse != null &&
+          !allowed.contains(latest.sourceWarehouse)) {
+        notifier.setSource(null);
+      }
+      if (latest.targetWarehouse != null &&
+          !allowed.contains(latest.targetWarehouse)) {
+        notifier.setTarget(null);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.watch(settingsNotifierProvider);
+    _clearInvalidWarehouses();
     _applyWarehouseDefaults();
     final notifier = ref.read(transferDraftProvider.notifier);
     final sameWarehouseError = widget.draft.sourceWarehouse != null &&
@@ -242,6 +270,15 @@ class _TransferBodyState extends ConsumerState<_TransferBody> {
           options: widget.warehouses,
           onChanged: notifier.setSource,
         ),
+        if (widget.draft.sourceWarehouse != null) ...[
+          const SizedBox(height: 12),
+          _LocationDropdown(
+            label: context.l10n.sourceLocation,
+            warehouse: widget.draft.sourceWarehouse!,
+            value: widget.draft.sourceLocation,
+            onChanged: notifier.setSourceLocation,
+          ),
+        ],
         const SizedBox(height: 12),
         _WarehouseDropdown(
           label: context.l10n.targetWarehouse,
@@ -249,6 +286,15 @@ class _TransferBodyState extends ConsumerState<_TransferBody> {
           options: widget.warehouses,
           onChanged: notifier.setTarget,
         ),
+        if (widget.draft.targetWarehouse != null) ...[
+          const SizedBox(height: 12),
+          _LocationDropdown(
+            label: context.l10n.targetLocation,
+            warehouse: widget.draft.targetWarehouse!,
+            value: widget.draft.targetLocation,
+            onChanged: notifier.setTargetLocation,
+          ),
+        ],
         if (sameWarehouseError) ...[
           const SizedBox(height: 8),
           ErrorText(context.l10n.sourceTargetMustDiffer),
@@ -313,27 +359,73 @@ class _WarehouseDropdown extends StatelessWidget {
   final String label;
   final String? value;
   final List<String> options;
+  final bool allowClear;
   final ValueChanged<String?> onChanged;
   const _WarehouseDropdown({
     required this.label,
     required this.value,
     required this.options,
     required this.onChanged,
+    this.allowClear = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveValue =
+        value == null || options.contains(value) ? value : null;
+    final items = [
+      if (allowClear)
+        DropdownMenuItem<String>(
+          value: null,
+          child: Text(context.l10n.noneSelected),
+        ),
+      ...options.map((w) => DropdownMenuItem(value: w, child: Text(w))),
+    ];
     return DropdownButtonFormField<String>(
-      key: ValueKey('$label-$value'),
-      initialValue: value,
+      key: ValueKey('$label-$effectiveValue'),
+      initialValue: effectiveValue,
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
       ),
-      items: options
-          .map((w) => DropdownMenuItem(value: w, child: Text(w)))
-          .toList(),
+      items: items,
       onChanged: onChanged,
+    );
+  }
+}
+
+class _LocationDropdown extends ConsumerWidget {
+  final String label;
+  final String warehouse;
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  const _LocationDropdown({
+    required this.label,
+    required this.warehouse,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locationsAsync = ref.watch(warehouseLocationsProvider(warehouse));
+    return locationsAsync.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (e, _) => ErrorText(e.toString()),
+      data: (locations) {
+        if (value != null && !locations.contains(value)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => onChanged(null));
+        }
+        if (locations.isEmpty) return const SizedBox.shrink();
+        return _WarehouseDropdown(
+          label: label,
+          value: value,
+          options: locations,
+          allowClear: true,
+          onChanged: onChanged,
+        );
+      },
     );
   }
 }
@@ -418,6 +510,19 @@ class _ErrorView extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Text(message, textAlign: TextAlign.center),
       ),
+    );
+  }
+}
+
+class _CompanyRequiredView extends StatelessWidget {
+  const _CompanyRequiredView();
+
+  @override
+  Widget build(BuildContext context) {
+    return EmptyStateView(
+      icon: Icons.business_outlined,
+      title: context.l10n.selectCompany,
+      subtitle: 'Select a company before choosing warehouses.',
     );
   }
 }

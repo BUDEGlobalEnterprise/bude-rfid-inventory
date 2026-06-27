@@ -54,6 +54,8 @@ void main() {
     const draft = TransferDraft(
       sourceWarehouse: 'Src - X',
       targetWarehouse: 'Tgt - X',
+      sourceLocation: 'Src Rack 1 - X',
+      targetLocation: 'Tgt Staging - X',
       lines: [
         TransferLine(itemCode: 'A', qty: 2.5),
         TransferLine(itemCode: 'B', qty: 1),
@@ -62,6 +64,8 @@ void main() {
     expect(draft.toPayload(), {
       'source_warehouse': 'Src - X',
       'target_warehouse': 'Tgt - X',
+      'source_location': 'Src Rack 1 - X',
+      'target_location': 'Tgt Staging - X',
       'items': [
         {'item_code': 'A', 'qty': 2.5},
         {'item_code': 'B', 'qty': 1.0},

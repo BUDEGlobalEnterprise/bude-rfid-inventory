@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/sync/providers.dart';
 import '../../../authentication/presentation/providers/auth_notifier.dart';
+import '../../../company/presentation/providers/company_providers.dart';
+import '../../../settings/presentation/providers/settings_notifier.dart';
 import '../../data/warehouse_remote_data_source.dart';
 import '../../domain/submit_transfer_usecase.dart';
 import '../../domain/transfer_draft.dart';
@@ -11,10 +13,40 @@ final warehouseRemoteProvider = Provider<WarehouseRemoteDataSource>((ref) {
   return WarehouseRemoteDataSource(apiClient.dio);
 });
 
-/// One-shot fetch — the user picks once per transfer; refetch happens on
-/// re-entering the screen via FutureProvider.autoDispose.
-final warehousesProvider = FutureProvider.autoDispose<List<String>>((ref) {
-  return ref.watch(warehouseRemoteProvider).list();
+class CompanySelectionRequiredException implements Exception {
+  const CompanySelectionRequiredException();
+
+  @override
+  String toString() => 'Select a company before choosing warehouses.';
+}
+
+final operationCompanyProvider =
+    FutureProvider.autoDispose<String?>((ref) async {
+  final activeCompany = ref.watch(
+    settingsNotifierProvider.select((settings) => settings.activeCompany),
+  );
+  if (activeCompany != null && activeCompany.trim().isNotEmpty) {
+    return activeCompany.trim();
+  }
+
+  final companies = await ref.watch(companiesProvider.future);
+  if (companies.length == 1) return companies.single.name;
+  if (companies.length > 1) throw const CompanySelectionRequiredException();
+  return null;
+});
+
+final warehousesProvider =
+    FutureProvider.autoDispose<List<String>>((ref) async {
+  final company = await ref.watch(operationCompanyProvider.future);
+  return ref.watch(warehouseRemoteProvider).list(company: company);
+});
+
+final warehouseLocationsProvider = FutureProvider.autoDispose
+    .family<List<String>, String>((ref, warehouse) async {
+  final company = await ref.watch(operationCompanyProvider.future);
+  return ref
+      .watch(warehouseRemoteProvider)
+      .listLocations(warehouse, company: company);
 });
 
 final submitTransferUseCaseProvider = Provider<SubmitTransferUseCase>((ref) {
@@ -29,15 +61,23 @@ final transferDraftProvider =
 class TransferDraftNotifier extends StateNotifier<TransferDraft> {
   TransferDraftNotifier() : super(const TransferDraft());
 
-  void setSource(String? warehouse) =>
-      state = state.copyWith(sourceWarehouse: warehouse);
+  void setSource(String? warehouse) => state = state.copyWith(
+        sourceWarehouse: warehouse,
+        sourceLocation: null,
+      );
 
-  void setTarget(String? warehouse) =>
-      state = state.copyWith(targetWarehouse: warehouse);
+  void setSourceLocation(String? location) =>
+      state = state.copyWith(sourceLocation: location);
+
+  void setTarget(String? warehouse) => state = state.copyWith(
+        targetWarehouse: warehouse,
+        targetLocation: null,
+      );
+
+  void setTargetLocation(String? location) =>
+      state = state.copyWith(targetLocation: location);
 
   void addLine(TransferLine line) {
-    // If the same item is already in the list, bump its qty instead of
-    // adding a duplicate row.
     final existingIndex = state.lines.indexWhere(
       (l) => l.itemCode == line.itemCode,
     );
