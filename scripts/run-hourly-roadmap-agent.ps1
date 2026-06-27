@@ -71,7 +71,7 @@ try {
     }
     Write-Log "Branch: $branch"
 
-    $dirtyBefore = Get-GitStatus
+    $dirtyBefore = @(Get-GitStatus)
     if ($dirtyBefore.Count -gt 0 -and -not $AllowDirtyStart) {
         Write-Log "Working tree is dirty before automation. Refusing to run."
         Write-Log "Commit, stash, or rerun with -AllowDirtyStart if you really want automation to include existing changes."
@@ -112,7 +112,7 @@ Make one hour-sized, production-quality increment toward completing the roadmap.
     }
     Write-Log "DONE: codex exec roadmap increment"
 
-    $dirtyAfter = Get-GitStatus
+    $dirtyAfter = @(Get-GitStatus)
     if ($dirtyAfter.Count -eq 0) {
         Write-Log "No repository changes produced. Nothing to commit."
         exit 0
