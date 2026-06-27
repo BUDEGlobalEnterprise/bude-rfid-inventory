@@ -9,7 +9,6 @@ Everything is read-only and computed from Asset, Asset Movement, Asset
 Maintenance Log, and Asset Repair. No custom DocTypes.
 """
 
-from typing import Optional
 
 try:
     import frappe
@@ -61,9 +60,9 @@ def asset_summary() -> dict:
 
 @_whitelist()
 def asset_register(
-    location: Optional[str] = None,
-    status: Optional[str] = None,
-    category: Optional[str] = None,
+    location: str | None = None,
+    status: str | None = None,
+    category: str | None = None,
     limit: int = 500,
 ) -> dict:
     """Flat asset rows for a register / CSV export."""
@@ -103,7 +102,7 @@ def asset_register(
 
 
 @_whitelist()
-def maintenance_history(asset: Optional[str] = None, limit: int = 100) -> dict:
+def maintenance_history(asset: str | None = None, limit: int = 100) -> dict:
     """Merged Asset Maintenance Log + Asset Repair timeline."""
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")

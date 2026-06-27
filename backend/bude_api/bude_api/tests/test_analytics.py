@@ -1,7 +1,6 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from bude_api.api import analytics as analytics_api
-
 
 # ── get_stock_aging ────────────────────────────────────────────────────────────
 

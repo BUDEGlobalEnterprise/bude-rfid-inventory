@@ -7,7 +7,6 @@ from Asset Maintenance Log, Asset, Bin, and Item. Categories:
 maintenance_due, assets_in_maintenance, out_of_stock, low_stock.
 """
 
-from typing import Optional
 
 try:
     import frappe

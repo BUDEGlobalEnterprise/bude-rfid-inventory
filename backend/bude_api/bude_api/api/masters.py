@@ -17,7 +17,6 @@ There is no hard-delete endpoint by design: removal is "disable" (flip a flag),
 so ERPNext references and history are never broken.
 """
 
-from typing import Optional
 
 try:
     import frappe

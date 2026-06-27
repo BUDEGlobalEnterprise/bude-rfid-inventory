@@ -11,7 +11,6 @@ it directly — this endpoint does it on the guest's behalf.
 """
 
 from datetime import datetime, timezone
-from typing import Optional
 
 try:
     import frappe
@@ -42,7 +41,7 @@ def ping() -> dict:
     }
 
 
-def _erpnext_version() -> Optional[str]:
+def _erpnext_version() -> str | None:
     if get_versions is None:
         return None
     try:

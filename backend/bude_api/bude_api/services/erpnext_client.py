@@ -6,7 +6,7 @@ Rules:
 - Read-only helpers here in Phase 1; write paths via dedicated services in Phase 2.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 try:
     import frappe
@@ -44,8 +44,8 @@ class ERPNextClient:
     def list(
         self,
         doctype: str,
-        filters: Optional[list] = None,
-        fields: Optional[list[str]] = None,
+        filters: list | None = None,
+        fields: list[str] | None = None,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
         self._guard()

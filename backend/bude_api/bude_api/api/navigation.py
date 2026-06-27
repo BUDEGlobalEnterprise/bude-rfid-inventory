@@ -16,8 +16,8 @@ try:
 except ImportError:
     frappe = None
 
-from .branding import NAV_CONFIG_KEY
 from ..utils.response import failure, success
+from .branding import NAV_CONFIG_KEY
 
 
 def _whitelist(allow_guest: bool = False):

@@ -8,7 +8,6 @@ All three use standard ERPNext DocTypes: Item, Item Barcode, Bin.
 No custom DocTypes, no writes — read-only Phase 2 lookups.
 """
 
-from typing import Optional
 
 try:
     import frappe
@@ -42,9 +41,9 @@ def search(
     query: str = "",
     limit: int = 20,
     page: int = 0,
-    warehouse: Optional[str] = None,
-    item_group: Optional[str] = None,
-    in_stock: Optional[str] = None,
+    warehouse: str | None = None,
+    item_group: str | None = None,
+    in_stock: str | None = None,
 ) -> dict:
     """Search Items by item_code/item_name (LIKE) and by Item Barcode (exact).
 
@@ -181,7 +180,7 @@ def get_by_barcode(barcode: str) -> dict:
 
 @_whitelist()
 def get_ledger(
-    item_code: str, warehouse: Optional[str] = None, limit: int = 50
+    item_code: str, warehouse: str | None = None, limit: int = 50
 ) -> dict:
     """Return Stock Ledger Entry rows for an item, newest first.
 
@@ -219,7 +218,7 @@ def get_ledger(
 
 
 @_whitelist()
-def get_stock(item_code: str, warehouse: Optional[str] = None) -> dict:
+def get_stock(item_code: str, warehouse: str | None = None) -> dict:
     item_code = (item_code or "").strip()
     if not item_code:
         return failure("item_code is required.", code="VALIDATION_REQUIRED")

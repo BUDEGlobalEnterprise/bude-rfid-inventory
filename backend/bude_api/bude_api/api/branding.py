@@ -9,7 +9,6 @@ the Frappe version helper — no custom DocTypes.
 """
 
 import json
-from typing import Optional
 
 try:
     import frappe
@@ -59,7 +58,7 @@ def get() -> dict:
     })
 
 
-def _resolve_navigation() -> Optional[dict]:
+def _resolve_navigation() -> dict | None:
     """Return the admin-configured per-role navigation config, or None."""
     if frappe is None:
         return None
@@ -72,7 +71,7 @@ def _resolve_navigation() -> Optional[dict]:
         return None
 
 
-def _resolve_company_name() -> Optional[str]:
+def _resolve_company_name() -> str | None:
     name = frappe.db.get_default("company")
     if name:
         return name
@@ -80,7 +79,7 @@ def _resolve_company_name() -> Optional[str]:
     return rows[0]["name"] if rows else None
 
 
-def _load_company(name: str) -> Optional[dict]:
+def _load_company(name: str) -> dict | None:
     fields = ["name", "company_logo", "country", "default_currency"]
     rows = frappe.get_list(
         "Company",
@@ -91,7 +90,7 @@ def _load_company(name: str) -> Optional[dict]:
     return rows[0] if rows else None
 
 
-def _resolve_address(company: Optional[dict]) -> Optional[str]:
+def _resolve_address(company: dict | None) -> str | None:
     if not company:
         return None
     # Use the standard Address dynamic-link pattern: Address links to the
@@ -141,7 +140,7 @@ def _resolve_feature_flags() -> dict:
     return flags
 
 
-def _resolve_erpnext_version() -> Optional[str]:
+def _resolve_erpnext_version() -> str | None:
     if get_versions is None:
         return None
     try:

@@ -1,8 +1,8 @@
 import json
 from unittest.mock import patch
 
-from bude_api.api import navigation as nav_api
 from bude_api.api import branding as branding_api
+from bude_api.api import navigation as nav_api
 
 
 @patch("bude_api.api.navigation.frappe")

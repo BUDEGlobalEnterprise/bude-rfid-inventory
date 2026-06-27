@@ -4,7 +4,6 @@ Returns API key/secret pairs so the mobile client can authenticate subsequent
 requests via `Authorization: token <key>:<secret>` without storing passwords.
 """
 
-from typing import Optional
 
 try:
     import frappe
@@ -64,7 +63,7 @@ class AuthService:
         frappe.local.login_manager.logout()
         frappe.db.commit()
 
-    def current_user(self) -> Optional[str]:
+    def current_user(self) -> str | None:
         if frappe is None:
             return None
         user = getattr(frappe.session, "user", None)
