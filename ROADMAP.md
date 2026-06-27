@@ -248,6 +248,27 @@ Note: physical RFID validation is blocked until a reader is available. Until the
 
 ---
 
+## Phase 10 - Market-Driven Warehouse Execution PLANNED
+
+Positioning: sell this as an **ERPNext Warehouse Execution Mobile Pack**, not only an RFID app. The paid value is faster warehouse work, fewer stock mistakes, stronger controls, and mobile execution that can later become RFID-assisted.
+
+| Priority | Capability | Customer value | Status |
+|----------|------------|----------------|--------|
+| 1 | **Bin / rack / shelf / staging location execution** | Operators can receive, count, move, and stage stock at the real physical location level while still using standard ERPNext warehouse structures | IN PROGRESS |
+| 2 | **Picking, packing, and dispatch from Sales Orders** | Turns Sales Orders into guided mobile fulfillment work with fewer missed or wrong shipments | PLANNED |
+| 3 | **Batch, serial, lot, and expiry support** | Supports regulated, perishable, warranty, and high-value inventory workflows that customers expect to pay for | PLANNED |
+| 4 | **Label printing for items, bins, pallets, and receipts** | Makes mobile execution tangible on the floor through barcode/RFID-ready labels and receiving documents | PLANNED |
+| 5 | **Approval and audit controls** | Gives managers confidence around variance, high-value movement, and compliance-sensitive changes | PLANNED |
+| 6 | **Backend permission hardening** | Ensures mobile convenience never bypasses ERPNext roles, companies, warehouses, or document permissions | PLANNED |
+| 7 | **Guided warehouse task queue** | Converts open ERP work into assigned, prioritized mobile tasks for operators and supervisors | PLANNED |
+| 8 | **Exception handling workflows** | Captures shortages, damages, unknown scans, substitutions, and blocked stock without leaving the floor | PLANNED |
+| 9 | **ROI / value dashboard** | Shows management measurable gains: faster receiving, fewer adjustments, pick accuracy, and inventory variance reduction | PLANNED |
+| 10 | **Admin onboarding console** | Helps customers configure companies, warehouses, default roles, devices, and pilot workflows without developer help | PLANNED |
+
+Execution rule: implement these one by one. Start with optional bin/location execution using standard ERPNext warehouse/bin concepts; do not add custom DocTypes unless standard ERPNext cannot represent the workflow.
+
+---
+
 ## Architecture Constraints
 
 - **No custom DocTypes** — every read/write uses standard ERPNext DocTypes (`Stock Entry`, `Purchase Receipt`, `Stock Reconciliation`, `Bin`, `Stock Ledger Entry`).
