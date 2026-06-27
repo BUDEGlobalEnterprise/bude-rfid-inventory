@@ -41,6 +41,22 @@ import '../../features/masters/presentation/master_form_screen.dart';
 import '../ui/app_shell.dart';
 import '../ui/navigation_config.dart';
 
+bool isPublicRoute(String location) =>
+    location == '/login' || location == '/settings';
+
+bool isManagerOnlyLocation(String location) {
+  return allNavigationDestinations
+          .where((d) => d.managerOnly)
+          .any((d) => location.startsWith(d.route)) ||
+      location.startsWith('/warehouse/');
+}
+
+String? reconciliationApprovalOpIdFromExtra(Object? extra) {
+  if (extra is! String) return null;
+  final trimmed = extra.trim();
+  return trimmed.isEmpty ? null : trimmed;
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
 
@@ -81,19 +97,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           username: authState.session.username,
         );
         if (!isManager) {
-          final blocked = allNavigationDestinations
-                  .where((d) => d.managerOnly)
-                  .any((d) => location.startsWith(d.route)) ||
-              location.startsWith('/warehouse/');
-          if (blocked) return '/';
+          if (isManagerOnlyLocation(location)) return '/';
         }
         return null;
       }
 
       // Not logged in (tenant exists).
-      final publicRoute = location == '/login' || location == '/settings';
       if (authState is AuthInitial || authState is AuthLoading) return null;
-      if (!publicRoute) return '/login';
+      if (!isPublicRoute(location)) return '/login';
 
       return null;
     },
@@ -147,9 +158,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/reconcile/approve',
-        builder: (context, state) => ReconciliationApprovalScreen(
-          opId: state.extra as String,
-        ),
+        builder: (context, state) {
+          final opId = reconciliationApprovalOpIdFromExtra(state.extra);
+          if (opId == null) {
+            return const _MissingRouteExtraScreen(
+              title: 'Approval unavailable',
+              message: 'Open this approval from the pending queue.',
+            );
+          }
+          return ReconciliationApprovalScreen(opId: opId);
+        },
       ),
       GoRoute(
         path: '/asset-movement',
@@ -295,6 +313,29 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+class _MissingRouteExtraScreen extends StatelessWidget {
+  final String title;
+  final String message;
+
+  const _MissingRouteExtraScreen({
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(message, textAlign: TextAlign.center),
+        ),
+      ),
+    );
+  }
+}
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(Ref ref) {

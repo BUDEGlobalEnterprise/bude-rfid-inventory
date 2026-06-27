@@ -211,7 +211,7 @@ bool canAccessManagerDestinations(Set<String> roles, {String? username}) {
 const navigationRoleBuckets = <String>[
   'Stock Manager',
   'Stock User',
-  'Default'
+  'Default',
 ];
 
 /// The single config bucket a user falls into, by role priority.

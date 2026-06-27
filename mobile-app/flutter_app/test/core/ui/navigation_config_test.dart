@@ -31,8 +31,10 @@ void main() {
     );
 
     expect(dests.map((d) => d.id), contains('masters'));
-    expect(canAccessManagerDestinations(const {}, username: 'Administrator'),
-        isTrue);
+    expect(
+      canAccessManagerDestinations(const {}, username: 'Administrator'),
+      isTrue,
+    );
   });
 
   test('non-manager does not see manager-only destinations', () {
