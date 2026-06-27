@@ -188,6 +188,30 @@ abstract class AppLocalizations {
   /// **'Warehouse'**
   String get warehouse;
 
+  /// No description provided for @sourceLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Source location'**
+  String get sourceLocation;
+
+  /// No description provided for @targetLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Target location'**
+  String get targetLocation;
+
+  /// No description provided for @countLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Count location'**
+  String get countLocation;
+
+  /// No description provided for @locationsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Locations ({count})'**
+  String locationsCount(int count);
+
   /// No description provided for @scanToAdd.
   ///
   /// In en, this message translates to:

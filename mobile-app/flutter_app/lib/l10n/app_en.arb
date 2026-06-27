@@ -34,6 +34,18 @@
   "@targetWarehouse": {},
   "warehouse": "Warehouse",
   "@warehouse": {},
+  "sourceLocation": "Source location",
+  "@sourceLocation": {},
+  "targetLocation": "Target location",
+  "@targetLocation": {},
+  "countLocation": "Count location",
+  "@countLocation": {},
+  "locationsCount": "Locations ({count})",
+  "@locationsCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "scanToAdd": "Scan to add",
   "@scanToAdd": {},
   "queueTransfer": "Queue transfer",

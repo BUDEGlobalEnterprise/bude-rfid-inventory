@@ -56,6 +56,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get warehouse => 'Warehouse';
 
   @override
+  String get sourceLocation => 'Source location';
+
+  @override
+  String get targetLocation => 'Target location';
+
+  @override
+  String get countLocation => 'Count location';
+
+  @override
+  String locationsCount(int count) {
+    return 'Locations ($count)';
+  }
+
+  @override
   String get scanToAdd => 'Scan to add';
 
   @override

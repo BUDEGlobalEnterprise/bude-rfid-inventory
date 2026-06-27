@@ -56,6 +56,20 @@ class AppLocalizationsAr extends AppLocalizations {
   String get warehouse => 'المستودع';
 
   @override
+  String get sourceLocation => 'موقع المصدر';
+
+  @override
+  String get targetLocation => 'موقع الهدف';
+
+  @override
+  String get countLocation => 'موقع الجرد';
+
+  @override
+  String locationsCount(int count) {
+    return 'المواقع ($count)';
+  }
+
+  @override
   String get scanToAdd => 'مسح للإضافة';
 
   @override
