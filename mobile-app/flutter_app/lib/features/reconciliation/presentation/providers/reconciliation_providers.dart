@@ -7,7 +7,11 @@ import '../../domain/submit_reconciliation_usecase.dart';
 
 // Reuse the existing warehouse list provider from the transfer feature.
 export '../../../transfer/presentation/providers/transfer_providers.dart'
-    show warehousesProvider;
+    show
+        CompanySelectionRequiredException,
+        operationCompanyProvider,
+        warehouseLocationsProvider,
+        warehousesProvider;
 
 final submitReconciliationUseCaseProvider =
     Provider<SubmitReconciliationUseCase>((ref) {
@@ -25,6 +29,10 @@ class ReconciliationDraftNotifier extends StateNotifier<ReconciliationDraft> {
   void setWarehouse(String? warehouse) {
     // Changing the warehouse invalidates all expected qtys — clear the lines.
     state = ReconciliationDraft(warehouse: warehouse);
+  }
+
+  void setLocation(String? location) {
+    state = state.copyWith(location: location, lines: const []);
   }
 
   void addLine(CountLine line) {

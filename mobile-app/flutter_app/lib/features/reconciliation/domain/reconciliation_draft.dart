@@ -36,22 +36,26 @@ class CountLine extends Equatable {
 
 class ReconciliationDraft extends Equatable {
   final String? warehouse;
+  final String? location;
   final List<CountLine> lines;
   final String? company;
 
   const ReconciliationDraft({
     this.warehouse,
+    this.location,
     this.lines = const [],
     this.company,
   });
 
   ReconciliationDraft copyWith({
-    String? warehouse,
+    Object? warehouse = _sentinel,
+    Object? location = _sentinel,
     List<CountLine>? lines,
     Object? company = _sentinel,
   }) {
     return ReconciliationDraft(
-      warehouse: warehouse ?? this.warehouse,
+      warehouse: warehouse == _sentinel ? this.warehouse : warehouse as String?,
+      location: location == _sentinel ? this.location : location as String?,
       lines: lines ?? this.lines,
       company: company == _sentinel ? this.company : company as String?,
     );
@@ -70,12 +74,13 @@ class ReconciliationDraft extends Equatable {
 
   Map<String, dynamic> toPayload() => {
         'warehouse': warehouse,
+        if (location != null) 'location': location,
         'counts': lines.map((l) => l.toJson()).toList(),
         if (company != null) 'company': company,
       };
 
   @override
-  List<Object?> get props => [warehouse, lines, company];
+  List<Object?> get props => [warehouse, location, lines, company];
 }
 
 const _sentinel = Object();

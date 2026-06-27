@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/sync/pending_operation.dart';
 import '../../../core/sync/providers.dart';
 import '../../../core/ui/empty_state_view.dart';
+import '../../../core/ui/error_banner.dart';
 import '../../../core/ui/operational_components.dart';
 import '../../../core/utils/locale_ext.dart';
 import '../../inventory/domain/entities/item.dart';
@@ -22,17 +23,21 @@ class ReconciliationScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final draft = ref.watch(reconciliationDraftProvider);
     final warehousesAsync = ref.watch(warehousesProvider);
+    final canSubmit = draft.isSubmittable && warehousesAsync.hasValue;
 
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.stockCount)),
       body: warehousesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(context.l10n.failedToLoadWarehouses(e.toString())),
-          ),
-        ),
+        error: (e, _) => e is CompanySelectionRequiredException
+            ? const _CompanyRequiredView()
+            : Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child:
+                      Text(context.l10n.failedToLoadWarehouses(e.toString())),
+                ),
+              ),
         data: (warehouses) => _Body(
           draft: draft,
           warehouses: warehouses,
@@ -46,9 +51,8 @@ class ReconciliationScreen extends ConsumerWidget {
               child: FilledButton.icon(
                 icon: const Icon(Icons.send),
                 label: Text(context.l10n.queueCount),
-                onPressed: draft.isSubmittable
-                    ? () => _submit(context, ref, draft)
-                    : null,
+                onPressed:
+                    canSubmit ? () => _submit(context, ref, draft) : null,
               ),
             ),
     );
@@ -60,7 +64,9 @@ class ReconciliationScreen extends ConsumerWidget {
     ReconciliationDraft draft,
   ) async {
     final settings = ref.read(settingsNotifierProvider);
-    final draftWithCompany = draft.copyWith(company: settings.activeCompany);
+    final company = ref.read(operationCompanyProvider).valueOrNull ??
+        settings.activeCompany;
+    final draftWithCompany = draft.copyWith(company: company);
 
     final threshold = settings.reconciliationVarianceThreshold;
     final needsApproval =
@@ -172,9 +178,23 @@ class _BodyState extends ConsumerState<_Body> {
     });
   }
 
+  void _clearInvalidWarehouse() {
+    final warehouse = ref.read(reconciliationDraftProvider).warehouse;
+    if (warehouse == null || widget.warehouses.contains(warehouse)) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final latest = ref.read(reconciliationDraftProvider).warehouse;
+      if (latest != null && !widget.warehouses.contains(latest)) {
+        ref.read(reconciliationDraftProvider.notifier).setWarehouse(null);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.watch(settingsNotifierProvider);
+    _clearInvalidWarehouse();
     _maybeApplyWarehouseDefault();
     _maybeSeedInitialItem();
     final notifier = ref.read(reconciliationDraftProvider.notifier);
@@ -249,8 +269,12 @@ class _BodyState extends ConsumerState<_Body> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
-          key: ValueKey('warehouse-${widget.draft.warehouse}'),
-          initialValue: widget.draft.warehouse,
+          key: ValueKey(
+            'warehouse-${widget.warehouses.contains(widget.draft.warehouse) ? widget.draft.warehouse : null}',
+          ),
+          initialValue: widget.warehouses.contains(widget.draft.warehouse)
+              ? widget.draft.warehouse
+              : null,
           decoration: InputDecoration(
             labelText: context.l10n.warehouse,
             border: const OutlineInputBorder(),
@@ -261,6 +285,15 @@ class _BodyState extends ConsumerState<_Body> {
               .toList(),
           onChanged: notifier.setWarehouse,
         ),
+        if (widget.draft.warehouse != null) ...[
+          const SizedBox(height: 12),
+          _LocationDropdown(
+            label: context.l10n.countLocation,
+            warehouse: widget.draft.warehouse!,
+            value: widget.draft.location,
+            onChanged: notifier.setLocation,
+          ),
+        ],
         const Divider(height: 32),
         Row(
           children: [
@@ -274,7 +307,10 @@ class _BodyState extends ConsumerState<_Body> {
               label: Text(context.l10n.startScanSession),
               onPressed: widget.draft.warehouse == null
                   ? null
-                  : () => _startScanSession(context, widget.draft.warehouse!),
+                  : () => _startScanSession(
+                        context,
+                        widget.draft.location ?? widget.draft.warehouse!,
+                      ),
             ),
           ],
         ),
@@ -294,7 +330,7 @@ class _BodyState extends ConsumerState<_Body> {
               label: Text(context.l10n.startScanSession),
               onPressed: () => _startScanSession(
                 context,
-                widget.draft.warehouse!,
+                widget.draft.location ?? widget.draft.warehouse!,
               ),
             ),
           )
@@ -340,6 +376,52 @@ class _BodyState extends ConsumerState<_Body> {
         ),
       );
     }
+  }
+}
+
+class _LocationDropdown extends ConsumerWidget {
+  final String label;
+  final String warehouse;
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  const _LocationDropdown({
+    required this.label,
+    required this.warehouse,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locationsAsync = ref.watch(warehouseLocationsProvider(warehouse));
+    return locationsAsync.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (e, _) => ErrorText(e.toString()),
+      data: (locations) {
+        if (value != null && !locations.contains(value)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => onChanged(null));
+        }
+        if (locations.isEmpty) return const SizedBox.shrink();
+        return DropdownButtonFormField<String>(
+          key: ValueKey('$label-$value'),
+          initialValue: locations.contains(value) ? value : null,
+          decoration: InputDecoration(
+            labelText: label,
+            border: const OutlineInputBorder(),
+            helperText: context.l10n.changingWarehouseClearsCount,
+          ),
+          items: [
+            DropdownMenuItem<String>(
+              value: null,
+              child: Text(context.l10n.noneSelected),
+            ),
+            ...locations.map((w) => DropdownMenuItem(value: w, child: Text(w))),
+          ],
+          onChanged: onChanged,
+        );
+      },
+    );
   }
 }
 
@@ -439,6 +521,19 @@ class _CountTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _CompanyRequiredView extends StatelessWidget {
+  const _CompanyRequiredView();
+
+  @override
+  Widget build(BuildContext context) {
+    return EmptyStateView(
+      icon: Icons.business_outlined,
+      title: context.l10n.selectCompany,
+      subtitle: 'Select a company before choosing warehouses.',
     );
   }
 }

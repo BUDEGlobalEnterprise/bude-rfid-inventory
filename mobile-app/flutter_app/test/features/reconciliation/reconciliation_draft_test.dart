@@ -9,14 +9,12 @@ void main() {
     });
 
     test('variance is counted minus expected', () {
-      const line =
-          CountLine(itemCode: 'A', countedQty: 5, expectedQty: 7);
+      const line = CountLine(itemCode: 'A', countedQty: 5, expectedQty: 7);
       expect(line.variance, -2);
     });
 
     test('positive variance when counted exceeds expected', () {
-      const line =
-          CountLine(itemCode: 'A', countedQty: 10, expectedQty: 7);
+      const line = CountLine(itemCode: 'A', countedQty: 10, expectedQty: 7);
       expect(line.variance, 3);
     });
   });
@@ -54,6 +52,7 @@ void main() {
   test('toPayload matches the create_reconciliation contract', () {
     const draft = ReconciliationDraft(
       warehouse: 'Stores - X',
+      location: 'Rack 1 - X',
       lines: [
         CountLine(itemCode: 'A', countedQty: 12, expectedQty: 10),
         CountLine(itemCode: 'B', countedQty: 0, expectedQty: 3),
@@ -61,6 +60,7 @@ void main() {
     );
     expect(draft.toPayload(), {
       'warehouse': 'Stores - X',
+      'location': 'Rack 1 - X',
       'counts': [
         {'item_code': 'A', 'qty': 12.0},
         {'item_code': 'B', 'qty': 0.0},
