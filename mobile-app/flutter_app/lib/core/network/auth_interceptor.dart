@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 
 typedef OnUnauthorized = Future<void> Function();
 
+bool isUnauthorizedStatus(int? status) => status == 401 || status == 403;
+
 class AuthInterceptor extends Interceptor {
   final OnUnauthorized onUnauthorized;
 
@@ -13,7 +15,7 @@ class AuthInterceptor extends Interceptor {
     ErrorInterceptorHandler handler,
   ) async {
     final status = err.response?.statusCode;
-    if (status == 401 || status == 403) {
+    if (isUnauthorizedStatus(status)) {
       await onUnauthorized();
     }
     handler.next(err);

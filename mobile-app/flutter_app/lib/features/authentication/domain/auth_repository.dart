@@ -11,6 +11,10 @@ abstract class AuthRepository {
 
   Future<Either<Failure, void>> logout();
 
+  /// Clears local credentials without calling the backend. Used when the
+  /// server has already rejected the token with 401/403.
+  Future<Either<Failure, void>> expireSession();
+
   Future<Either<Failure, AuthSession?>> currentSession();
 
   /// Refreshes the cached session's roles / full name / default warehouse from

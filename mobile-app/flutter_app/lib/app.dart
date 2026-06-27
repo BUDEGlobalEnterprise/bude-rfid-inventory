@@ -40,7 +40,7 @@ class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
       apiClient.installAuthInterceptor(
         AuthInterceptor(
           onUnauthorized: () =>
-              ref.read(authNotifierProvider.notifier).logout(),
+              ref.read(authNotifierProvider.notifier).expireSession(),
         ),
       );
 

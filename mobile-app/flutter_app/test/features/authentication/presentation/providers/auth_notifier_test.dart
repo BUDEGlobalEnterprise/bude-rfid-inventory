@@ -91,6 +91,35 @@ void main() {
     expect(state, isA<Authenticated>());
     expect((state as Authenticated).session.roles, ['Stock User']);
   });
+
+  test('expireSession clears local session without remote logout', () async {
+    when(() => repo.expireSession()).thenAnswer(
+      (_) async => const Right(null),
+    );
+    final apiClient = ApiClient(dio: Dio())..setAuthToken('old-key:old-secret');
+    final container = ProviderContainer(
+      overrides: [
+        apiClientProvider.overrideWithValue(apiClient),
+        authRepositoryProvider.overrideWithValue(repo),
+        settingsNotifierProvider.overrideWith(
+          (ref) => _SettingsNotifierForTest(const AppSettings()),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(authNotifierProvider.notifier).expireSession();
+
+    final state = container.read(authNotifierProvider);
+    expect(state, isA<AuthFailed>());
+    expect(
+      (state as AuthFailed).message,
+      'Session expired. Please sign in again.',
+    );
+    expect(apiClient.dio.options.headers.containsKey('Authorization'), isFalse);
+    verify(() => repo.expireSession()).called(1);
+    verifyNever(() => repo.logout());
+  });
 }
 
 class _SettingsNotifierForTest extends SettingsNotifier {

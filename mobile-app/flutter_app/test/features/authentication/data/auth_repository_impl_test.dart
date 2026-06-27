@@ -54,8 +54,12 @@ void main() {
     });
 
     test('maps AuthException to AuthFailure and does not cache', () async {
-      when(() => remote.login(username: any(named: 'username'), password: any(named: 'password')))
-          .thenThrow(const AuthException('bad creds'));
+      when(
+        () => remote.login(
+          username: any(named: 'username'),
+          password: any(named: 'password'),
+        ),
+      ).thenThrow(const AuthException('bad creds'));
 
       final result = await repo.login(username: 'u', password: 'p');
 
@@ -68,8 +72,12 @@ void main() {
     });
 
     test('maps NetworkException to NetworkFailure', () async {
-      when(() => remote.login(username: any(named: 'username'), password: any(named: 'password')))
-          .thenThrow(const NetworkException('offline'));
+      when(
+        () => remote.login(
+          username: any(named: 'username'),
+          password: any(named: 'password'),
+        ),
+      ).thenThrow(const NetworkException('offline'));
 
       final result = await repo.login(username: 'u', password: 'p');
 
@@ -82,13 +90,24 @@ void main() {
 
   group('logout', () {
     test('clears local cache even if remote logout fails', () async {
-      when(() => remote.logout())
-          .thenThrow(const NetworkException('offline'));
+      when(() => remote.logout()).thenThrow(const NetworkException('offline'));
       when(() => local.clearSession()).thenAnswer((_) async {});
 
       final result = await repo.logout();
 
       verify(() => local.clearSession()).called(1);
+      expect(result.isRight(), isTrue);
+    });
+  });
+
+  group('expireSession', () {
+    test('clears local cache without remote logout', () async {
+      when(() => local.clearSession()).thenAnswer((_) async {});
+
+      final result = await repo.expireSession();
+
+      verify(() => local.clearSession()).called(1);
+      verifyNever(() => remote.logout());
       expect(result.isRight(), isTrue);
     });
   });
@@ -114,4 +133,3 @@ void main() {
     });
   });
 }
-

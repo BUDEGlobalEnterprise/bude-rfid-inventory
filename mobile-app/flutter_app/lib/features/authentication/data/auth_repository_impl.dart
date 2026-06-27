@@ -52,6 +52,16 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, void>> expireSession() async {
+    try {
+      await local.clearSession();
+      return const Right(null);
+    } on CacheException catch (e) {
+      return Left(CacheFailure(e.message));
+    }
+  }
+
+  @override
   Future<Either<Failure, AuthSession?>> currentSession() async {
     try {
       final cached = await local.getCachedSession();

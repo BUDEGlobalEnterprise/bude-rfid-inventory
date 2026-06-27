@@ -9,6 +9,7 @@ import '../../data/datasources/auth_local_data_source.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
 import '../../domain/auth_repository.dart';
 import '../../domain/auth_session.dart';
+import '../../domain/usecases/expire_session_usecase.dart';
 import '../../domain/usecases/get_current_session_usecase.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/logout_usecase.dart';
@@ -68,6 +69,7 @@ final authNotifierProvider =
   return AuthNotifier(
     loginUseCase: LoginUseCase(repo),
     logoutUseCase: LogoutUseCase(repo),
+    expireSessionUseCase: ExpireSessionUseCase(repo),
     getCurrentSessionUseCase: GetCurrentSessionUseCase(repo),
     refreshSessionUseCase: RefreshSessionUseCase(repo),
     apiClient: apiClient,
@@ -85,6 +87,7 @@ final rolesProvider = Provider<Set<String>>((ref) {
 class AuthNotifier extends StateNotifier<AuthState> {
   final LoginUseCase loginUseCase;
   final LogoutUseCase logoutUseCase;
+  final ExpireSessionUseCase expireSessionUseCase;
   final GetCurrentSessionUseCase getCurrentSessionUseCase;
   final RefreshSessionUseCase refreshSessionUseCase;
   final ApiClient apiClient;
@@ -93,6 +96,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier({
     required this.loginUseCase,
     required this.logoutUseCase,
+    required this.expireSessionUseCase,
     required this.getCurrentSessionUseCase,
     required this.refreshSessionUseCase,
     required this.apiClient,
@@ -146,6 +150,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await logoutUseCase(const NoParams());
     apiClient.clearAuthToken();
     state = const Unauthenticated();
+  }
+
+  Future<void> expireSession({
+    String message = 'Session expired. Please sign in again.',
+  }) async {
+    await expireSessionUseCase(const NoParams());
+    apiClient.clearAuthToken();
+    state = AuthFailed(message);
   }
 
   void _applyDefaultWarehouse(AuthSession session) {
