@@ -153,6 +153,87 @@ void main() {
     expect(notifier.state.targetWarehouse, isNull);
   });
 
+  testWidgets('transfer prompts for company before loading warehouses', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _LocalizedHost(
+        overrides: [
+          transfer.warehousesProvider.overrideWith(
+            (ref) async =>
+                throw const transfer.CompanySelectionRequiredException(),
+          ),
+        ],
+        child: const TransferScreen(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Select company'), findsOneWidget);
+    expect(
+      find.text('Select a company before choosing warehouses.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('transfer clears warehouses outside active company scope', (
+    tester,
+  ) async {
+    final notifier = transfer.TransferDraftNotifier()
+      ..setSource('Stores - B')
+      ..setTarget('Floor - A');
+
+    await tester.pumpWidget(
+      _LocalizedHost(
+        overrides: [
+          transfer.warehousesProvider.overrideWith(
+            (ref) async => ['Stores - A', 'Floor - A'],
+          ),
+          transfer.transferDraftProvider.overrideWith((ref) => notifier),
+        ],
+        child: const TransferScreen(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(notifier.state.sourceWarehouse, isNull);
+    expect(notifier.state.targetWarehouse, 'Floor - A');
+  });
+
+  testWidgets('transfer shows location dropdown after warehouse selection', (
+    tester,
+  ) async {
+    final notifier = transfer.TransferDraftNotifier();
+
+    await tester.pumpWidget(
+      _LocalizedHost(
+        locationOverride: transfer.warehouseLocationsProvider.overrideWith(
+          (ref, warehouse) async => ['Rack 1 - A'],
+        ),
+        overrides: [
+          transfer.warehousesProvider.overrideWith(
+            (ref) async => ['Stores - A', 'Floor - A'],
+          ),
+          transfer.transferDraftProvider.overrideWith((ref) => notifier),
+        ],
+        child: const TransferScreen(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stores - A').last);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Source location'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButtonFormField<String>).at(1));
+    await tester.pumpAndSettle();
+    expect(find.text('Rack 1 - A'), findsWidgets);
+  });
+
   testWidgets('receipt seeds an initial item once', (tester) async {
     final notifier = receipt.ReceiptDraftNotifier();
 
@@ -235,6 +316,20 @@ void main() {
     await tester.pump();
 
     expect(notifier.state.targetWarehouse, 'Receiving - A');
+  });
+
+  test('receipt and reconciliation clear location when parent changes', () {
+    final receiptNotifier = receipt.ReceiptDraftNotifier()
+      ..setTarget('Receiving - A')
+      ..setTargetLocation('Rack 1 - A');
+    receiptNotifier.setTarget('Receiving - B');
+    expect(receiptNotifier.state.targetLocation, isNull);
+
+    final reconciliationNotifier = reconciliation.ReconciliationDraftNotifier()
+      ..setWarehouse('Stores - A')
+      ..setLocation('Rack 1 - A');
+    reconciliationNotifier.setWarehouse('Stores - B');
+    expect(reconciliationNotifier.state.location, isNull);
   });
 
   testWidgets('reconciliation waits for warehouse before seeding item', (
@@ -331,17 +426,25 @@ void main() {
 
 class _LocalizedHost extends StatelessWidget {
   final List<Override> overrides;
+  final Override? locationOverride;
   final Widget child;
 
   const _LocalizedHost({
     required this.overrides,
     required this.child,
+    this.locationOverride,
   });
 
   @override
   Widget build(BuildContext context) {
     return ProviderScope(
-      overrides: overrides,
+      overrides: [
+        locationOverride ??
+            transfer.warehouseLocationsProvider.overrideWith(
+              (ref, warehouse) async => const <String>[],
+            ),
+        ...overrides,
+      ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
