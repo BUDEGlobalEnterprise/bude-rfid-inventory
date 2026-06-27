@@ -33,8 +33,9 @@ class _FakeBarcodeAdapter implements BarcodeAdapter {
   @override
   Future<void> stopScan() async {}
   @override
-  Future<ScanEvent?> scanSingle(
-          {Duration timeout = const Duration(seconds: 30)}) async =>
+  Future<ScanEvent?> scanSingle({
+    Duration timeout = const Duration(seconds: 30),
+  }) async =>
       null;
   @override
   Future<void> dispose() async {
