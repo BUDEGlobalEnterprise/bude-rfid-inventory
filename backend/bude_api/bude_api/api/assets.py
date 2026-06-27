@@ -10,8 +10,6 @@ Asset Maintenance Log, Location, Asset Category, Employee — plus the bude_epc
 Custom Field.
 """
 
-from typing import Optional
-
 try:
     import frappe
 except ImportError:
@@ -43,6 +41,30 @@ def _whitelist(methods, allow_guest: bool = False):
     return frappe.whitelist(allow_guest=allow_guest, methods=methods)
 
 
+def _erpnext_message(exc):
+    msg = (str(exc) or "").strip() or "ERPNext rejected the document."
+    try:
+        from frappe.utils import strip_html_tags
+
+        msg = strip_html_tags(msg).strip() or msg
+    except Exception:
+        pass
+    return msg
+
+
+def _mutate(action):
+    try:
+        return action()
+    except frappe.ValidationError as exc:
+        frappe.db.rollback()
+        return failure(_erpnext_message(exc), code="VALIDATION_ERPNEXT")
+    except frappe.PermissionError:
+        frappe.db.rollback()
+        return failure(
+            "You do not have permission for this action.", code="PERMISSION_DENIED"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Reads
 # ---------------------------------------------------------------------------
@@ -50,11 +72,11 @@ def _whitelist(methods, allow_guest: bool = False):
 
 @_whitelist(methods=["GET", "POST"])
 def list_assets(
-    search: Optional[str] = None,
-    location: Optional[str] = None,
-    custodian: Optional[str] = None,
-    status: Optional[str] = None,
-    category: Optional[str] = None,
+    search: str | None = None,
+    location: str | None = None,
+    custodian: str | None = None,
+    status: str | None = None,
+    category: str | None = None,
     limit: int = 50,
 ) -> dict:
     """List assets with optional filters. Standard Asset DocType only."""
@@ -264,8 +286,13 @@ def set_epc(doctype: str, name: str, epc: str) -> dict:
             code="VALIDATION_EPC_TAKEN",
         )
 
-    frappe.db.set_value(doctype, name, "bude_epc", epc)
-    return success({"doctype": doctype, "name": name, "bude_epc": epc})
+    def _do():
+        doc = frappe.get_doc(doctype, name)
+        doc.set("bude_epc", epc)
+        doc.save(ignore_permissions=False)
+        return success({"doctype": doctype, "name": name, "bude_epc": epc})
+
+    return _mutate(_do)
 
 
 # ---------------------------------------------------------------------------
@@ -279,9 +306,9 @@ _MOVE_PURPOSES = {"Issue", "Receipt", "Transfer"}
 def create_asset_movement(
     assets: list,
     purpose: str,
-    target_location: Optional[str] = None,
-    to_employee: Optional[str] = None,
-    transaction_date: Optional[str] = None,
+    target_location: str | None = None,
+    to_employee: str | None = None,
+    transaction_date: str | None = None,
 ) -> dict:
     """Create + submit a standard Asset Movement.
 
@@ -331,18 +358,21 @@ def create_asset_movement(
             }
         )
 
-    doc = frappe.get_doc(
-        {
-            "doctype": "Asset Movement",
-            "company": company,
-            "purpose": purpose,
-            "transaction_date": transaction_date or frappe.utils.now_datetime(),
-            "assets": rows,
-        }
-    )
-    doc.insert(ignore_permissions=True)
-    doc.submit()
-    return success({"name": doc.name, "docstatus": doc.docstatus})
+    def _do():
+        doc = frappe.get_doc(
+            {
+                "doctype": "Asset Movement",
+                "company": company,
+                "purpose": purpose,
+                "transaction_date": transaction_date or frappe.utils.now_datetime(),
+                "assets": rows,
+            }
+        )
+        doc.insert(ignore_permissions=False)
+        doc.submit()
+        return success({"name": doc.name, "docstatus": doc.docstatus})
+
+    return _mutate(_do)
 
 
 # ---------------------------------------------------------------------------
@@ -353,9 +383,9 @@ def create_asset_movement(
 @_whitelist(methods=["POST"])
 def create_asset_repair(
     asset: str,
-    failure_date: Optional[str] = None,
-    description: Optional[str] = None,
-    repair_cost: Optional[float] = None,
+    failure_date: str | None = None,
+    description: str | None = None,
+    repair_cost: float | None = None,
 ) -> dict:
     """Create a standard Asset Repair record (status Pending)."""
     asset = (asset or "").strip()
@@ -377,9 +407,12 @@ def create_asset_repair(
     if repair_cost is not None:
         data["repair_cost"] = repair_cost
 
-    doc = frappe.get_doc(data)
-    doc.insert(ignore_permissions=True)
-    return success({"name": doc.name, "docstatus": doc.docstatus})
+    def _do():
+        doc = frappe.get_doc(data)
+        doc.insert(ignore_permissions=False)
+        return success({"name": doc.name, "docstatus": doc.docstatus})
+
+    return _mutate(_do)
 
 
 # ---------------------------------------------------------------------------
@@ -389,7 +422,7 @@ def create_asset_repair(
 
 @_whitelist(methods=["GET", "POST"])
 def list_maintenance_logs(
-    asset: Optional[str] = None,
+    asset: str | None = None,
     status: str = "Planned",
     limit: int = 50,
 ) -> dict:
@@ -425,7 +458,7 @@ def list_maintenance_logs(
 
 @_whitelist(methods=["POST"])
 def complete_maintenance_log(
-    log: str, completion_date: Optional[str] = None
+    log: str, completion_date: str | None = None
 ) -> dict:
     """Mark a scheduled Asset Maintenance Log as completed."""
     log = (log or "").strip()
@@ -441,6 +474,9 @@ def complete_maintenance_log(
     doc = frappe.get_doc("Asset Maintenance Log", log)
     doc.maintenance_status = "Completed"
     doc.completion_date = completion_date or frappe.utils.nowdate()
-    doc.flags.ignore_permissions = True
-    doc.save()
-    return success({"name": doc.name, "maintenance_status": "Completed"})
+
+    def _do():
+        doc.save(ignore_permissions=False)
+        return success({"name": doc.name, "maintenance_status": "Completed"})
+
+    return _mutate(_do)
