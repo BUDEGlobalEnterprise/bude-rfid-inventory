@@ -165,3 +165,6 @@ backend/bude_api/demo_runs/
 
 # ----- Local tool config -----
 .claude/
+
+# ----- Local automation logs -----
+.automation/
