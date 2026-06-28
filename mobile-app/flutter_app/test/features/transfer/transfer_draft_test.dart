@@ -1,4 +1,5 @@
 import 'package:bude_inventory/features/transfer/domain/transfer_draft.dart';
+import 'package:bude_inventory/features/tracking/domain/tracking_allocation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -71,5 +72,52 @@ void main() {
         {'item_code': 'B', 'qty': 1.0},
       ],
     });
+  });
+
+  test('tracked lines require complete allocations and serialize them', () {
+    const incomplete = TransferDraft(
+      sourceWarehouse: 'Src - X',
+      targetWarehouse: 'Tgt - X',
+      lines: [
+        TransferLine(
+          itemCode: 'SERIAL',
+          qty: 2,
+          hasSerialNo: true,
+          allocations: [
+            TrackingAllocation(qty: 2, serialNos: ['SN-001']),
+          ],
+        ),
+      ],
+    );
+    expect(incomplete.isSubmittable, isFalse);
+
+    const complete = TransferDraft(
+      sourceWarehouse: 'Src - X',
+      targetWarehouse: 'Tgt - X',
+      lines: [
+        TransferLine(
+          itemCode: 'SERIAL',
+          qty: 2,
+          hasSerialNo: true,
+          allocations: [
+            TrackingAllocation(qty: 2, serialNos: ['SN-001', 'SN-002']),
+          ],
+        ),
+      ],
+    );
+
+    expect(complete.isSubmittable, isTrue);
+    expect(complete.toPayload()['items'], [
+      {
+        'item_code': 'SERIAL',
+        'qty': 2.0,
+        'allocations': [
+          {
+            'qty': 2.0,
+            'serial_nos': ['SN-001', 'SN-002'],
+          },
+        ],
+      },
+    ]);
   });
 }

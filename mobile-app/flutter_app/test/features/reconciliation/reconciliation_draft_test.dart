@@ -1,4 +1,5 @@
 import 'package:bude_inventory/features/reconciliation/domain/reconciliation_draft.dart';
+import 'package:bude_inventory/features/tracking/domain/tracking_allocation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -66,5 +67,30 @@ void main() {
         {'item_code': 'B', 'qty': 0.0},
       ],
     });
+  });
+
+  test('tracked count lines require matching allocations', () {
+    const draft = ReconciliationDraft(
+      warehouse: 'Stores - X',
+      lines: [
+        CountLine(
+          itemCode: 'BATCHED',
+          countedQty: 3,
+          hasBatchNo: true,
+          allocations: [TrackingAllocation(qty: 3, batchNo: 'B-001')],
+        ),
+      ],
+    );
+
+    expect(draft.isSubmittable, isTrue);
+    expect(draft.toPayload()['counts'], [
+      {
+        'item_code': 'BATCHED',
+        'qty': 3.0,
+        'allocations': [
+          {'qty': 3.0, 'batch_no': 'B-001'},
+        ],
+      },
+    ]);
   });
 }

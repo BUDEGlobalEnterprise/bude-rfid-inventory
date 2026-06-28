@@ -1,4 +1,5 @@
 import 'package:bude_inventory/features/receipt/domain/receipt_draft.dart';
+import 'package:bude_inventory/features/tracking/domain/tracking_allocation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -67,5 +68,40 @@ void main() {
       againstPo: 'PO-001',
     );
     expect(draft.copyWith(clearAgainstPo: true).againstPo, isNull);
+  });
+
+  test('receipt serializes new batch allocation with expiry', () {
+    const draft = ReceiptDraft(
+      targetWarehouse: 'Receiving - A',
+      lines: [
+        ReceiptLine(
+          itemCode: 'BATCHED',
+          qty: 5,
+          hasBatchNo: true,
+          allocations: [
+            TrackingAllocation(
+              qty: 5,
+              batchNo: 'B-001',
+              expiryDate: '2030-12-31',
+            ),
+          ],
+        ),
+      ],
+    );
+
+    expect(draft.isSubmittable, isTrue);
+    expect(draft.toPayload()['items'], [
+      {
+        'item_code': 'BATCHED',
+        'qty': 5.0,
+        'allocations': [
+          {
+            'qty': 5.0,
+            'batch_no': 'B-001',
+            'expiry_date': '2030-12-31',
+          },
+        ],
+      },
+    ]);
   });
 }
