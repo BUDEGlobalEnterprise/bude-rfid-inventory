@@ -1,23 +1,61 @@
 import 'package:equatable/equatable.dart';
 
+import '../../tracking/domain/tracking_allocation.dart';
+
 class ReceiptLine extends Equatable {
   final String itemCode;
   final String? itemName;
   final double qty;
+  final bool hasBatchNo;
+  final bool hasSerialNo;
+  final List<TrackingAllocation> allocations;
 
   const ReceiptLine({
     required this.itemCode,
     required this.qty,
     this.itemName,
+    this.hasBatchNo = false,
+    this.hasSerialNo = false,
+    this.allocations = const [],
   });
 
-  ReceiptLine copyWith({double? qty}) =>
-      ReceiptLine(itemCode: itemCode, qty: qty ?? this.qty, itemName: itemName);
+  ReceiptLine copyWith({
+    double? qty,
+    List<TrackingAllocation>? allocations,
+  }) =>
+      ReceiptLine(
+        itemCode: itemCode,
+        qty: qty ?? this.qty,
+        itemName: itemName,
+        hasBatchNo: hasBatchNo,
+        hasSerialNo: hasSerialNo,
+        allocations: allocations ?? this.allocations,
+      );
 
-  Map<String, dynamic> toJson() => {'item_code': itemCode, 'qty': qty};
+  bool get isTrackingComplete => _trackingComplete(
+        qty: qty,
+        hasBatchNo: hasBatchNo,
+        hasSerialNo: hasSerialNo,
+        allocations: allocations,
+        allowExpiryMissing: true,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'item_code': itemCode,
+        'qty': qty,
+        if (allocations.isNotEmpty)
+          'allocations': allocations.map((a) => a.toJson()).toList(),
+      };
 
   @override
-  List<Object?> get props => [itemCode, itemName, qty];
+  List<Object?> get props => [
+        itemCode,
+        itemName,
+        qty,
+        hasBatchNo,
+        hasSerialNo,
+        allocations,
+      ];
 }
 
 /// In-flight receipt — either an ad-hoc Material Receipt (no PO) or a
@@ -61,7 +99,7 @@ class ReceiptDraft extends Equatable {
   bool get isSubmittable =>
       targetWarehouse != null &&
       lines.isNotEmpty &&
-      lines.every((l) => l.qty > 0);
+      lines.every((l) => l.qty > 0 && l.isTrackingComplete);
 
   Map<String, dynamic> toPayload() => {
         'target_warehouse': targetWarehouse,
@@ -82,3 +120,31 @@ class ReceiptDraft extends Equatable {
 }
 
 const _sentinel = Object();
+
+bool _trackingComplete({
+  required double qty,
+  required bool hasBatchNo,
+  required bool hasSerialNo,
+  required List<TrackingAllocation> allocations,
+  required bool allowExpiryMissing,
+}) {
+  if (!hasBatchNo && !hasSerialNo) return true;
+  if (allocations.isEmpty) return false;
+  final total = allocations.fold<double>(0, (sum, a) => sum + a.qty);
+  if ((total - qty).abs() > 0.000001) return false;
+  for (final allocation in allocations) {
+    if (hasBatchNo &&
+        (allocation.batchNo == null || allocation.batchNo!.isEmpty)) {
+      return false;
+    }
+    if (hasBatchNo &&
+        !allowExpiryMissing &&
+        (allocation.expiryDate == null || allocation.expiryDate!.isEmpty)) {
+      return false;
+    }
+    if (hasSerialNo && allocation.serialNos.length != allocation.qty.round()) {
+      return false;
+    }
+  }
+  return true;
+}

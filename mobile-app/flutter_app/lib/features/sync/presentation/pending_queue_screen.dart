@@ -521,31 +521,67 @@ _OperationSpec _operationSpec(PendingOperation op) {
       ? ''
       : '${lines.length} line${lines.length == 1 ? '' : 's'}'
           ' / qty ${formatOperationalQty(totalQty)}';
+  final tracking = _trackingSummary(lines);
 
   return switch (op.type) {
     'stock_transfer' => _OperationSpec(
         'Stock transfer',
         [
-          _arrow(payload['source_warehouse'], payload['target_warehouse']),
+          _arrow(
+            _warehouseWithLocation(
+              payload['source_warehouse'],
+              payload['source_location'],
+            ),
+            _warehouseWithLocation(
+              payload['target_warehouse'],
+              payload['target_location'],
+            ),
+          ),
           qtySummary,
+          tracking,
           _company(payload),
         ].where((v) => v.isNotEmpty).join(' - '),
       ),
     'stock_receipt' => _OperationSpec(
         'Goods receipt',
         [
-          _target(payload['target_warehouse']),
+          _target(
+            _warehouseWithLocation(
+              payload['target_warehouse'],
+              payload['target_location'],
+            ),
+          ),
           if ((payload['against_po'] as String?)?.isNotEmpty == true)
             'PO ${payload['against_po']}',
           qtySummary,
+          tracking,
           _company(payload),
         ].where((v) => v.isNotEmpty).join(' - '),
       ),
     'stock_reconciliation' => _OperationSpec(
         'Stock count',
         [
-          _target(payload['warehouse']),
+          _target(
+            _warehouseWithLocation(payload['warehouse'], payload['location']),
+          ),
           qtySummary,
+          tracking,
+          _company(payload),
+        ].where((v) => v.isNotEmpty).join(' - '),
+      ),
+    'sales_order_dispatch' => _OperationSpec(
+        'Sales Order dispatch',
+        [
+          _target(payload['sales_order']),
+          _string(payload['customer']),
+          _target(
+            _warehouseWithLocation(
+              payload['source_warehouse'],
+              payload['source_location'],
+            ),
+          ),
+          qtySummary,
+          tracking,
           _company(payload),
         ].where((v) => v.isNotEmpty).join(' - '),
       ),
@@ -618,6 +654,14 @@ String _target(Object? value) {
   return text.isEmpty ? '' : text;
 }
 
+String _warehouseWithLocation(Object? warehouse, Object? location) {
+  final parent = _string(warehouse);
+  final child = _string(location);
+  if (child.isEmpty || child == parent) return parent;
+  if (parent.isEmpty) return child;
+  return '$parent / $child';
+}
+
 String _company(Map<String, dynamic> payload) {
   final text = _string(payload['company']);
   return text.isEmpty ? '' : text;
@@ -626,4 +670,26 @@ String _company(Map<String, dynamic> payload) {
 String _assetCount(Object? value) {
   if (value is! List || value.isEmpty) return '';
   return '${value.length} asset${value.length == 1 ? '' : 's'}';
+}
+
+String _trackingSummary(List lines) {
+  final parts = <String>[];
+  for (final raw in lines) {
+    if (raw is! Map) continue;
+    final allocations = raw['allocations'];
+    if (allocations is! List) continue;
+    for (final allocation in allocations) {
+      if (allocation is! Map) continue;
+      final batch = _string(allocation['batch_no']);
+      if (batch.isNotEmpty) parts.add('Batch $batch');
+      final serials = allocation['serial_nos'];
+      if (serials is List && serials.isNotEmpty) {
+        parts.add('${serials.length} serial${serials.length == 1 ? '' : 's'}');
+      }
+      final expiry = _string(allocation['expiry_date']);
+      if (expiry.isNotEmpty) parts.add('Exp $expiry');
+    }
+  }
+  if (parts.isEmpty) return '';
+  return parts.take(4).join(' / ');
 }

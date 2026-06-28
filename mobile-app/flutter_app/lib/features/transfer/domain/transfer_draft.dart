@@ -1,26 +1,60 @@
 import 'package:equatable/equatable.dart';
 
+import '../../tracking/domain/tracking_allocation.dart';
+
 class TransferLine extends Equatable {
   final String itemCode;
   final String? itemName;
   final double qty;
+  final bool hasBatchNo;
+  final bool hasSerialNo;
+  final List<TrackingAllocation> allocations;
 
   const TransferLine({
     required this.itemCode,
     required this.qty,
     this.itemName,
+    this.hasBatchNo = false,
+    this.hasSerialNo = false,
+    this.allocations = const [],
   });
 
-  TransferLine copyWith({double? qty}) => TransferLine(
+  TransferLine copyWith({
+    double? qty,
+    List<TrackingAllocation>? allocations,
+  }) =>
+      TransferLine(
         itemCode: itemCode,
         qty: qty ?? this.qty,
         itemName: itemName,
+        hasBatchNo: hasBatchNo,
+        hasSerialNo: hasSerialNo,
+        allocations: allocations ?? this.allocations,
       );
 
-  Map<String, dynamic> toJson() => {'item_code': itemCode, 'qty': qty};
+  bool get isTrackingComplete => _trackingComplete(
+        qty: qty,
+        hasBatchNo: hasBatchNo,
+        hasSerialNo: hasSerialNo,
+        allocations: allocations,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'item_code': itemCode,
+        'qty': qty,
+        if (allocations.isNotEmpty)
+          'allocations': allocations.map((a) => a.toJson()).toList(),
+      };
 
   @override
-  List<Object?> get props => [itemCode, itemName, qty];
+  List<Object?> get props => [
+        itemCode,
+        itemName,
+        qty,
+        hasBatchNo,
+        hasSerialNo,
+        allocations,
+      ];
 }
 
 /// In-flight draft assembled in the TransferScreen, then handed to the sync
@@ -73,7 +107,7 @@ class TransferDraft extends Equatable {
       targetWarehouse != null &&
       sourceWarehouse != targetWarehouse &&
       lines.isNotEmpty &&
-      lines.every((l) => l.qty > 0);
+      lines.every((l) => l.qty > 0 && l.isTrackingComplete);
 
   Map<String, dynamic> toPayload() => {
         'source_warehouse': sourceWarehouse,
@@ -96,3 +130,25 @@ class TransferDraft extends Equatable {
 }
 
 const _sentinel = Object();
+
+bool _trackingComplete({
+  required double qty,
+  required bool hasBatchNo,
+  required bool hasSerialNo,
+  required List<TrackingAllocation> allocations,
+}) {
+  if (!hasBatchNo && !hasSerialNo) return true;
+  if (allocations.isEmpty) return false;
+  final total = allocations.fold<double>(0, (sum, a) => sum + a.qty);
+  if ((total - qty).abs() > 0.000001) return false;
+  for (final allocation in allocations) {
+    if (hasBatchNo &&
+        (allocation.batchNo == null || allocation.batchNo!.isEmpty)) {
+      return false;
+    }
+    if (hasSerialNo && allocation.serialNos.length != allocation.qty.round()) {
+      return false;
+    }
+  }
+  return true;
+}
