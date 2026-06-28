@@ -694,6 +694,12 @@ class _QuickActionsContent extends ConsumerWidget {
           label: context.l10n.count,
           onTap: () => context.push('/reconcile'),
         ),
+      if (canAccessOps && !hiddenActions.contains('fulfillment'))
+        _ActionCard(
+          icon: Icons.local_shipping,
+          label: context.l10n.fulfillment,
+          onTap: () => context.push('/fulfillment'),
+        ),
       if (isManager && !hiddenActions.contains('reports'))
         _ActionCard(
           icon: Icons.assessment_outlined,

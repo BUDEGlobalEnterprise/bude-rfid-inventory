@@ -52,3 +52,8 @@ final itemCacheBoxProvider = Provider<Box<String>>((ref) {
 final warehouseCacheBoxProvider = Provider<Box<String>>((ref) {
   throw UnimplementedError('Override in ProviderScope after Hive init.');
 });
+
+/// Set by `main()` after Hive opens the fulfillment draft box.
+final fulfillmentDraftBoxProvider = Provider<Box<String>>((ref) {
+  throw UnimplementedError('Override in ProviderScope after Hive init.');
+});

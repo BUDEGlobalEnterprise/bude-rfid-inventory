@@ -13,6 +13,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/assets/data/asset_op_submitters.dart';
 import 'features/authentication/presentation/providers/auth_notifier.dart';
+import 'features/fulfillment/data/sales_order_dispatch_op_submitter.dart';
 import 'features/receipt/data/receipt_op_submitter.dart';
 import 'features/reconciliation/data/reconciliation_op_submitter.dart';
 import 'features/tenant/presentation/providers/tenant_notifier.dart';
@@ -48,6 +49,7 @@ class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
       engine.registerSubmitter(TransferOpSubmitter(apiClient.dio));
       engine.registerSubmitter(ReceiptOpSubmitter(apiClient.dio));
       engine.registerSubmitter(ReconciliationOpSubmitter(apiClient.dio));
+      engine.registerSubmitter(SalesOrderDispatchOpSubmitter(apiClient.dio));
       engine.registerSubmitter(AssetMovementOpSubmitter(apiClient.dio));
       engine.registerSubmitter(AssetRepairOpSubmitter(apiClient.dio));
       engine.registerSubmitter(MaintenanceLogOpSubmitter(apiClient.dio));

@@ -75,6 +75,14 @@ const allNavigationDestinations = <NavDest>[
     operationsOnly: true,
   ),
   NavDest(
+    id: 'fulfillment',
+    label: 'Fulfill',
+    icon: Icons.local_shipping_outlined,
+    selectedIcon: Icons.local_shipping,
+    route: '/fulfillment',
+    operationsOnly: true,
+  ),
+  NavDest(
     id: 'assets',
     label: 'Assets',
     icon: Icons.precision_manufacturing_outlined,

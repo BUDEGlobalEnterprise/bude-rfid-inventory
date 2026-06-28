@@ -6,6 +6,8 @@ import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/authentication/presentation/providers/auth_notifier.dart';
 import '../../features/barcode/presentation/scanner_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/fulfillment/presentation/sales_order_fulfillment_screen.dart';
+import '../../features/fulfillment/presentation/sales_order_list_screen.dart';
 import '../../features/inventory/presentation/item_detail_screen.dart';
 import '../../features/inventory/presentation/item_search_screen.dart';
 import '../../features/inventory/domain/entities/item.dart';
@@ -155,6 +157,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => ReconciliationScreen(
           initialItem: state.extra is Item ? state.extra! as Item : null,
         ),
+      ),
+      GoRoute(
+        path: '/fulfillment',
+        builder: (context, state) => const SalesOrderListScreen(),
+        routes: [
+          GoRoute(
+            path: ':salesOrder',
+            builder: (context, state) => SalesOrderFulfillmentScreen(
+              salesOrder: Uri.decodeComponent(
+                state.pathParameters['salesOrder']!,
+              ),
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: '/reconcile/approve',

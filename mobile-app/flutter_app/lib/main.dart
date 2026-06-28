@@ -11,6 +11,7 @@ import 'core/sync/sync_queue.dart';
 import 'features/inventory/data/datasources/item_local_data_source.dart';
 import 'features/tenant/data/tenant_repository_impl.dart';
 import 'features/tenant/presentation/providers/tenant_notifier.dart';
+import 'features/fulfillment/data/fulfillment_draft_local_data_source.dart';
 import 'features/warehouse/data/datasources/warehouse_local_data_source.dart';
 
 Future<void> main() async {
@@ -27,6 +28,8 @@ Future<void> main() async {
       await Hive.openBox<String>(ItemLocalDataSourceImpl.boxName);
   final warehouseCacheBox =
       await Hive.openBox<String>(WarehouseLocalDataSourceImpl.boxName);
+  final fulfillmentDraftBox =
+      await Hive.openBox<String>(FulfillmentDraftLocalDataSource.boxName);
 
   // Register all known vendor plugins, then bootstrap the manager (probes the
   // device + selects adapters). Camera scanner is wired in as the fallback so
@@ -42,6 +45,7 @@ Future<void> main() async {
         activeTenantBoxProvider.overrideWithValue(activeTenantBox),
         itemCacheBoxProvider.overrideWithValue(itemCacheBox),
         warehouseCacheBoxProvider.overrideWithValue(warehouseCacheBox),
+        fulfillmentDraftBoxProvider.overrideWithValue(fulfillmentDraftBox),
         hardwareManagerProvider.overrideWithValue(hardwareManager),
       ],
       child: const BudeInventoryApp(),
