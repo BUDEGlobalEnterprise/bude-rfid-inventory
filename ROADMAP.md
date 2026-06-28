@@ -254,9 +254,9 @@ Positioning: sell this as an **ERPNext Warehouse Execution Mobile Pack**, not on
 
 | Priority | Capability | Customer value | Status |
 |----------|------------|----------------|--------|
-| 1 | **Bin / rack / shelf / staging location execution** | Operators can receive, count, move, and stage stock at the real physical location level while still using standard ERPNext warehouse structures | IN PROGRESS |
-| 2 | **Picking, packing, and dispatch from Sales Orders** | Turns Sales Orders into guided mobile fulfillment work with fewer missed or wrong shipments | PLANNED |
-| 3 | **Batch, serial, lot, and expiry support** | Supports regulated, perishable, warranty, and high-value inventory workflows that customers expect to pay for | PLANNED |
+| 1 | **Bin / rack / shelf / staging location execution** | Operators can receive, count, move, and stage stock at the real physical location level while still using standard ERPNext warehouse structures | DONE |
+| 2 | **Picking, packing, and dispatch from Sales Orders** | Turns Sales Orders into guided mobile fulfillment work with fewer missed or wrong shipments | DONE |
+| 3 | **Batch, serial, lot, and expiry support** | Supports regulated, perishable, warranty, and high-value inventory workflows that customers expect to pay for | DONE |
 | 4 | **Label printing for items, bins, pallets, and receipts** | Makes mobile execution tangible on the floor through barcode/RFID-ready labels and receiving documents | PLANNED |
 | 5 | **Approval and audit controls** | Gives managers confidence around variance, high-value movement, and compliance-sensitive changes | PLANNED |
 | 6 | **Backend permission hardening** | Ensures mobile convenience never bypasses ERPNext roles, companies, warehouses, or document permissions | PLANNED |
@@ -267,11 +267,17 @@ Positioning: sell this as an **ERPNext Warehouse Execution Mobile Pack**, not on
 
 Execution rule: implement these one by one. Start with optional bin/location execution using standard ERPNext warehouse/bin concepts; do not add custom DocTypes unless standard ERPNext cannot represent the workflow.
 
+Bin / rack / shelf / staging execution is implemented by treating physical locations as standard ERPNext child `Warehouse` records. Mobile operators select a parent warehouse, optionally choose one child location, and queued transfer, receipt, and reconciliation operations submit that child Warehouse as the effective stock location.
+
+Sales Order fulfillment is implemented as a mobile Pick → Pack → Dispatch flow. Operators choose an open Sales Order, scan or enter exact pending quantities for every line, confirm packing, and queue a standard ERPNext `Delivery Note` linked to the original Sales Order lines.
+
+Batch, serial, lot, and expiry support is implemented with standard ERPNext `Batch` and `Serial No` records. "Lot" maps to ERPNext `Batch`; mobile stock flows store tracking allocations in queued payloads, and receipts can create standard batches with expiry before the stock document is submitted.
+
 ---
 
 ## Architecture Constraints
 
-- **No custom DocTypes** — every read/write uses standard ERPNext DocTypes (`Stock Entry`, `Purchase Receipt`, `Stock Reconciliation`, `Bin`, `Stock Ledger Entry`).
+- **No custom DocTypes** — every read/write uses standard ERPNext DocTypes (`Stock Entry`, `Purchase Receipt`, `Stock Reconciliation`, `Sales Order`, `Delivery Note`, `Bin`, `Stock Ledger Entry`).
 - **HAL isolation** — all hardware-specific code lives in `lib/core/hardware/vendors/`. Business code only imports from `lib/core/hardware/adapters/`.
 - **Offline-first** — every user-initiated operation is queued locally first; network is opportunistic.
 - **Clean architecture** — each feature has independent `domain / data / presentation` layers; cross-feature dependencies flow only through providers.

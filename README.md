@@ -50,6 +50,12 @@ An operator opens the app, searches for an item by name or scans its barcode, se
 
 **Stock transfer** moves quantity between two warehouses. **Goods receipt** receives items against an open Purchase Order (or free-form). **Stock reconciliation** counts a shelf and submits the delta — ERPNext generates the adjustment entry automatically.
 
+**Bin / rack / shelf / staging execution** uses standard ERPNext child **Warehouse** records for physical locations. Operators still select the parent warehouse for compatibility, then optionally choose a child location; queued transfer, receipt, and count operations sync against that child Warehouse as the effective stock location.
+
+**Sales Order fulfillment** guides operators through Pick, Pack, and Dispatch stages. V1 requires exact fulfillment of every pending Sales Order line before dispatch can be queued; sync creates a standard ERPNext **Delivery Note** linked back to the Sales Order lines.
+
+**Batch, serial, lot, and expiry support** uses standard ERPNext **Batch** and **Serial No** records. In BUDE, "lot" means ERPNext Batch; mobile receipt, transfer, count, and Sales Order dispatch payloads carry optional tracking allocations that sync offline-first.
+
 **Bulk scan sessions** let operators scan multiple items continuously before committing: the camera viewfinder stays open, duplicates increment quantity, and the operator edits counts inline before hitting *Use N items* to pass the list to any operation screen.
 
 **Offline-first sync queue** (Hive) stores every pending operation locally. The `SyncEngine` retries on connectivity restore. The *Pending Queue* screen shows status, errors, and lets operators retry or discard individual operations.
@@ -153,7 +159,7 @@ All responses use a `{ success, data, message }` envelope. Errors return `succes
 
 ## 9. Architecture Principles
 
-- **No custom DocTypes** — reads and writes use standard ERPNext documents only.
+- **No custom DocTypes** — reads and writes use standard ERPNext documents only, including Sales Orders and Delivery Notes for fulfillment.
 - **HAL isolation** — all hardware-specific code is confined to `lib/core/hardware/vendors/`.
 - **Offline-first** — every user operation is queued locally before any network attempt.
 - **Clean architecture** — each feature has independent `domain / data / presentation` layers. Cross-feature dependencies flow only through Riverpod providers.
