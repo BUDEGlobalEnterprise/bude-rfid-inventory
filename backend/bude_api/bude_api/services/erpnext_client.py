@@ -23,6 +23,7 @@ _SUPPORTED_DOCTYPES = {
     "Serial No",
     "Batch",
     "Warehouse",
+    "Sales Order",
     "Purchase Receipt",
     "Delivery Note",
     "Stock Reconciliation",
