@@ -4,6 +4,7 @@ import '../../../../core/sync/providers.dart';
 import '../../../authentication/presentation/providers/auth_notifier.dart';
 import '../../../company/presentation/providers/company_providers.dart';
 import '../../../settings/presentation/providers/settings_notifier.dart';
+import '../../../tracking/domain/tracking_allocation.dart';
 import '../../data/warehouse_remote_data_source.dart';
 import '../../domain/submit_transfer_usecase.dart';
 import '../../domain/transfer_draft.dart';
@@ -101,6 +102,21 @@ class TransferDraftNotifier extends StateNotifier<TransferDraft> {
     state = state.copyWith(
       lines: state.lines
           .map((l) => l.itemCode == itemCode ? l.copyWith(qty: qty) : l)
+          .toList(),
+    );
+  }
+
+  void updateAllocations(
+    String itemCode,
+    List<TrackingAllocation> allocations,
+  ) {
+    state = state.copyWith(
+      lines: state.lines
+          .map(
+            (l) => l.itemCode == itemCode
+                ? l.copyWith(allocations: allocations)
+                : l,
+          )
           .toList(),
     );
   }

@@ -5,12 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/sync/pending_operation.dart';
 import '../../../core/sync/providers.dart';
 import '../../../core/ui/empty_state_view.dart';
-import '../../../core/ui/error_banner.dart';
 import '../../../core/ui/operational_components.dart';
 import '../../../core/utils/locale_ext.dart';
 import '../../inventory/domain/entities/item.dart';
 import '../../scan_session/domain/scanned_item.dart';
 import '../../settings/presentation/providers/settings_notifier.dart';
+import '../../tracking/presentation/tracking_allocation_picker.dart';
+import '../../transfer/presentation/widgets/warehouse_location_dropdown.dart';
 import '../domain/reconciliation_draft.dart';
 import 'providers/reconciliation_providers.dart';
 
@@ -150,6 +151,8 @@ class _BodyState extends ConsumerState<_Body> {
                 itemCode: item.itemCode,
                 itemName: item.itemName,
                 countedQty: 1,
+                hasBatchNo: item.hasBatchNo,
+                hasSerialNo: item.hasSerialNo,
               ),
             );
       } else {
@@ -221,7 +224,7 @@ class _BodyState extends ConsumerState<_Body> {
             ),
             BudeSummaryPill(
               icon: Icons.functions,
-              label: 'Counted',
+              label: context.l10n.counted,
               value: formatOperationalQty(totalCounted),
             ),
             BudeStatusChip(
@@ -287,10 +290,11 @@ class _BodyState extends ConsumerState<_Body> {
         ),
         if (widget.draft.warehouse != null) ...[
           const SizedBox(height: 12),
-          _LocationDropdown(
+          WarehouseLocationDropdown(
             label: context.l10n.countLocation,
             warehouse: widget.draft.warehouse!,
             value: widget.draft.location,
+            helperText: context.l10n.changingWarehouseClearsCount,
             onChanged: notifier.setLocation,
           ),
         ],
@@ -339,6 +343,7 @@ class _BodyState extends ConsumerState<_Body> {
             (line) => _CountTile(
               line: line,
               onCountChanged: (q) => notifier.setCount(line.itemCode, q),
+              onTrackingPressed: () => _editTracking(context, line),
               onRemove: () => notifier.removeLine(line.itemCode),
             ),
           ),
@@ -373,66 +378,43 @@ class _BodyState extends ConsumerState<_Body> {
           itemName: scanned.item.itemName,
           countedQty: scanned.qty,
           expectedQty: expectedQtys[i],
+          hasBatchNo: scanned.item.hasBatchNo,
+          hasSerialNo: scanned.item.hasSerialNo,
         ),
       );
     }
   }
-}
 
-class _LocationDropdown extends ConsumerWidget {
-  final String label;
-  final String warehouse;
-  final String? value;
-  final ValueChanged<String?> onChanged;
-
-  const _LocationDropdown({
-    required this.label,
-    required this.warehouse,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final locationsAsync = ref.watch(warehouseLocationsProvider(warehouse));
-    return locationsAsync.when(
-      loading: () => const LinearProgressIndicator(),
-      error: (e, _) => ErrorText(e.toString()),
-      data: (locations) {
-        if (value != null && !locations.contains(value)) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => onChanged(null));
-        }
-        if (locations.isEmpty) return const SizedBox.shrink();
-        return DropdownButtonFormField<String>(
-          key: ValueKey('$label-$value'),
-          initialValue: locations.contains(value) ? value : null,
-          decoration: InputDecoration(
-            labelText: label,
-            border: const OutlineInputBorder(),
-            helperText: context.l10n.changingWarehouseClearsCount,
-          ),
-          items: [
-            DropdownMenuItem<String>(
-              value: null,
-              child: Text(context.l10n.noneSelected),
-            ),
-            ...locations.map((w) => DropdownMenuItem(value: w, child: Text(w))),
-          ],
-          onChanged: onChanged,
-        );
-      },
+  Future<void> _editTracking(BuildContext context, CountLine line) async {
+    final updated = await showTrackingAllocationPicker(
+      context,
+      ref,
+      TrackingLineInfo(
+        itemCode: line.itemCode,
+        qty: line.countedQty,
+        hasBatchNo: line.hasBatchNo,
+        hasSerialNo: line.hasSerialNo,
+        warehouse: widget.draft.location ?? widget.draft.warehouse,
+        allocations: line.allocations,
+      ),
     );
+    if (updated == null || !mounted) return;
+    ref
+        .read(reconciliationDraftProvider.notifier)
+        .updateAllocations(line.itemCode, updated);
   }
 }
 
 class _CountTile extends StatelessWidget {
   final CountLine line;
   final ValueChanged<double> onCountChanged;
+  final VoidCallback onTrackingPressed;
   final VoidCallback onRemove;
 
   const _CountTile({
     required this.line,
     required this.onCountChanged,
+    required this.onTrackingPressed,
     required this.onRemove,
   });
 
@@ -504,6 +486,7 @@ class _CountTile extends StatelessWidget {
                           ),
                       ],
                     ),
+                    TrackingChips(allocations: line.allocations),
                   ],
                 ),
               ),
@@ -517,6 +500,16 @@ class _CountTile extends StatelessWidget {
                 icon: const Icon(Icons.remove_circle_outline),
                 onPressed: onRemove,
               ),
+              if (line.hasBatchNo || line.hasSerialNo)
+                IconButton(
+                  tooltip: context.l10n.tracking,
+                  icon: Icon(
+                    line.isTrackingComplete
+                        ? Icons.check_circle_outline
+                        : Icons.inventory_outlined,
+                  ),
+                  onPressed: onTrackingPressed,
+                ),
             ],
           ),
         ),
@@ -533,7 +526,7 @@ class _CompanyRequiredView extends StatelessWidget {
     return EmptyStateView(
       icon: Icons.business_outlined,
       title: context.l10n.selectCompany,
-      subtitle: 'Select a company before choosing warehouses.',
+      subtitle: context.l10n.selectCompanyBeforeWarehouses,
     );
   }
 }

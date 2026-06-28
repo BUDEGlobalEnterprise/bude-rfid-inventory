@@ -318,6 +318,47 @@ void main() {
     expect(notifier.state.targetWarehouse, 'Receiving - A');
   });
 
+  testWidgets('receipt shows location dropdown after warehouse selection', (
+    tester,
+  ) async {
+    final notifier = receipt.ReceiptDraftNotifier();
+
+    await tester.pumpWidget(
+      _LocalizedHost(
+        locationOverride: transfer.warehouseLocationsProvider.overrideWith(
+          (ref, warehouse) async => ['Receiving Rack 1 - A'],
+        ),
+        overrides: [
+          receipt.warehousesProvider.overrideWith(
+            (ref) async => ['Receiving - A'],
+          ),
+          receipt.purchaseOrdersProvider.overrideWith((ref) async => []),
+          receipt.receiptDraftProvider.overrideWith((ref) => notifier),
+        ],
+        child: const ReceiptScreen(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Receiving - A').last);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Target location'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButtonFormField<String>).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Receiving Rack 1 - A').last);
+    await tester.pump();
+
+    expect(notifier.state.targetLocation, 'Receiving Rack 1 - A');
+    expect(
+      notifier.state.toPayload()['target_location'],
+      'Receiving Rack 1 - A',
+    );
+  });
+
   test('receipt and reconciliation clear location when parent changes', () {
     final receiptNotifier = receipt.ReceiptDraftNotifier()
       ..setTarget('Receiving - A')
@@ -399,6 +440,46 @@ void main() {
     expect(notifier.state.lines, hasLength(1));
     expect(notifier.state.lines.single.itemCode, 'ITEM-001');
     expect(notifier.state.lines.single.countedQty, 1);
+  });
+
+  testWidgets(
+      'reconciliation shows location dropdown after warehouse selection', (
+    tester,
+  ) async {
+    final notifier = reconciliation.ReconciliationDraftNotifier();
+
+    await tester.pumpWidget(
+      _LocalizedHost(
+        locationOverride: transfer.warehouseLocationsProvider.overrideWith(
+          (ref, warehouse) async => ['Rack Count 1 - A'],
+        ),
+        overrides: [
+          reconciliation.warehousesProvider.overrideWith(
+            (ref) async => ['Stores - A'],
+          ),
+          reconciliation.reconciliationDraftProvider.overrideWith(
+            (ref) => notifier,
+          ),
+        ],
+        child: const ReconciliationScreen(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stores - A').last);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Count location'), findsOneWidget);
+    await tester.tap(find.byType(DropdownButtonFormField<String>).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rack Count 1 - A').last);
+    await tester.pump();
+
+    expect(notifier.state.location, 'Rack Count 1 - A');
+    expect(notifier.state.toPayload()['location'], 'Rack Count 1 - A');
   });
 
   testWidgets('search result menu exposes operation shortcuts', (tester) async {

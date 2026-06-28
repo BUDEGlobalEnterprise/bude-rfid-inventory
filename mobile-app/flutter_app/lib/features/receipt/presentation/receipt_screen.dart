@@ -10,6 +10,8 @@ import '../../../core/utils/locale_ext.dart';
 import '../../inventory/domain/entities/item.dart';
 import '../../scan_session/domain/scanned_item.dart';
 import '../../settings/presentation/providers/settings_notifier.dart';
+import '../../tracking/presentation/tracking_allocation_picker.dart';
+import '../../transfer/presentation/widgets/warehouse_location_dropdown.dart';
 import '../domain/receipt_draft.dart';
 import 'providers/receipt_providers.dart';
 
@@ -133,6 +135,8 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
               itemCode: item.itemCode,
               itemName: item.itemName,
               qty: 1,
+              hasBatchNo: item.hasBatchNo,
+              hasSerialNo: item.hasSerialNo,
             ),
           );
     } else {
@@ -261,7 +265,7 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
         ),
         if (widget.draft.targetWarehouse != null) ...[
           const SizedBox(height: 12),
-          _LocationDropdown(
+          WarehouseLocationDropdown(
             label: context.l10n.targetLocation,
             warehouse: widget.draft.targetWarehouse!,
             value: widget.draft.targetLocation,
@@ -313,6 +317,7 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
             (line) => _LineTile(
               line: line,
               onQtyChanged: (q) => notifier.updateQty(line.itemCode, q),
+              onTrackingPressed: () => _editTracking(context, line),
               onRemove: () => notifier.removeLine(line.itemCode),
             ),
           ),
@@ -331,9 +336,31 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
           itemCode: scanned.item.itemCode,
           itemName: scanned.item.itemName,
           qty: scanned.qty,
+          hasBatchNo: scanned.item.hasBatchNo,
+          hasSerialNo: scanned.item.hasSerialNo,
         ),
       );
     }
+  }
+
+  Future<void> _editTracking(BuildContext context, ReceiptLine line) async {
+    final updated = await showTrackingAllocationPicker(
+      context,
+      ref,
+      TrackingLineInfo(
+        itemCode: line.itemCode,
+        qty: line.qty,
+        hasBatchNo: line.hasBatchNo,
+        hasSerialNo: line.hasSerialNo,
+        receiptMode: true,
+        warehouse: widget.draft.targetLocation ?? widget.draft.targetWarehouse,
+        allocations: line.allocations,
+      ),
+    );
+    if (updated == null || !mounted) return;
+    ref
+        .read(receiptDraftProvider.notifier)
+        .updateAllocations(line.itemCode, updated);
   }
 }
 
@@ -377,50 +404,16 @@ class _Dropdown extends StatelessWidget {
   }
 }
 
-class _LocationDropdown extends ConsumerWidget {
-  final String label;
-  final String warehouse;
-  final String? value;
-  final ValueChanged<String?> onChanged;
-
-  const _LocationDropdown({
-    required this.label,
-    required this.warehouse,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final locationsAsync = ref.watch(warehouseLocationsProvider(warehouse));
-    return locationsAsync.when(
-      loading: () => const LinearProgressIndicator(),
-      error: (e, _) => ErrorText(e.toString()),
-      data: (locations) {
-        if (value != null && !locations.contains(value)) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => onChanged(null));
-        }
-        if (locations.isEmpty) return const SizedBox.shrink();
-        return _Dropdown(
-          label: label,
-          value: value,
-          options: locations,
-          allowClear: true,
-          onChanged: onChanged,
-        );
-      },
-    );
-  }
-}
-
 class _LineTile extends StatelessWidget {
   final ReceiptLine line;
   final ValueChanged<double> onQtyChanged;
+  final VoidCallback onTrackingPressed;
   final VoidCallback onRemove;
 
   const _LineTile({
     required this.line,
     required this.onQtyChanged,
+    required this.onTrackingPressed,
     required this.onRemove,
   });
 
@@ -461,6 +454,7 @@ class _LineTile extends StatelessWidget {
                             ),
                       ),
                     ],
+                    TrackingChips(allocations: line.allocations),
                   ],
                 ),
               ),
@@ -475,6 +469,16 @@ class _LineTile extends StatelessWidget {
                 icon: const Icon(Icons.remove_circle_outline),
                 onPressed: onRemove,
               ),
+              if (line.hasBatchNo || line.hasSerialNo)
+                IconButton(
+                  tooltip: context.l10n.tracking,
+                  icon: Icon(
+                    line.isTrackingComplete
+                        ? Icons.check_circle_outline
+                        : Icons.inventory_outlined,
+                  ),
+                  onPressed: onTrackingPressed,
+                ),
             ],
           ),
         ),
@@ -506,7 +510,7 @@ class _CompanyRequiredView extends StatelessWidget {
     return EmptyStateView(
       icon: Icons.business_outlined,
       title: context.l10n.selectCompany,
-      subtitle: 'Select a company before choosing warehouses.',
+      subtitle: context.l10n.selectCompanyBeforeWarehouses,
     );
   }
 }

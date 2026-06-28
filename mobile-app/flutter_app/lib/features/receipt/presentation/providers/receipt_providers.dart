@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/sync/providers.dart';
 import '../../../authentication/presentation/providers/auth_notifier.dart';
+import '../../../tracking/domain/tracking_allocation.dart';
 import '../../data/purchase_order_remote_data_source.dart';
 import '../../domain/receipt_draft.dart';
 import '../../domain/submit_receipt_usecase.dart';
@@ -75,6 +76,21 @@ class ReceiptDraftNotifier extends StateNotifier<ReceiptDraft> {
     state = state.copyWith(
       lines: state.lines
           .map((l) => l.itemCode == itemCode ? l.copyWith(qty: qty) : l)
+          .toList(),
+    );
+  }
+
+  void updateAllocations(
+    String itemCode,
+    List<TrackingAllocation> allocations,
+  ) {
+    state = state.copyWith(
+      lines: state.lines
+          .map(
+            (l) => l.itemCode == itemCode
+                ? l.copyWith(allocations: allocations)
+                : l,
+          )
           .toList(),
     );
   }

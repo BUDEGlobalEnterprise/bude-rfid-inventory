@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/sync/providers.dart';
 import '../../../inventory/presentation/providers/item_search_notifier.dart';
+import '../../../tracking/domain/tracking_allocation.dart';
 import '../../domain/reconciliation_draft.dart';
 import '../../domain/submit_reconciliation_usecase.dart';
 
@@ -61,6 +62,21 @@ class ReconciliationDraftNotifier extends StateNotifier<ReconciliationDraft> {
     state = state.copyWith(
       lines: state.lines
           .map((l) => l.itemCode == itemCode ? l.copyWith(countedQty: qty) : l)
+          .toList(),
+    );
+  }
+
+  void updateAllocations(
+    String itemCode,
+    List<TrackingAllocation> allocations,
+  ) {
+    state = state.copyWith(
+      lines: state.lines
+          .map(
+            (l) => l.itemCode == itemCode
+                ? l.copyWith(allocations: allocations)
+                : l,
+          )
           .toList(),
     );
   }
