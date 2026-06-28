@@ -20,6 +20,9 @@ _ITEM_FIELDS = [
     "item_name",
     "description",
     "stock_uom",
+    "has_batch_no",
+    "has_serial_no",
+    "create_new_batch",
     "image",
     "disabled",
 ]
@@ -41,6 +44,7 @@ _SERIAL_FIELDS = [
     "item_name",
     "warehouse",
     "status",
+    "batch_no",
     "bude_epc",
 ]
 

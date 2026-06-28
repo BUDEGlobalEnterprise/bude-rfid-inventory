@@ -16,6 +16,7 @@ except ImportError:
     frappe = None
 
 from ..utils.response import failure, success
+from .stock_tracking import expand_stock_rows
 
 
 def _whitelist(allow_guest: bool = False):
@@ -118,20 +119,27 @@ def create_transfer(
             code="VALIDATION_UNKNOWN_ITEM",
         )
 
+    erp_items = expand_stock_rows(
+        frappe,
+        items,
+        warehouse=effective_source,
+        flow="outbound",
+        row_builder=lambda row, allocation: {
+            "item_code": row["item_code"],
+            "qty": (allocation or row)["qty"],
+            "s_warehouse": effective_source,
+            "t_warehouse": effective_target,
+        },
+    )
+    if isinstance(erp_items, dict):
+        return erp_items
+
     doc_data = {
         "doctype": "Stock Entry",
         "stock_entry_type": "Material Transfer",
         "purpose": "Material Transfer",
         "posting_date": posting_date,
-        "items": [
-            {
-                "item_code": row["item_code"],
-                "qty": row["qty"],
-                "s_warehouse": effective_source,
-                "t_warehouse": effective_target,
-            }
-            for row in items
-        ],
+        "items": erp_items,
     }
     if resolved_company:
         doc_data["company"] = resolved_company
@@ -393,19 +401,28 @@ def _validate_receipt_inputs(items, target_warehouse) -> dict | None:
 
 
 def _create_material_receipt(items, target_warehouse, posting_date, company=None) -> dict:
+    erp_items = expand_stock_rows(
+        frappe,
+        items,
+        warehouse=target_warehouse,
+        flow="inbound",
+        allow_new_batches=True,
+        allow_new_serials=True,
+        row_builder=lambda row, allocation: {
+            "item_code": row["item_code"],
+            "qty": (allocation or row)["qty"],
+            "t_warehouse": target_warehouse,
+        },
+    )
+    if isinstance(erp_items, dict):
+        return erp_items
+
     doc_data = {
         "doctype": "Stock Entry",
         "stock_entry_type": "Material Receipt",
         "purpose": "Material Receipt",
         "posting_date": posting_date,
-        "items": [
-            {
-                "item_code": row["item_code"],
-                "qty": row["qty"],
-                "t_warehouse": target_warehouse,
-            }
-            for row in items
-        ],
+        "items": erp_items,
     }
     if company:
         doc_data["company"] = company
@@ -451,20 +468,29 @@ def _create_purchase_receipt(items, target_warehouse, against_po, posting_date, 
             code="VALIDATION_PO_LINE_MISMATCH",
         )
 
+    erp_items = expand_stock_rows(
+        frappe,
+        items,
+        warehouse=target_warehouse,
+        flow="inbound",
+        allow_new_batches=True,
+        allow_new_serials=True,
+        row_builder=lambda row, allocation: {
+            "item_code": row["item_code"],
+            "qty": (allocation or row)["qty"],
+            "warehouse": target_warehouse,
+            "purchase_order": against_po,
+            "purchase_order_item": po_line_by_code[row["item_code"]]["name"],
+        },
+    )
+    if isinstance(erp_items, dict):
+        return erp_items
+
     pr_data = {
         "doctype": "Purchase Receipt",
         "supplier": po_doc["supplier"],
         "posting_date": posting_date,
-        "items": [
-            {
-                "item_code": row["item_code"],
-                "qty": row["qty"],
-                "warehouse": target_warehouse,
-                "purchase_order": against_po,
-                "purchase_order_item": po_line_by_code[row["item_code"]]["name"],
-            }
-            for row in items
-        ],
+        "items": erp_items,
     }
     if company:
         pr_data["company"] = company
@@ -520,18 +546,25 @@ def create_reconciliation(
             code="VALIDATION_UNKNOWN_ITEM",
         )
 
+    erp_items = expand_stock_rows(
+        frappe,
+        counts,
+        warehouse=effective_warehouse,
+        flow="count",
+        row_builder=lambda row, allocation: {
+            "item_code": row["item_code"],
+            "warehouse": effective_warehouse,
+            "qty": (allocation or row)["qty"],
+        },
+    )
+    if isinstance(erp_items, dict):
+        return erp_items
+
     doc_data = {
         "doctype": "Stock Reconciliation",
         "purpose": "Stock Reconciliation",
         "posting_date": posting_date,
-        "items": [
-            {
-                "item_code": row["item_code"],
-                "warehouse": effective_warehouse,
-                "qty": row["qty"],
-            }
-            for row in counts
-        ],
+        "items": erp_items,
     }
     if resolved_company:
         doc_data["company"] = resolved_company
