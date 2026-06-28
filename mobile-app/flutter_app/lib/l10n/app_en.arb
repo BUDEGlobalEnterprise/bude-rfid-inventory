@@ -405,6 +405,8 @@
   "@activeCompany": {},
   "selectCompany": "Select company",
   "@selectCompany": {},
+  "selectCompanyBeforeWarehouses": "Select a company before choosing warehouses.",
+  "@selectCompanyBeforeWarehouses": {},
   "noCompanies": "No companies found",
   "@noCompanies": {},
   "varianceThreshold": "Variance approval threshold (units)",
@@ -573,5 +575,76 @@
   "needsItems": "Needs items",
   "@needsItems": {},
   "poOptional": "PO optional",
-  "@poOptional": {}
+  "@poOptional": {},
+  "fulfillment": "Fulfillment",
+  "@fulfillment": {},
+  "noSalesOrders": "No Sales Orders to fulfill",
+  "@noSalesOrders": {},
+  "noSalesOrdersSubtitle": "Submitted Sales Orders with pending delivery quantities will appear here.",
+  "@noSalesOrdersSubtitle": {},
+  "dueDate": "Due {date}",
+  "@dueDate": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "linesAndQty": "{lines} lines / qty {qty}",
+  "@linesAndQty": {
+    "placeholders": {
+      "lines": { "type": "int" },
+      "qty": { "type": "String" }
+    }
+  },
+  "pick": "Pick",
+  "@pick": {},
+  "pack": "Pack",
+  "@pack": {},
+  "dispatch": "Dispatch",
+  "@dispatch": {},
+  "exact": "Exact",
+  "@exact": {},
+  "requiredQty": "Required {qty}",
+  "@requiredQty": {
+    "placeholders": {
+      "qty": { "type": "String" }
+    }
+  },
+  "exactPickRequired": "Pick every line at the exact Sales Order quantity before packing.",
+  "@exactPickRequired": {},
+  "continueToPack": "Continue to pack",
+  "@continueToPack": {},
+  "confirmPacked": "Confirm packed",
+  "@confirmPacked": {},
+  "exactPackRequired": "Pack every line at the exact picked quantity before dispatch.",
+  "@exactPackRequired": {},
+  "readyToDispatch": "Ready to dispatch",
+  "@readyToDispatch": {},
+  "readyToDispatchSubtitle": "Queue Delivery Note creation for {salesOrder}.",
+  "@readyToDispatchSubtitle": {
+    "placeholders": {
+      "salesOrder": { "type": "String" }
+    }
+  },
+  "queueDispatch": "Queue dispatch",
+  "@queueDispatch": {},
+  "dispatchQueued": "Dispatch queued (op {id}).",
+  "@dispatchQueued": {
+    "placeholders": {
+      "id": { "type": "String" }
+    }
+  },
+  "tracking": "Tracking",
+  "@tracking": {},
+  "batch": "Batch",
+  "@batch": {},
+  "expiry": "Expiry",
+  "@expiry": {},
+  "serials": "Serials",
+  "@serials": {},
+  "oneSerialPerLine": "One serial per line",
+  "@oneSerialPerLine": {},
+  "batchRequired": "Batch is required.",
+  "@batchRequired": {},
+  "serialCountMustMatchQty": "Serial count must match quantity.",
+  "@serialCountMustMatchQty": {}
 }

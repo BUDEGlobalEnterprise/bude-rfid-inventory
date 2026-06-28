@@ -8,6 +8,9 @@ class Item extends Equatable {
   final String? image;
   final bool disabled;
   final String? itemGroup;
+  final bool hasBatchNo;
+  final bool hasSerialNo;
+  final bool createNewBatch;
 
   const Item({
     required this.itemCode,
@@ -17,7 +20,12 @@ class Item extends Equatable {
     this.image,
     this.disabled = false,
     this.itemGroup,
+    this.hasBatchNo = false,
+    this.hasSerialNo = false,
+    this.createNewBatch = false,
   });
+
+  bool get requiresTracking => hasBatchNo || hasSerialNo;
 
   @override
   List<Object?> get props => [
@@ -28,5 +36,8 @@ class Item extends Equatable {
         image,
         disabled,
         itemGroup,
+        hasBatchNo,
+        hasSerialNo,
+        createNewBatch,
       ];
 }

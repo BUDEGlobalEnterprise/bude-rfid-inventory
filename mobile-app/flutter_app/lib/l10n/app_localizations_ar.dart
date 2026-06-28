@@ -554,6 +554,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get selectCompany => 'اختر شركة';
 
   @override
+  String get selectCompanyBeforeWarehouses =>
+      'اختر شركة قبل اختيار المستودعات.';
+
+  @override
   String get noCompanies => 'لم يتم العثور على شركات';
 
   @override
@@ -770,4 +774,92 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get poOptional => 'PO optional';
+
+  @override
+  String get fulfillment => 'تنفيذ الطلبات';
+
+  @override
+  String get noSalesOrders => 'لا توجد أوامر بيع للتنفيذ';
+
+  @override
+  String get noSalesOrdersSubtitle =>
+      'ستظهر هنا أوامر البيع المعتمدة التي لديها كميات بانتظار التسليم.';
+
+  @override
+  String dueDate(String date) {
+    return 'مستحق $date';
+  }
+
+  @override
+  String linesAndQty(int lines, String qty) {
+    return '$lines بنود / الكمية $qty';
+  }
+
+  @override
+  String get pick => 'اختيار';
+
+  @override
+  String get pack => 'تعبئة';
+
+  @override
+  String get dispatch => 'إرسال';
+
+  @override
+  String get exact => 'مطابق';
+
+  @override
+  String requiredQty(String qty) {
+    return 'المطلوب $qty';
+  }
+
+  @override
+  String get exactPickRequired =>
+      'اختر كل بند بالكمية المطابقة لأمر البيع قبل التعبئة.';
+
+  @override
+  String get continueToPack => 'المتابعة للتعبئة';
+
+  @override
+  String get confirmPacked => 'تأكيد التعبئة';
+
+  @override
+  String get exactPackRequired => 'عبئ كل بند بالكمية المطابقة قبل الإرسال.';
+
+  @override
+  String get readyToDispatch => 'جاهز للإرسال';
+
+  @override
+  String readyToDispatchSubtitle(String salesOrder) {
+    return 'إضافة إنشاء إشعار التسليم لأمر البيع $salesOrder إلى الطابور.';
+  }
+
+  @override
+  String get queueDispatch => 'إضافة الإرسال للطابور';
+
+  @override
+  String dispatchQueued(String id) {
+    return 'تمت إضافة الإرسال للطابور (op $id).';
+  }
+
+  @override
+  String get tracking => 'التتبع';
+
+  @override
+  String get batch => 'دفعة';
+
+  @override
+  String get expiry => 'تاريخ الانتهاء';
+
+  @override
+  String get serials => 'الأرقام التسلسلية';
+
+  @override
+  String get oneSerialPerLine => 'رقم تسلسلي واحد في كل سطر';
+
+  @override
+  String get batchRequired => 'الدفعة مطلوبة.';
+
+  @override
+  String get serialCountMustMatchQty =>
+      'يجب أن يطابق عدد الأرقام التسلسلية الكمية.';
 }

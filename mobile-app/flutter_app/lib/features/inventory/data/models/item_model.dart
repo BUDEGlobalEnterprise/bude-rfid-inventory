@@ -9,6 +9,9 @@ class ItemModel {
   final bool disabled;
 
   final String? itemGroup;
+  final bool hasBatchNo;
+  final bool hasSerialNo;
+  final bool createNewBatch;
 
   const ItemModel({
     required this.itemCode,
@@ -18,6 +21,9 @@ class ItemModel {
     this.image,
     this.disabled = false,
     this.itemGroup,
+    this.hasBatchNo = false,
+    this.hasSerialNo = false,
+    this.createNewBatch = false,
   });
 
   factory ItemModel.fromJson(Map<String, dynamic> json) {
@@ -29,6 +35,9 @@ class ItemModel {
       image: json['image'] as String?,
       disabled: (json['disabled'] ?? 0) == 1,
       itemGroup: json['item_group'] as String?,
+      hasBatchNo: _truthy(json['has_batch_no']),
+      hasSerialNo: _truthy(json['has_serial_no']),
+      createNewBatch: _truthy(json['create_new_batch']),
     );
   }
 
@@ -40,6 +49,9 @@ class ItemModel {
         if (image != null) 'image': image,
         'disabled': disabled ? 1 : 0,
         if (itemGroup != null) 'item_group': itemGroup,
+        'has_batch_no': hasBatchNo ? 1 : 0,
+        'has_serial_no': hasSerialNo ? 1 : 0,
+        'create_new_batch': createNewBatch ? 1 : 0,
       };
 
   Item toEntity() => Item(
@@ -50,5 +62,15 @@ class ItemModel {
         image: image,
         disabled: disabled,
         itemGroup: itemGroup,
+        hasBatchNo: hasBatchNo,
+        hasSerialNo: hasSerialNo,
+        createNewBatch: createNewBatch,
       );
+}
+
+bool _truthy(Object? value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  return {'1', 'true', 'yes', 'y'}
+      .contains(value?.toString().trim().toLowerCase());
 }

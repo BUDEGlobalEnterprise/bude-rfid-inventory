@@ -1076,6 +1076,12 @@ abstract class AppLocalizations {
   /// **'Select company'**
   String get selectCompany;
 
+  /// No description provided for @selectCompanyBeforeWarehouses.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a company before choosing warehouses.'**
+  String get selectCompanyBeforeWarehouses;
+
   /// No description provided for @noCompanies.
   ///
   /// In en, this message translates to:
@@ -1459,6 +1465,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'PO optional'**
   String get poOptional;
+
+  /// No description provided for @fulfillment.
+  ///
+  /// In en, this message translates to:
+  /// **'Fulfillment'**
+  String get fulfillment;
+
+  /// No description provided for @noSalesOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'No Sales Orders to fulfill'**
+  String get noSalesOrders;
+
+  /// No description provided for @noSalesOrdersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted Sales Orders with pending delivery quantities will appear here.'**
+  String get noSalesOrdersSubtitle;
+
+  /// No description provided for @dueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Due {date}'**
+  String dueDate(String date);
+
+  /// No description provided for @linesAndQty.
+  ///
+  /// In en, this message translates to:
+  /// **'{lines} lines / qty {qty}'**
+  String linesAndQty(int lines, String qty);
+
+  /// No description provided for @pick.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick'**
+  String get pick;
+
+  /// No description provided for @pack.
+  ///
+  /// In en, this message translates to:
+  /// **'Pack'**
+  String get pack;
+
+  /// No description provided for @dispatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispatch'**
+  String get dispatch;
+
+  /// No description provided for @exact.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact'**
+  String get exact;
+
+  /// No description provided for @requiredQty.
+  ///
+  /// In en, this message translates to:
+  /// **'Required {qty}'**
+  String requiredQty(String qty);
+
+  /// No description provided for @exactPickRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick every line at the exact Sales Order quantity before packing.'**
+  String get exactPickRequired;
+
+  /// No description provided for @continueToPack.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue to pack'**
+  String get continueToPack;
+
+  /// No description provided for @confirmPacked.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm packed'**
+  String get confirmPacked;
+
+  /// No description provided for @exactPackRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Pack every line at the exact picked quantity before dispatch.'**
+  String get exactPackRequired;
+
+  /// No description provided for @readyToDispatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to dispatch'**
+  String get readyToDispatch;
+
+  /// No description provided for @readyToDispatchSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Queue Delivery Note creation for {salesOrder}.'**
+  String readyToDispatchSubtitle(String salesOrder);
+
+  /// No description provided for @queueDispatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Queue dispatch'**
+  String get queueDispatch;
+
+  /// No description provided for @dispatchQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispatch queued (op {id}).'**
+  String dispatchQueued(String id);
+
+  /// No description provided for @tracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracking'**
+  String get tracking;
+
+  /// No description provided for @batch.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch'**
+  String get batch;
+
+  /// No description provided for @expiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Expiry'**
+  String get expiry;
+
+  /// No description provided for @serials.
+  ///
+  /// In en, this message translates to:
+  /// **'Serials'**
+  String get serials;
+
+  /// No description provided for @oneSerialPerLine.
+  ///
+  /// In en, this message translates to:
+  /// **'One serial per line'**
+  String get oneSerialPerLine;
+
+  /// No description provided for @batchRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch is required.'**
+  String get batchRequired;
+
+  /// No description provided for @serialCountMustMatchQty.
+  ///
+  /// In en, this message translates to:
+  /// **'Serial count must match quantity.'**
+  String get serialCountMustMatchQty;
 }
 
 class _AppLocalizationsDelegate

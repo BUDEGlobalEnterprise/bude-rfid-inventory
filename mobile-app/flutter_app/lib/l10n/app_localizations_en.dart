@@ -559,6 +559,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get selectCompany => 'Select company';
 
   @override
+  String get selectCompanyBeforeWarehouses =>
+      'Select a company before choosing warehouses.';
+
+  @override
   String get noCompanies => 'No companies found';
 
   @override
@@ -775,4 +779,92 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get poOptional => 'PO optional';
+
+  @override
+  String get fulfillment => 'Fulfillment';
+
+  @override
+  String get noSalesOrders => 'No Sales Orders to fulfill';
+
+  @override
+  String get noSalesOrdersSubtitle =>
+      'Submitted Sales Orders with pending delivery quantities will appear here.';
+
+  @override
+  String dueDate(String date) {
+    return 'Due $date';
+  }
+
+  @override
+  String linesAndQty(int lines, String qty) {
+    return '$lines lines / qty $qty';
+  }
+
+  @override
+  String get pick => 'Pick';
+
+  @override
+  String get pack => 'Pack';
+
+  @override
+  String get dispatch => 'Dispatch';
+
+  @override
+  String get exact => 'Exact';
+
+  @override
+  String requiredQty(String qty) {
+    return 'Required $qty';
+  }
+
+  @override
+  String get exactPickRequired =>
+      'Pick every line at the exact Sales Order quantity before packing.';
+
+  @override
+  String get continueToPack => 'Continue to pack';
+
+  @override
+  String get confirmPacked => 'Confirm packed';
+
+  @override
+  String get exactPackRequired =>
+      'Pack every line at the exact picked quantity before dispatch.';
+
+  @override
+  String get readyToDispatch => 'Ready to dispatch';
+
+  @override
+  String readyToDispatchSubtitle(String salesOrder) {
+    return 'Queue Delivery Note creation for $salesOrder.';
+  }
+
+  @override
+  String get queueDispatch => 'Queue dispatch';
+
+  @override
+  String dispatchQueued(String id) {
+    return 'Dispatch queued (op $id).';
+  }
+
+  @override
+  String get tracking => 'Tracking';
+
+  @override
+  String get batch => 'Batch';
+
+  @override
+  String get expiry => 'Expiry';
+
+  @override
+  String get serials => 'Serials';
+
+  @override
+  String get oneSerialPerLine => 'One serial per line';
+
+  @override
+  String get batchRequired => 'Batch is required.';
+
+  @override
+  String get serialCountMustMatchQty => 'Serial count must match quantity.';
 }
