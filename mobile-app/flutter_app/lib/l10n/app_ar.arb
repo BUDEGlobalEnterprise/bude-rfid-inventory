@@ -1,4 +1,4 @@
-﻿{
+{
     "@@locale":  "ar",
     "appName":  "بود للمخزون",
     "dashboard":  "لوحة التحكم",
@@ -252,5 +252,31 @@
     "serials":  "الأرقام التسلسلية",
     "oneSerialPerLine":  "رقم تسلسلي واحد في كل سطر",
     "batchRequired":  "الدفعة مطلوبة.",
-    "serialCountMustMatchQty":  "يجب أن يطابق عدد الأرقام التسلسلية الكمية."
+    "serialCountMustMatchQty":  "يجب أن يطابق عدد الأرقام التسلسلية الكمية.",
+
+    "lookupTitle": "مسح / بحث",
+    "lookupInputLabel": "رمز RFID EPC أو باركود",
+    "lookupInputHint": "أدخل EPC أو باركود أو رمز الصنف",
+    "readRfid": "قراءة RFID",
+    "resolveAction": "بحث",
+    "lookupResolving": "جارٍ البحث…",
+    "lookupDemoBanner": "قارئ RFID التجريبي نشط. تستخدم القراءات علامات EPC نموذجية.",
+    "noRfidReader": "لا يوجد قارئ RFID متاح.",
+    "noTagRead": "لم تتم قراءة أي علامة RFID.",
+    "tagNotRegistered": "العلامة غير مسجلة",
+    "bindEpcDescription": "ربط هذا الـ EPC بسجل موجود:",
+    "recordType": "نوع السجل",
+    "recordName": "اسم السجل",
+    "bindEpc": "ربط EPC",
+    "openAsset": "فتح الأصل",
+    "openItem": "فتح الصنف",
+    "lookupNetworkError": "تعذر الاتصال. تحقق من الشبكة وحاول مرة أخرى.",
+    "lookupFailed": "فشل البحث",
+    "retry": "إعادة المحاولة",
+    "assetLabel": "أصل",
+    "serialNoLabel": "رقم تسلسلي",
+    "statusLabel": "الحالة",
+    "locationLabel": "الموقع",
+    "custodianLabel": "الحارس",
+    "itemCode": "رمز الصنف"
 }

@@ -862,4 +862,80 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get serialCountMustMatchQty =>
       'يجب أن يطابق عدد الأرقام التسلسلية الكمية.';
+
+  @override
+  String get lookupTitle => 'مسح / بحث';
+
+  @override
+  String get lookupInputLabel => 'رمز RFID EPC أو باركود';
+
+  @override
+  String get lookupInputHint => 'أدخل EPC أو باركود أو رمز الصنف';
+
+  @override
+  String get readRfid => 'قراءة RFID';
+
+  @override
+  String get resolveAction => 'بحث';
+
+  @override
+  String get lookupResolving => 'جارٍ البحث…';
+
+  @override
+  String get lookupDemoBanner => 'قارئ RFID التجريبي نشط. تستخدم القراءات علامات EPC نموذجية.';
+
+  @override
+  String get noRfidReader => 'لا يوجد قارئ RFID متاح.';
+
+  @override
+  String get noTagRead => 'لم تتم قراءة أي علامة RFID.';
+
+  @override
+  String get tagNotRegistered => 'العلامة غير مسجلة';
+
+  @override
+  String get bindEpcDescription => 'ربط هذا الـ EPC بسجل موجود:';
+
+  @override
+  String get recordType => 'نوع السجل';
+
+  @override
+  String get recordName => 'اسم السجل';
+
+  @override
+  String get bindEpc => 'ربط EPC';
+
+  @override
+  String get openAsset => 'فتح الأصل';
+
+  @override
+  String get openItem => 'فتح الصنف';
+
+  @override
+  String get lookupNetworkError => 'تعذر الاتصال. تحقق من الشبكة وحاول مرة أخرى.';
+
+  @override
+  String get lookupFailed => 'فشل البحث';
+
+  @override
+  String get retry => 'إعادة المحاولة';
+
+  @override
+  String get assetLabel => 'أصل';
+
+  @override
+  String get serialNoLabel => 'رقم تسلسلي';
+
+  @override
+  String get statusLabel => 'الحالة';
+
+  @override
+  String get locationLabel => 'الموقع';
+
+  @override
+  String get custodianLabel => 'الحارس';
+
+  @override
+  String get itemCode => 'رمز الصنف';
 }
+

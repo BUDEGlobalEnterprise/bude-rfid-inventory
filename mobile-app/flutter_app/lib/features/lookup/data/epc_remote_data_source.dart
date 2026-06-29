@@ -70,9 +70,22 @@ class EpcRemoteDataSource {
     }
     if (e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.connectionError ||
-        e.type == DioExceptionType.receiveTimeout) {
-      throw NetworkException(e.message ?? 'Network unreachable.');
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout) {
+      throw const NetworkException(
+        'Unable to connect. Check your network and try again.',
+      );
     }
-    throw ServerException(e.message ?? 'Server error.', statusCode: status);
+    if (e.type == DioExceptionType.unknown && e.error != null) {
+      // Socket exceptions, DNS failures, etc. surface as "unknown" with a
+      // nested error — these are almost always connectivity issues.
+      throw const NetworkException(
+        'Unable to connect. Check your network and try again.',
+      );
+    }
+    throw ServerException(
+      e.message ?? 'Something went wrong. Please try again.',
+      statusCode: status,
+    );
   }
 }

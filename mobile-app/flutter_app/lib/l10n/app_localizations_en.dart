@@ -867,4 +867,79 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get serialCountMustMatchQty => 'Serial count must match quantity.';
+
+  @override
+  String get lookupTitle => 'Scan / Lookup';
+
+  @override
+  String get lookupInputLabel => 'RFID EPC or barcode';
+
+  @override
+  String get lookupInputHint => 'Enter EPC, barcode, or item code';
+
+  @override
+  String get readRfid => 'Read RFID';
+
+  @override
+  String get resolveAction => 'Resolve';
+
+  @override
+  String get lookupResolving => 'Resolving…';
+
+  @override
+  String get lookupDemoBanner => 'Demo RFID reader active. Reads use sample EPC tags.';
+
+  @override
+  String get noRfidReader => 'No RFID reader is available.';
+
+  @override
+  String get noTagRead => 'No RFID tag was read.';
+
+  @override
+  String get tagNotRegistered => 'Tag not registered';
+
+  @override
+  String get bindEpcDescription => 'Bind this EPC to an existing record:';
+
+  @override
+  String get recordType => 'Record type';
+
+  @override
+  String get recordName => 'Record name';
+
+  @override
+  String get bindEpc => 'Bind EPC';
+
+  @override
+  String get openAsset => 'Open asset';
+
+  @override
+  String get openItem => 'Open item';
+
+  @override
+  String get lookupNetworkError => 'Unable to connect. Check your network and try again.';
+
+  @override
+  String get lookupFailed => 'Lookup failed';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get assetLabel => 'Asset';
+
+  @override
+  String get serialNoLabel => 'Serial No';
+
+  @override
+  String get statusLabel => 'Status';
+
+  @override
+  String get locationLabel => 'Location';
+
+  @override
+  String get custodianLabel => 'Custodian';
+
+  @override
+  String get itemCode => 'Item code';
 }

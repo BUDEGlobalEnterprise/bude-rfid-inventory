@@ -1615,6 +1615,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Serial count must match quantity.'**
   String get serialCountMustMatchQty;
+
+  /// No description provided for @lookupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan / Lookup'**
+  String get lookupTitle;
+
+  /// No description provided for @lookupInputLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'RFID EPC or barcode'**
+  String get lookupInputLabel;
+
+  /// No description provided for @lookupInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter EPC, barcode, or item code'**
+  String get lookupInputHint;
+
+  /// No description provided for @readRfid.
+  ///
+  /// In en, this message translates to:
+  /// **'Read RFID'**
+  String get readRfid;
+
+  /// No description provided for @resolveAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolve'**
+  String get resolveAction;
+
+  /// No description provided for @lookupResolving.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolving…'**
+  String get lookupResolving;
+
+  /// No description provided for @lookupDemoBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo RFID reader active. Reads use sample EPC tags.'**
+  String get lookupDemoBanner;
+
+  /// No description provided for @noRfidReader.
+  ///
+  /// In en, this message translates to:
+  /// **'No RFID reader is available.'**
+  String get noRfidReader;
+
+  /// No description provided for @noTagRead.
+  ///
+  /// In en, this message translates to:
+  /// **'No RFID tag was read.'**
+  String get noTagRead;
+
+  /// No description provided for @tagNotRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag not registered'**
+  String get tagNotRegistered;
+
+  /// No description provided for @bindEpcDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Bind this EPC to an existing record:'**
+  String get bindEpcDescription;
+
+  /// No description provided for @recordType.
+  ///
+  /// In en, this message translates to:
+  /// **'Record type'**
+  String get recordType;
+
+  /// No description provided for @recordName.
+  ///
+  /// In en, this message translates to:
+  /// **'Record name'**
+  String get recordName;
+
+  /// No description provided for @bindEpc.
+  ///
+  /// In en, this message translates to:
+  /// **'Bind EPC'**
+  String get bindEpc;
+
+  /// No description provided for @openAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Open asset'**
+  String get openAsset;
+
+  /// No description provided for @openItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Open item'**
+  String get openItem;
+
+  /// No description provided for @lookupNetworkError.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to connect. Check your network and try again.'**
+  String get lookupNetworkError;
+
+  /// No description provided for @lookupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Lookup failed'**
+  String get lookupFailed;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @assetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset'**
+  String get assetLabel;
+
+  /// No description provided for @serialNoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Serial No'**
+  String get serialNoLabel;
+
+  /// No description provided for @statusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get statusLabel;
+
+  /// No description provided for @locationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get locationLabel;
+
+  /// No description provided for @custodianLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Custodian'**
+  String get custodianLabel;
+
+  /// No description provided for @itemCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Item code'**
+  String get itemCode;
 }
 
 class _AppLocalizationsDelegate
