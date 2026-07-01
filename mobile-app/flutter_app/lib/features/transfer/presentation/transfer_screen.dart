@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/sync/pending_operation.dart';
 import '../../../core/sync/providers.dart';
 import '../../../core/ui/empty_state_view.dart';
 import '../../../core/ui/error_banner.dart';
@@ -60,14 +61,37 @@ class TransferScreen extends ConsumerWidget {
     WidgetRef ref,
     TransferDraft draft,
   ) async {
+    final settings = ref.read(settingsNotifierProvider);
     final company = ref.read(operationCompanyProvider).valueOrNull ??
-        ref.read(settingsNotifierProvider).activeCompany;
-    final id = await ref
-        .read(submitTransferUseCaseProvider)
-        .call(draft.copyWith(company: company));
-    unawaited(ref.read(syncEngineProvider).kick());
+        settings.activeCompany;
+    final draftWithCompany = draft.copyWith(company: company);
+    final totalQty =
+        draftWithCompany.lines.fold<double>(0, (sum, line) => sum + line.qty);
+    final threshold = settings.transferApprovalQtyThreshold;
+    final needsApproval = threshold > 0 && totalQty > threshold;
+    final id = await ref.read(submitTransferUseCaseProvider).callWithStatus(
+          draftWithCompany,
+          needsApproval ? OpStatus.pendingApproval : OpStatus.pending,
+          extraPayload: needsApproval
+              ? {
+                  'approval_reason':
+                      'Transfer quantity ${formatOperationalQty(totalQty)} '
+                          'exceeds threshold '
+                          '${formatOperationalQty(threshold)}.',
+                  'approval_metric': 'transfer_qty',
+                  'approval_threshold': threshold,
+                }
+              : const {},
+        );
     ref.read(transferDraftProvider.notifier).clear();
     if (!context.mounted) return;
+
+    if (needsApproval) {
+      context.push('/reconcile/approve', extra: id);
+      return;
+    }
+
+    unawaited(ref.read(syncEngineProvider).kick());
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(context.l10n.transferQueued(id)),

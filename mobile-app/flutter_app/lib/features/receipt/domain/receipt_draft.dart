@@ -64,6 +64,7 @@ class ReceiptDraft extends Equatable {
   final String? targetWarehouse;
   final String? targetLocation;
   final String? againstPo;
+  final String? todoName;
   final List<ReceiptLine> lines;
   final String? company;
 
@@ -71,6 +72,7 @@ class ReceiptDraft extends Equatable {
     this.targetWarehouse,
     this.targetLocation,
     this.againstPo,
+    this.todoName,
     this.lines = const [],
     this.company,
   });
@@ -79,6 +81,7 @@ class ReceiptDraft extends Equatable {
     Object? targetWarehouse = _sentinel,
     Object? targetLocation = _sentinel,
     String? againstPo,
+    Object? todoName = _sentinel,
     List<ReceiptLine>? lines,
     bool clearAgainstPo = false,
     Object? company = _sentinel,
@@ -91,6 +94,7 @@ class ReceiptDraft extends Equatable {
           ? this.targetLocation
           : targetLocation as String?,
       againstPo: clearAgainstPo ? null : (againstPo ?? this.againstPo),
+      todoName: todoName == _sentinel ? this.todoName : todoName as String?,
       lines: lines ?? this.lines,
       company: company == _sentinel ? this.company : company as String?,
     );
@@ -105,6 +109,7 @@ class ReceiptDraft extends Equatable {
         'target_warehouse': targetWarehouse,
         if (targetLocation != null) 'target_location': targetLocation,
         if (againstPo != null) 'against_po': againstPo,
+        if (todoName != null) 'todo_name': todoName,
         'items': lines.map((l) => l.toJson()).toList(),
         if (company != null) 'company': company,
       };
@@ -114,6 +119,7 @@ class ReceiptDraft extends Equatable {
         targetWarehouse,
         targetLocation,
         againstPo,
+        todoName,
         lines,
         company,
       ];

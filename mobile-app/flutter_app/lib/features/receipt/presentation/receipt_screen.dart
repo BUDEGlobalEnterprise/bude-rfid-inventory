@@ -8,6 +8,7 @@ import '../../../core/ui/error_banner.dart';
 import '../../../core/ui/operational_components.dart';
 import '../../../core/utils/locale_ext.dart';
 import '../../inventory/domain/entities/item.dart';
+import '../../labels/domain/label_request_builders.dart';
 import '../../scan_session/domain/scanned_item.dart';
 import '../../settings/presentation/providers/settings_notifier.dart';
 import '../../tracking/presentation/tracking_allocation_picker.dart';
@@ -17,8 +18,15 @@ import 'providers/receipt_providers.dart';
 
 class ReceiptScreen extends ConsumerWidget {
   final Item? initialItem;
+  final String? initialAgainstPo;
+  final String? initialTodoName;
 
-  const ReceiptScreen({super.key, this.initialItem});
+  const ReceiptScreen({
+    super.key,
+    this.initialItem,
+    this.initialAgainstPo,
+    this.initialTodoName,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,6 +49,8 @@ class ReceiptScreen extends ConsumerWidget {
           warehouses: warehouses,
           poAsync: poAsync,
           initialItem: initialItem,
+          initialAgainstPo: initialAgainstPo,
+          initialTodoName: initialTodoName,
         ),
       ),
       bottomNavigationBar: draft.lines.isEmpty
@@ -64,9 +74,12 @@ class ReceiptScreen extends ConsumerWidget {
   ) async {
     final company = ref.read(operationCompanyProvider).valueOrNull ??
         ref.read(settingsNotifierProvider).activeCompany;
-    final id = await ref
-        .read(submitReceiptUseCaseProvider)
-        .call(draft.copyWith(company: company));
+    final queuedDraft = draft.copyWith(company: company);
+    final id = await ref.read(submitReceiptUseCaseProvider).call(queuedDraft);
+    final labelRequest = receiptLabelRequestFromDraft(
+      opId: id,
+      draft: queuedDraft,
+    );
     // ignore: discarded_futures
     ref.read(syncEngineProvider).kick();
     ref.read(receiptDraftProvider.notifier).clear();
@@ -75,8 +88,8 @@ class ReceiptScreen extends ConsumerWidget {
       SnackBar(
         content: Text(context.l10n.receiptQueued(id)),
         action: SnackBarAction(
-          label: context.l10n.openSync,
-          onPressed: () => context.push('/sync'),
+          label: 'Print label',
+          onPressed: () => context.push('/labels', extra: labelRequest),
         ),
       ),
     );
@@ -88,12 +101,16 @@ class _ReceiptBody extends ConsumerStatefulWidget {
   final List<String> warehouses;
   final AsyncValue<List<String>> poAsync;
   final Item? initialItem;
+  final String? initialAgainstPo;
+  final String? initialTodoName;
 
   const _ReceiptBody({
     required this.draft,
     required this.warehouses,
     required this.poAsync,
     required this.initialItem,
+    required this.initialAgainstPo,
+    required this.initialTodoName,
   });
 
   @override
@@ -102,6 +119,7 @@ class _ReceiptBody extends ConsumerStatefulWidget {
 
 class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
   bool _seedAttempted = false;
+  bool _poSeedAttempted = false;
   bool _defaultsAttempted = false;
   bool _initialItemAlreadyInDraft = false;
 
@@ -109,6 +127,7 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _seedInitialItem());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _seedInitialTask());
   }
 
   @override
@@ -117,6 +136,11 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
     if (oldWidget.initialItem?.itemCode != widget.initialItem?.itemCode) {
       _seedAttempted = false;
       WidgetsBinding.instance.addPostFrameCallback((_) => _seedInitialItem());
+    }
+    if (oldWidget.initialAgainstPo != widget.initialAgainstPo ||
+        oldWidget.initialTodoName != widget.initialTodoName) {
+      _poSeedAttempted = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _seedInitialTask());
     }
   }
 
@@ -141,6 +165,22 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
           );
     } else {
       setState(() {});
+    }
+  }
+
+  void _seedInitialTask() {
+    if (!mounted || _poSeedAttempted) return;
+    final po = (widget.initialAgainstPo ?? '').trim();
+    final todo = (widget.initialTodoName ?? '').trim();
+    if (po.isEmpty && todo.isEmpty) return;
+    _poSeedAttempted = true;
+    final notifier = ref.read(receiptDraftProvider.notifier);
+    final draft = ref.read(receiptDraftProvider);
+    if (po.isNotEmpty && draft.againstPo != po) {
+      notifier.setAgainstPo(po);
+    }
+    if (todo.isNotEmpty && draft.todoName != todo) {
+      notifier.setTodoName(todo);
     }
   }
 

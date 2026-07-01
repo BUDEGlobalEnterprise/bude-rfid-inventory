@@ -53,6 +53,11 @@ class ReceiptDraftNotifier extends StateNotifier<ReceiptDraft> {
     }
   }
 
+  void setTodoName(String? todoName) {
+    final value = (todoName ?? '').trim();
+    state = state.copyWith(todoName: value.isEmpty ? null : value);
+  }
+
   void addLine(ReceiptLine line) {
     final existingIndex =
         state.lines.indexWhere((l) => l.itemCode == line.itemCode);

@@ -56,9 +56,11 @@ void main() {
       const draft = ReceiptDraft(
         targetWarehouse: 'Tgt - X',
         againstPo: 'PO-001',
+        todoName: 'TODO-PO',
         lines: [ReceiptLine(itemCode: 'A', qty: 1)],
       );
       expect(draft.toPayload()['against_po'], 'PO-001');
+      expect(draft.toPayload()['todo_name'], 'TODO-PO');
     });
   });
 
