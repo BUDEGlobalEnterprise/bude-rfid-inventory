@@ -9,7 +9,15 @@ import 'providers/asset_providers.dart';
 
 class AssetDetailScreen extends ConsumerWidget {
   final String assetName;
-  const AssetDetailScreen({super.key, required this.assetName});
+  final String? focusMaintenanceLog;
+  final String? todoName;
+
+  const AssetDetailScreen({
+    super.key,
+    required this.assetName,
+    this.focusMaintenanceLog,
+    this.todoName,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -75,7 +83,11 @@ class AssetDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
               ],
               const _SectionHeader('Maintenance'),
-              _MaintenanceSection(asset: a.name),
+              _MaintenanceSection(
+                asset: a.name,
+                focusLog: focusMaintenanceLog,
+                todoName: todoName,
+              ),
               const SizedBox(height: 16),
               const _SectionHeader('Movement history'),
               _MovementHistory(asset: a.name),
@@ -226,12 +238,24 @@ class _MovementHistory extends ConsumerWidget {
 
 class _MaintenanceSection extends ConsumerWidget {
   final String asset;
-  const _MaintenanceSection({required this.asset});
+  final String? focusLog;
+  final String? todoName;
+
+  const _MaintenanceSection({
+    required this.asset,
+    this.focusLog,
+    this.todoName,
+  });
 
   Future<void> _complete(WidgetRef ref, String log) async {
+    final payload = {
+      'log': log,
+      if (focusLog == log && (todoName ?? '').trim().isNotEmpty)
+        'todo_name': todoName!.trim(),
+    };
     await ref
         .read(syncQueueProvider)
-        .enqueue(type: kMaintenanceLogOpType, payload: {'log': log});
+        .enqueue(type: kMaintenanceLogOpType, payload: payload);
     await ref.read(syncEngineProvider).kick();
     ref.invalidate(assetMaintenanceLogsProvider(asset));
   }

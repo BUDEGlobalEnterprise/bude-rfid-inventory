@@ -9,6 +9,7 @@ import '../../../core/ui/empty_state_view.dart';
 import '../../../core/ui/loading_shimmer.dart';
 import '../../../core/ui/operational_components.dart';
 import '../../../core/utils/locale_ext.dart';
+import '../../labels/domain/label_request_builders.dart';
 import '../domain/entities/item.dart';
 import '../domain/entities/item_stock.dart';
 import '../domain/entities/stock_ledger_entry.dart';
@@ -175,6 +176,14 @@ class _StockTab extends StatelessWidget {
               icon: const Icon(Icons.fact_check),
               label: Text(context.l10n.count),
               onPressed: () => context.push('/reconcile', extra: item),
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.print_outlined),
+              label: const Text('Print label'),
+              onPressed: () => context.push(
+                '/labels',
+                extra: itemLabelRequest(item),
+              ),
             ),
           ],
         ),

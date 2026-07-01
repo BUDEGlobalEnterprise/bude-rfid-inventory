@@ -150,12 +150,11 @@ class _LookupScreenState extends ConsumerState<LookupScreen> {
             spacing: AppSpacing.sm + 4,
             runSpacing: AppSpacing.sm,
             children: [
-              if (hasRfid)
-                OutlinedButton.icon(
-                  onPressed: isLoading ? null : _readRfid,
-                  icon: const Icon(Icons.nfc),
-                  label: Text(l10n.readRfid),
-                ),
+              OutlinedButton.icon(
+                onPressed: isLoading ? null : _readRfid,
+                icon: const Icon(Icons.nfc),
+                label: Text(l10n.readRfid),
+              ),
               OutlinedButton.icon(
                 onPressed: isLoading ? null : _scanBarcode,
                 icon: const Icon(Icons.qr_code_scanner),

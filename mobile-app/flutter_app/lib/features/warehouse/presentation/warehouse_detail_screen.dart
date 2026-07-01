@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/ui/empty_state_view.dart';
 import '../../../core/ui/loading_shimmer.dart';
 import '../../../core/utils/locale_ext.dart';
+import '../../labels/domain/label_request_builders.dart';
 import '../../transfer/presentation/providers/transfer_providers.dart';
 import '../domain/entities/warehouse_stock_line.dart';
 import 'providers/warehouse_providers.dart';
@@ -82,6 +84,17 @@ class _LocationSummaryBar extends ConsumerWidget {
                 dense: true,
                 leading: const Icon(Icons.warehouse_outlined),
                 title: Text(location),
+                trailing: IconButton(
+                  tooltip: 'Print location label',
+                  icon: const Icon(Icons.print_outlined),
+                  onPressed: () => context.push(
+                    '/labels',
+                    extra: binLocationLabelRequest(
+                      locationName: location,
+                      parentWarehouse: warehouse,
+                    ),
+                  ),
+                ),
               ),
           ],
         );
