@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/sync/pending_operation.dart';
 import '../../../core/sync/providers.dart';
 import '../../../core/ui/empty_state_view.dart';
 import '../../../core/ui/error_banner.dart';
@@ -72,18 +73,42 @@ class ReceiptScreen extends ConsumerWidget {
     WidgetRef ref,
     ReceiptDraft draft,
   ) async {
+    final settings = ref.read(settingsNotifierProvider);
     final company = ref.read(operationCompanyProvider).valueOrNull ??
-        ref.read(settingsNotifierProvider).activeCompany;
+        settings.activeCompany;
     final queuedDraft = draft.copyWith(company: company);
-    final id = await ref.read(submitReceiptUseCaseProvider).call(queuedDraft);
+    final totalRejectedQty = queuedDraft.lines
+        .fold<double>(0, (sum, line) => sum + line.rejectedQty);
+    final threshold = settings.receiptRejectedQtyApprovalThreshold;
+    final needsApproval = threshold > 0 && totalRejectedQty > threshold;
+    final id = await ref.read(submitReceiptUseCaseProvider).callWithStatus(
+          queuedDraft,
+          needsApproval ? OpStatus.pendingApproval : OpStatus.pending,
+          extraPayload: needsApproval
+              ? {
+                  'approval_reason':
+                      'Rejected quantity '
+                          '${formatOperationalQty(totalRejectedQty)} exceeds '
+                          'threshold ${formatOperationalQty(threshold)}.',
+                  'approval_metric': 'rejected_qty',
+                  'approval_threshold': threshold,
+                }
+              : const {},
+        );
+    ref.read(receiptDraftProvider.notifier).clear();
+    if (!context.mounted) return;
+
+    if (needsApproval) {
+      context.push('/reconcile/approve', extra: id);
+      return;
+    }
+
     final labelRequest = receiptLabelRequestFromDraft(
       opId: id,
       draft: queuedDraft,
     );
     // ignore: discarded_futures
     ref.read(syncEngineProvider).kick();
-    ref.read(receiptDraftProvider.notifier).clear();
-    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(context.l10n.receiptQueued(id)),
@@ -356,9 +381,18 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
           ...widget.draft.lines.map(
             (line) => _LineTile(
               line: line,
+              warehouses: widget.warehouses,
+              allowRejectedQty: widget.draft.againstPo != null,
               onQtyChanged: (q) => notifier.updateQty(line.itemCode, q),
               onTrackingPressed: () => _editTracking(context, line),
               onRemove: () => notifier.removeLine(line.itemCode),
+              onExceptionChanged: (rejectedQty, rejectedWarehouse, note) =>
+                  notifier.updateException(
+                line.itemCode,
+                rejectedQty: rejectedQty,
+                rejectedWarehouse: rejectedWarehouse,
+                damageNote: note,
+              ),
             ),
           ),
       ],
@@ -370,17 +404,28 @@ class _ReceiptBodyState extends ConsumerState<_ReceiptBody> {
         await context.push<List<ScannedItem>>('/scan-session?mode=receipt');
     if (result == null || result.isEmpty || !context.mounted) return;
     final notifier = ref.read(receiptDraftProvider.notifier);
+    final unresolved = <String>[];
     for (final scanned in result) {
+      final resolved = scanned.item;
+      if (resolved == null) {
+        unresolved.add(scanned.barcode);
+        continue;
+      }
       notifier.addLine(
         ReceiptLine(
-          itemCode: scanned.item.itemCode,
-          itemName: scanned.item.itemName,
+          itemCode: resolved.itemCode,
+          itemName: resolved.itemName,
           qty: scanned.qty,
-          hasBatchNo: scanned.item.hasBatchNo,
-          hasSerialNo: scanned.item.hasSerialNo,
+          hasBatchNo: resolved.hasBatchNo,
+          hasSerialNo: resolved.hasSerialNo,
+          // Structural rejected_qty/warehouse need explicit operator input
+          // (see the line tile's exception dialog) — only the note carries
+          // over automatically from a scan-session flag.
+          damageNote: scanned.exceptionNote,
         ),
       );
     }
+    notifier.addUnresolvedScans(unresolved);
   }
 
   Future<void> _editTracking(BuildContext context, ReceiptLine line) async {
@@ -444,22 +489,32 @@ class _Dropdown extends StatelessWidget {
   }
 }
 
+/// (rejectedQty, rejectedWarehouse, damageNote) from the exception dialog.
+typedef _ExceptionChanged = void Function(double, String?, String?);
+
 class _LineTile extends StatelessWidget {
   final ReceiptLine line;
+  final List<String> warehouses;
+  final bool allowRejectedQty;
   final ValueChanged<double> onQtyChanged;
   final VoidCallback onTrackingPressed;
   final VoidCallback onRemove;
+  final _ExceptionChanged onExceptionChanged;
 
   const _LineTile({
     required this.line,
+    required this.warehouses,
+    required this.allowRejectedQty,
     required this.onQtyChanged,
     required this.onTrackingPressed,
     required this.onRemove,
+    required this.onExceptionChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final flagged = line.hasException;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -468,56 +523,104 @@ class _LineTile extends StatelessWidget {
           color: scheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: scheme.outlineVariant.withValues(alpha: 0.55),
+            color: flagged
+                ? scheme.error.withValues(alpha: 0.6)
+                : scheme.outlineVariant.withValues(alpha: 0.55),
           ),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      line.itemCode,
-                      style: Theme.of(context).textTheme.titleSmall,
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          line.itemCode,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        if (line.itemName != null) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            line.itemName!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                          ),
+                        ],
+                        TrackingChips(allocations: line.allocations),
+                      ],
                     ),
-                    if (line.itemName != null) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        line.itemName!,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                      ),
-                    ],
-                    TrackingChips(allocations: line.allocations),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              BudeQuantityControl(
-                value: line.qty,
-                min: 0.01,
-                onChanged: onQtyChanged,
-              ),
-              IconButton(
-                tooltip: context.l10n.removeItem,
-                icon: const Icon(Icons.remove_circle_outline),
-                onPressed: onRemove,
-              ),
-              if (line.hasBatchNo || line.hasSerialNo)
-                IconButton(
-                  tooltip: context.l10n.tracking,
-                  icon: Icon(
-                    line.isTrackingComplete
-                        ? Icons.check_circle_outline
-                        : Icons.inventory_outlined,
                   ),
-                  onPressed: onTrackingPressed,
+                  const SizedBox(width: 8),
+                  BudeQuantityControl(
+                    value: line.qty,
+                    min: 0.01,
+                    onChanged: onQtyChanged,
+                  ),
+                  IconButton(
+                    tooltip: context.l10n.flagException,
+                    icon: Icon(
+                      flagged
+                          ? Icons.report_problem
+                          : Icons.report_problem_outlined,
+                      color: flagged ? scheme.error : null,
+                    ),
+                    onPressed: () => _showReceiptExceptionDialog(
+                      context,
+                      line: line,
+                      warehouses: warehouses,
+                      allowRejectedQty: allowRejectedQty,
+                      onSave: onExceptionChanged,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: context.l10n.removeItem,
+                    icon: const Icon(Icons.remove_circle_outline),
+                    onPressed: onRemove,
+                  ),
+                  if (line.hasBatchNo || line.hasSerialNo)
+                    IconButton(
+                      tooltip: context.l10n.tracking,
+                      icon: Icon(
+                        line.isTrackingComplete
+                            ? Icons.check_circle_outline
+                            : Icons.inventory_outlined,
+                      ),
+                      onPressed: onTrackingPressed,
+                    ),
+                ],
+              ),
+              if (flagged)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Wrap(
+                    spacing: 8,
+                    children: [
+                      if (line.rejectedQty > 0)
+                        BudeStatusChip(
+                          label: 'Rejected ${formatOperationalQty(
+                            line.rejectedQty,
+                          )}',
+                          icon: Icons.report_problem_outlined,
+                          color: scheme.error,
+                        ),
+                      if (line.damageNote != null &&
+                          line.damageNote!.isNotEmpty)
+                        BudeStatusChip(
+                          label: line.damageNote!,
+                          icon: Icons.notes_outlined,
+                          color: scheme.error,
+                        ),
+                    ],
+                  ),
                 ),
             ],
           ),
@@ -525,6 +628,93 @@ class _LineTile extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _showReceiptExceptionDialog(
+  BuildContext context, {
+  required ReceiptLine line,
+  required List<String> warehouses,
+  required bool allowRejectedQty,
+  required _ExceptionChanged onSave,
+}) async {
+  final rejectedQtyCtrl = TextEditingController(
+    text: line.rejectedQty > 0 ? line.rejectedQty.toString() : '',
+  );
+  final noteCtrl = TextEditingController(text: line.damageNote ?? '');
+  String? rejectedWarehouse = line.rejectedWarehouse;
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setState) => AlertDialog(
+        title: Text(dialogContext.l10n.flagException),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (allowRejectedQty) ...[
+              TextField(
+                controller: rejectedQtyCtrl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Rejected quantity',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: rejectedWarehouse != null &&
+                        warehouses.contains(rejectedWarehouse)
+                    ? rejectedWarehouse
+                    : null,
+                decoration: const InputDecoration(
+                  labelText: 'Rejected warehouse',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final w in warehouses)
+                    DropdownMenuItem(value: w, child: Text(w)),
+                ],
+                onChanged: (v) => setState(() => rejectedWarehouse = v),
+              ),
+              const SizedBox(height: 12),
+            ],
+            TextField(
+              controller: noteCtrl,
+              maxLines: 2,
+              decoration: InputDecoration(
+                labelText: dialogContext.l10n.exceptionNoteLabel,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(dialogContext.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(dialogContext.l10n.save),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (confirmed == true) {
+    final rejectedQty =
+        allowRejectedQty ? double.tryParse(rejectedQtyCtrl.text.trim()) ?? 0 : 0.0;
+    final note = noteCtrl.text.trim();
+    onSave(
+      rejectedQty,
+      rejectedQty > 0 ? rejectedWarehouse : null,
+      note.isEmpty ? null : note,
+    );
+  }
+  rejectedQtyCtrl.dispose();
+  noteCtrl.dispose();
 }
 
 class _ErrorView extends StatelessWidget {

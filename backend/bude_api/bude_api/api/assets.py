@@ -16,6 +16,7 @@ except ImportError:
     frappe = None
 
 from ..utils.response import failure, success
+from .permissions import require_stock_execution_role
 
 _EPC_DOCTYPES = {"Asset", "Item", "Serial No"}
 
@@ -280,6 +281,9 @@ def set_epc(doctype: str, name: str, epc: str) -> dict:
         return failure("epc is required.", code="VALIDATION_REQUIRED")
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
+    permission_error = require_stock_execution_role(frappe)
+    if permission_error is not None:
+        return permission_error
 
     existing = frappe.get_list(
         doctype,
@@ -353,6 +357,9 @@ def create_asset_movement(
         )
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
+    permission_error = require_stock_execution_role(frappe)
+    if permission_error is not None:
+        return permission_error
 
     asset_names = [str(a).strip() for a in assets if str(a).strip()]
     company = None
@@ -413,6 +420,9 @@ def create_asset_repair(
         return failure("asset is required.", code="VALIDATION_REQUIRED")
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
+    permission_error = require_stock_execution_role(frappe)
+    if permission_error is not None:
+        return permission_error
     existing = frappe.get_list(
         "Asset",
         filters=[["name", "=", asset]],
@@ -492,6 +502,9 @@ def complete_maintenance_log(
         return failure("log is required.", code="VALIDATION_REQUIRED")
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
+    permission_error = require_stock_execution_role(frappe)
+    if permission_error is not None:
+        return permission_error
     existing = frappe.get_list(
         "Asset Maintenance Log",
         filters=[["name", "=", log]],

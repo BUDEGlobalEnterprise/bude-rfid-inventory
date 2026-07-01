@@ -373,10 +373,14 @@ class _BodyState extends ConsumerState<_Body> {
         await context.push<List<ScannedItem>>('/scan-session?mode=reconcile');
     if (result == null || result.isEmpty || !context.mounted) return;
 
-    final expectedFutures = result
+    // Unresolved scans carry no item_code — they can't become a count line.
+    final resolved = result.where((s) => s.item != null).toList();
+    if (resolved.isEmpty) return;
+
+    final expectedFutures = resolved
         .map(
           (s) => ref.read(
-            expectedQtyProvider(BinKey(s.item.itemCode, warehouse)).future,
+            expectedQtyProvider(BinKey(s.item!.itemCode, warehouse)).future,
           ),
         )
         .toList();
@@ -384,16 +388,17 @@ class _BodyState extends ConsumerState<_Body> {
     if (!mounted) return;
 
     final notifier = ref.read(reconciliationDraftProvider.notifier);
-    for (var i = 0; i < result.length; i++) {
-      final scanned = result[i];
+    for (var i = 0; i < resolved.length; i++) {
+      final scanned = resolved[i];
+      final item = scanned.item!;
       notifier.addLine(
         CountLine(
-          itemCode: scanned.item.itemCode,
-          itemName: scanned.item.itemName,
+          itemCode: item.itemCode,
+          itemName: item.itemName,
           countedQty: scanned.qty,
           expectedQty: expectedQtys[i],
-          hasBatchNo: scanned.item.hasBatchNo,
-          hasSerialNo: scanned.item.hasSerialNo,
+          hasBatchNo: item.hasBatchNo,
+          hasSerialNo: item.hasSerialNo,
         ),
       );
     }

@@ -106,4 +106,61 @@ void main() {
       },
     ]);
   });
+
+  group('exception fields', () {
+    test('hasException is false with no rejection or note', () {
+      const line = ReceiptLine(itemCode: 'A', qty: 5);
+      expect(line.hasException, isFalse);
+    });
+
+    test('hasException is true when rejectedQty is positive', () {
+      const line = ReceiptLine(itemCode: 'A', qty: 5, rejectedQty: 2);
+      expect(line.hasException, isTrue);
+    });
+
+    test('hasException is true when damageNote is non-empty', () {
+      const line = ReceiptLine(itemCode: 'A', qty: 5, damageNote: 'wet box');
+      expect(line.hasException, isTrue);
+    });
+
+    test('toJson includes rejected_qty/warehouse and damage_note when set', () {
+      const line = ReceiptLine(
+        itemCode: 'A',
+        qty: 5,
+        rejectedQty: 2,
+        rejectedWarehouse: 'Rejected - X',
+        damageNote: '  crushed carton  ',
+      );
+      expect(line.toJson(), {
+        'item_code': 'A',
+        'qty': 5.0,
+        'rejected_qty': 2.0,
+        'rejected_warehouse': 'Rejected - X',
+        'damage_note': 'crushed carton', // trimmed
+      });
+    });
+
+    test('toJson omits rejection/note fields when unset', () {
+      const line = ReceiptLine(itemCode: 'A', qty: 5);
+      final json = line.toJson();
+      expect(json.containsKey('rejected_qty'), isFalse);
+      expect(json.containsKey('rejected_warehouse'), isFalse);
+      expect(json.containsKey('damage_note'), isFalse);
+    });
+
+    test('toPayload includes unresolved_scans only when non-empty', () {
+      const withScans = ReceiptDraft(
+        targetWarehouse: 'A',
+        lines: [ReceiptLine(itemCode: 'X', qty: 1)],
+        unresolvedScans: ['8901234'],
+      );
+      expect(withScans.toPayload()['unresolved_scans'], ['8901234']);
+
+      const withoutScans = ReceiptDraft(
+        targetWarehouse: 'A',
+        lines: [ReceiptLine(itemCode: 'X', qty: 1)],
+      );
+      expect(withoutScans.toPayload().containsKey('unresolved_scans'), isFalse);
+    });
+  });
 }

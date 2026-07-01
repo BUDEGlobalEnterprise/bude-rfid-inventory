@@ -235,6 +235,58 @@ def test_create_transfer_submits_stock_entry_on_happy_path(mock_frappe):
     }
     doc.insert.assert_called_once()
     doc.submit.assert_called_once()
+    assert "remarks" not in payload  # nothing flagged, nothing to note
+
+
+def test_create_transfer_rejects_bad_exception_type():
+    result = stock_api.create_transfer(
+        items=[{"item_code": "A", "qty": 1, "exception_type": "lost"}],
+        source_warehouse="Src - X",
+        target_warehouse="Tgt - X",
+    )
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_BAD_EXCEPTION_TYPE"
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_transfer_folds_exceptions_and_unresolved_scans_into_remarks(
+    mock_frappe,
+):
+    _grant_stock_role(mock_frappe)
+
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [{"name": "X"}]
+        if doctype == "Item":
+            return [{"item_code": "A"}, {"item_code": "B"}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+    doc = MagicMock()
+    doc.name = "STE-2026-00003"
+    doc.docstatus = 1
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_transfer(
+        items=[
+            {
+                "item_code": "A",
+                "qty": 3,
+                "exception_type": "damage",
+                "exception_note": "crushed box",
+            },
+            {"item_code": "B", "qty": 1},  # unflagged — no remarks entry
+        ],
+        source_warehouse="Src - X",
+        target_warehouse="Tgt - X",
+        unresolved_scans=["8901234"],
+    )
+
+    assert result["ok"] is True
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert payload["remarks"] == (
+        "A: damage — crushed box\nUnresolved scan: 8901234"
+    )
 
 
 @patch("bude_api.api.stock.frappe")
@@ -451,6 +503,35 @@ def test_create_receipt_rejects_bad_qty():
     assert result["code"] == "VALIDATION_BAD_QTY"
 
 
+def test_create_receipt_rejects_negative_rejected_qty():
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 5, "rejected_qty": -1}],
+        target_warehouse="Stores - X",
+        against_po="PO-001",
+    )
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_BAD_QTY"
+
+
+def test_create_receipt_rejects_rejected_qty_without_po():
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 5, "rejected_qty": 1}],
+        target_warehouse="Stores - X",
+    )
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_REJECTED_QTY_REQUIRES_PO"
+
+
+def test_create_receipt_rejects_rejected_qty_without_rejected_warehouse():
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 5, "rejected_qty": 1}],
+        target_warehouse="Stores - X",
+        against_po="PO-001",
+    )
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_REJECTED_WAREHOUSE_REQUIRED"
+
+
 @patch("bude_api.api.stock.frappe")
 def test_create_receipt_rejects_unknown_warehouse(mock_frappe):
     _grant_stock_role(mock_frappe)
@@ -501,6 +582,38 @@ def test_create_receipt_material_receipt_happy_path(mock_frappe):
         "t_warehouse": "Tgt - X",
     }
     doc.submit.assert_called_once()
+    assert "remarks" not in payload
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_receipt_material_receipt_folds_damage_note_and_scans_into_remarks(
+    mock_frappe,
+):
+    _grant_stock_role(mock_frappe)
+
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [{"name": "Tgt - X"}]
+        if doctype == "Item":
+            return [{"item_code": "A"}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+    doc = MagicMock()
+    doc.name = "STE-MR-2026-00002"
+    doc.docstatus = 1
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 5, "damage_note": "wet carton"}],
+        target_warehouse="Tgt - X",
+        unresolved_scans=["1112223"],
+    )
+
+    assert result["ok"] is True
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert "rejected_qty" not in payload["items"][0]  # no structural split, ad-hoc
+    assert payload["remarks"] == "A: wet carton\nUnresolved scan: 1112223"
 
 
 @patch("bude_api.api.stock.frappe")
@@ -709,6 +822,93 @@ def test_create_receipt_against_po_happy_path(mock_frappe):
     }
     pr.submit.assert_called_once()
     mock_frappe.get_all.assert_not_called()
+    assert "remarks" not in payload
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_receipt_against_po_rejects_unknown_rejected_warehouse(mock_frappe):
+    _grant_stock_role(mock_frappe)
+
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            filters = kwargs.get("filters", [])
+            name = filters[0][2] if filters else None
+            return [{"name": name}] if name == "Tgt - X" else []
+        if doctype == "Item":
+            return [{"item_code": "A"}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+
+    result = stock_api.create_receipt(
+        items=[
+            {
+                "item_code": "A",
+                "qty": 3,
+                "rejected_qty": 2,
+                "rejected_warehouse": "Rejected - X",
+            }
+        ],
+        target_warehouse="Tgt - X",
+        against_po="PO-001",
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_UNKNOWN_WAREHOUSE"
+    mock_frappe.get_doc.assert_not_called()
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_receipt_against_po_happy_path_with_rejected_qty(mock_frappe):
+    _grant_stock_role(mock_frappe)
+
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            filters = kwargs.get("filters", [])
+            name = filters[0][2] if filters else None
+            return [{"name": name}] if name in ("Tgt - X", "Rejected - X") else []
+        if doctype == "Item":
+            return [{"item_code": "A"}]
+        if doctype == "Purchase Order":
+            return [
+                {"name": "PO-001", "supplier": "Acme Supplies", "company": None}
+            ]
+        if doctype == "Purchase Order Item":
+            return [{"name": "PO-001-1", "item_code": "A", "qty": 10}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+    pr = MagicMock()
+    pr.name = "PREC-2026-00002"
+    pr.docstatus = 1
+    mock_frappe.get_doc.return_value = pr
+
+    result = stock_api.create_receipt(
+        items=[
+            {
+                "item_code": "A",
+                "qty": 3,
+                "rejected_qty": 2,
+                "rejected_warehouse": "Rejected - X",
+                "damage_note": "corroded casing",
+            }
+        ],
+        target_warehouse="Tgt - X",
+        against_po="PO-001",
+    )
+
+    assert result["ok"] is True
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert payload["items"][0] == {
+        "item_code": "A",
+        "qty": 3,
+        "warehouse": "Tgt - X",
+        "purchase_order": "PO-001",
+        "purchase_order_item": "PO-001-1",
+        "rejected_qty": 2,
+        "rejected_warehouse": "Rejected - X",
+    }
+    assert payload["remarks"] == "A: corroded casing"
 
 
 # ---------------------------------------------------------------------------
@@ -895,3 +1095,39 @@ def test_create_reconciliation_happy_path_assembles_doc(mock_frappe):
         {"item_code": "B", "warehouse": "Stores - X", "qty": 0},
     ]
     doc.submit.assert_called_once()
+    assert "remarks" not in payload
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_reconciliation_folds_variance_reason_and_scans_into_remarks(
+    mock_frappe,
+):
+    _grant_stock_role(mock_frappe)
+
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [{"name": "Stores - X"}]
+        if doctype == "Item":
+            return [{"item_code": "A"}, {"item_code": "B"}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+    doc = MagicMock()
+    doc.name = "RECON-2026-00004"
+    doc.docstatus = 1
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_reconciliation(
+        counts=[
+            {"item_code": "A", "qty": 8, "variance_reason": "found in wrong bin"},
+            {"item_code": "B", "qty": 10},  # exact count — no reason needed
+        ],
+        warehouse="Stores - X",
+        unresolved_scans=["4445556"],
+    )
+
+    assert result["ok"] is True
+    payload = mock_frappe.get_doc.call_args[0][0]
+    assert payload["remarks"] == (
+        "A: found in wrong bin\nUnresolved scan: 4445556"
+    )

@@ -190,6 +190,7 @@ class _ReceiptHost extends StatelessWidget {
   final List<ScannedItem> scanResult;
   final Override? warehousesOverride;
   final Override? purchaseOrdersOverride;
+  final AppSettings settings;
 
   const _ReceiptHost({
     required this.queue,
@@ -198,6 +199,7 @@ class _ReceiptHost extends StatelessWidget {
     required this.scanResult,
     this.warehousesOverride,
     this.purchaseOrdersOverride,
+    this.settings = const AppSettings(activeCompany: 'Bude Global'),
   });
 
   @override

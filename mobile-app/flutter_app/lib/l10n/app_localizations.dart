@@ -800,6 +800,48 @@ abstract class AppLocalizations {
   /// **'Barcode not found'**
   String get barcodeNotFound;
 
+  /// No description provided for @unresolvedScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Unresolved scan'**
+  String get unresolvedScan;
+
+  /// No description provided for @flagException.
+  ///
+  /// In en, this message translates to:
+  /// **'Flag exception'**
+  String get flagException;
+
+  /// No description provided for @exceptionNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get exceptionNone;
+
+  /// No description provided for @exceptionShortage.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortage'**
+  String get exceptionShortage;
+
+  /// No description provided for @exceptionDamage.
+  ///
+  /// In en, this message translates to:
+  /// **'Damage'**
+  String get exceptionDamage;
+
+  /// No description provided for @exceptionNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get exceptionNoteLabel;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
   /// No description provided for @analytics.
   ///
   /// In en, this message translates to:

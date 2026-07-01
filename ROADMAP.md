@@ -196,7 +196,7 @@ Every release candidate must pass these flows on a clean install and on an exist
 | **Stock transfer** | Scan multiple items, edit qty, choose warehouses, queue transfer, sync to ERPNext | Offline queue, failed sync retry, duplicate barcode handling | DONE |
 | **Goods receipt** | Receive free items or against PO, validate warehouse/PO lines, queue and sync | PO mismatch, unknown item, failed submission retry | DONE |
 | **Stock reconciliation** | Batch scan/count, compare expected qty, supervisor approval when needed | Large variance approval, failed retry, offline count preservation | DONE |
-| **Asset operations** | Find asset, move asset, create repair, view maintenance state | Unknown asset, failed queue op, offline repair/movement draft | PLANNED |
+| **Asset operations** | Find asset, move asset, create repair, view maintenance state | Unknown asset, failed queue op, offline repair/movement draft | DONE |
 | **Audit + reporting** | Review submitted/pending/failed ops, export CSV, open ERP references | Missing ERP link, no file permission, empty report states | PLANNED |
 | **Hardware** | Camera fallback, Chainway barcode, Chainway UHF read/write/inventory | SDK missing, device unsupported, reader busy, permission failure | IN PROGRESS |
 
@@ -208,6 +208,7 @@ Note: physical RFID validation is blocked until a reader is available. Until the
 - Stock-transfer hardening done: golden-flow widget coverage now verifies scan-session handoff, duplicate quantity merge, inline quantity edit, same-warehouse validation, queue-first submit, company/location/tracking payload shape, warehouse-load failure, empty-lines state, and failed sync retry.
 - Goods-receipt hardening done: golden-flow widget coverage now verifies scan-session handoff, duplicate quantity merge, inline quantity edit, target warehouse requirement, optional PO and location payload shape, tracking allocations, warehouse/PO error states, empty-lines state, and failed sync retry.
 - Stock-reconciliation hardening done: golden-flow widget coverage now verifies warehouse-required state, scan-session handoff, expected quantity/variance display, duplicate quantity merge, inline count edit, location/tracking payload shape, queue-first submit, supervisor approval promotion, warehouse/empty states, and failed sync retry.
+- Asset-operations hardening done: test coverage now verifies asset search/filter/detail rendering and unknown-asset failure states, move-asset purpose-dependent validation and duplicate-asset prevention, repair-request validation, queue-first submit payload shape for movement/repair/maintenance-completion, remote data source URL/param/error-mapping, submitter success/fatal/retryable classification, and failed sync retry.
 - Add smoke/widget tests for the golden screens: splash, onboarding, login, dashboard, lookup, scan session, transfer, receipt, reconciliation, assets, sync, settings.
 - Add route-contract tests for every `GoRoute`, including required `extra` values such as reconciliation approval.
 - Add sync queue recovery tests for app restart, duplicate operation IDs, failed operation retry, and pending-approval state.
@@ -221,7 +222,7 @@ Note: physical RFID validation is blocked until a reader is available. Until the
 - Keep API keys/session material in `FlutterSecureStorage`; audit Hive/SharedPreferences to ensure no credentials or sensitive ERP payloads are stored there.
 - Add automatic session expiry handling: intercept 401/403, clear stale auth, redirect to login, and preserve pending offline work.
 - Finish role-based access consistently across dashboard cards, shell navigation, direct routes, and backend endpoint permissions.
-- Add server-side permission checks for stock, asset, report, and analytics endpoints; mobile UI gating is convenience only.
+- Add server-side permission checks for report and analytics endpoints; mobile UI gating is convenience only. (Stock and asset write endpoints now require a stock execution role via `require_stock_execution_role`.)
 - Add safe logging rules: no passwords, API secrets, authorization headers, or full ERP payload dumps in logs.
 
 ### UX And Visual Workstream
@@ -276,6 +277,8 @@ Phase 10 approval and audit controls V1 is done: Settings exposes count variance
 Phase 10 backend permission hardening is done: stock execution endpoints now require ERPNext stock roles, permission failures return a clean `PERMISSION_DENIED` envelope, and mobile-facing backend reads use permission-aware Frappe APIs instead of bypassing document permissions.
 
 Phase 10 guided warehouse task queue is done: backend `warehouse_tasks.list_open` aggregates open Purchase Orders, Sales Orders, planned Asset Maintenance Logs, and supported Frappe `ToDo` assignments with permission-aware reads; mobile `/tasks` groups and filters work, deep-links into receipt, fulfillment, and asset maintenance, and closes standard ToDos after related queued operations sync successfully.
+
+Phase 10 admin master-data console (companies + warehouses slice) is done: mobile `/masters` hub/records/form screens (manager-gated via the existing router guard) drive the generic `masters.py` CRUD registry end-to-end — list, search, create, edit, and enable/disable — across Company, Warehouse, Location, and 13 other standard ERPNext masters, with full mobile test coverage. Default-role assignment, device pairing, and pilot-workflow seeding (currently a developer-only `bench execute` script) remain unbuilt, so priority 10 ("Admin onboarding console") stays PLANNED overall.
 
 Execution rule: implement these one by one. Start with optional bin/location execution using standard ERPNext warehouse/bin concepts; do not add custom DocTypes unless standard ERPNext cannot represent the workflow.
 

@@ -1,0 +1,7 @@
+Bude HR uses the Momentous Bude HR App as its initial Flutter scaffold.
+
+Source: https://github.com/momentous-developments/flutter-starter-app
+License: MIT
+
+The HR/ESS product code in this directory is implemented for Bude and does not
+copy code from the GPL-licensed Nesscale ESS reference app.

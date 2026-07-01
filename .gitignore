@@ -168,3 +168,7 @@ backend/bude_api/demo_runs/
 
 # ----- Local automation logs -----
 .automation/
+
+# ----- Cloned External Repositories (Not listed to git) -----
+/hr-ex-1/
+/hr-ex-2/

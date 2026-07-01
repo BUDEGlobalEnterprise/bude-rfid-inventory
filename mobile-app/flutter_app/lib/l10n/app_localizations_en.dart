@@ -408,6 +408,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get barcodeNotFound => 'Barcode not found';
 
   @override
+  String get unresolvedScan => 'Unresolved scan';
+
+  @override
+  String get flagException => 'Flag exception';
+
+  @override
+  String get exceptionNone => 'None';
+
+  @override
+  String get exceptionShortage => 'Shortage';
+
+  @override
+  String get exceptionDamage => 'Damage';
+
+  @override
+  String get exceptionNoteLabel => 'Note (optional)';
+
+  @override
+  String get save => 'Save';
+
+  @override
   String get analytics => 'Analytics';
 
   @override

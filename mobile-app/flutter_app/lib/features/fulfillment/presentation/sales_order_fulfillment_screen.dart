@@ -212,7 +212,9 @@ class _PickStage extends ConsumerWidget {
       fulfillmentDraftProvider(draft.salesOrder).notifier,
     );
     for (final scanned in result) {
-      await notifier.addPickedItem(scanned.item.itemCode, scanned.qty);
+      final resolved = scanned.item;
+      if (resolved == null) continue; // unresolved scans carry no item_code
+      await notifier.addPickedItem(resolved.itemCode, scanned.qty);
     }
   }
 

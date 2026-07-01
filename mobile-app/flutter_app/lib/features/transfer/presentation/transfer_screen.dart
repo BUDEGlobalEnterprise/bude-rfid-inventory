@@ -373,13 +373,15 @@ class _TransferBodyState extends ConsumerState<_TransferBody> {
     if (result == null || result.isEmpty || !context.mounted) return;
     final notifier = ref.read(transferDraftProvider.notifier);
     for (final scanned in result) {
+      final resolved = scanned.item;
+      if (resolved == null) continue; // unresolved scans carry no item_code
       notifier.addLine(
         TransferLine(
-          itemCode: scanned.item.itemCode,
-          itemName: scanned.item.itemName,
+          itemCode: resolved.itemCode,
+          itemName: resolved.itemName,
           qty: scanned.qty,
-          hasBatchNo: scanned.item.hasBatchNo,
-          hasSerialNo: scanned.item.hasSerialNo,
+          hasBatchNo: resolved.hasBatchNo,
+          hasSerialNo: resolved.hasSerialNo,
         ),
       );
     }

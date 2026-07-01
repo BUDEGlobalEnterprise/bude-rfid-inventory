@@ -82,6 +82,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Future<void> setTransferApprovalQtyThreshold(double threshold) =>
       _persist(state.copyWith(transferApprovalQtyThreshold: threshold));
 
+  Future<void> setReceiptRejectedQtyApprovalThreshold(double threshold) =>
+      _persist(
+        state.copyWith(receiptRejectedQtyApprovalThreshold: threshold),
+      );
+
   Future<void> setSyncOnWifiOnly(bool value) =>
       _persist(state.copyWith(syncOnWifiOnly: value));
 

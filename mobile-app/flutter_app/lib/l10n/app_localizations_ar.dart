@@ -405,6 +405,27 @@ class AppLocalizationsAr extends AppLocalizations {
   String get barcodeNotFound => 'الباركود غير موجود';
 
   @override
+  String get unresolvedScan => 'مسح غير محلول';
+
+  @override
+  String get flagException => 'وضع علامة استثناء';
+
+  @override
+  String get exceptionNone => 'لا شيء';
+
+  @override
+  String get exceptionShortage => 'نقص';
+
+  @override
+  String get exceptionDamage => 'تلف';
+
+  @override
+  String get exceptionNoteLabel => 'ملاحظة (اختياري)';
+
+  @override
+  String get save => 'حفظ';
+
+  @override
   String get analytics => 'التحليلات';
 
   @override

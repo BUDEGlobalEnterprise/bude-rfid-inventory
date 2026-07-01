@@ -10,6 +10,16 @@ class ReceiptLine extends Equatable {
   final bool hasSerialNo;
   final List<TrackingAllocation> allocations;
 
+  /// Goods received but not accepted (damaged/short). Only meaningful for
+  /// PO-backed receipts — mirrors ERPNext's standard Purchase Receipt Item
+  /// `rejected_qty` / `rejected_warehouse` fields.
+  final double rejectedQty;
+  final String? rejectedWarehouse;
+
+  /// Free-text exception note. Sent for both PO and ad-hoc receipts — folds
+  /// into the submitted document's `remarks` field server-side.
+  final String? damageNote;
+
   const ReceiptLine({
     required this.itemCode,
     required this.qty,
@@ -17,11 +27,17 @@ class ReceiptLine extends Equatable {
     this.hasBatchNo = false,
     this.hasSerialNo = false,
     this.allocations = const [],
+    this.rejectedQty = 0,
+    this.rejectedWarehouse,
+    this.damageNote,
   });
 
   ReceiptLine copyWith({
     double? qty,
     List<TrackingAllocation>? allocations,
+    double? rejectedQty,
+    Object? rejectedWarehouse = _sentinel,
+    Object? damageNote = _sentinel,
   }) =>
       ReceiptLine(
         itemCode: itemCode,
@@ -30,6 +46,12 @@ class ReceiptLine extends Equatable {
         hasBatchNo: hasBatchNo,
         hasSerialNo: hasSerialNo,
         allocations: allocations ?? this.allocations,
+        rejectedQty: rejectedQty ?? this.rejectedQty,
+        rejectedWarehouse: rejectedWarehouse == _sentinel
+            ? this.rejectedWarehouse
+            : rejectedWarehouse as String?,
+        damageNote:
+            damageNote == _sentinel ? this.damageNote : damageNote as String?,
       );
 
   bool get isTrackingComplete => _trackingComplete(
@@ -40,11 +62,18 @@ class ReceiptLine extends Equatable {
         allowExpiryMissing: true,
       );
 
+  bool get hasException =>
+      rejectedQty > 0 || (damageNote != null && damageNote!.trim().isNotEmpty);
+
   Map<String, dynamic> toJson() => {
         'item_code': itemCode,
         'qty': qty,
         if (allocations.isNotEmpty)
           'allocations': allocations.map((a) => a.toJson()).toList(),
+        if (rejectedQty > 0) 'rejected_qty': rejectedQty,
+        if (rejectedWarehouse != null) 'rejected_warehouse': rejectedWarehouse,
+        if (damageNote != null && damageNote!.trim().isNotEmpty)
+          'damage_note': damageNote!.trim(),
       };
 
   @override
@@ -55,6 +84,9 @@ class ReceiptLine extends Equatable {
         hasBatchNo,
         hasSerialNo,
         allocations,
+        rejectedQty,
+        rejectedWarehouse,
+        damageNote,
       ];
 }
 
@@ -68,6 +100,11 @@ class ReceiptDraft extends Equatable {
   final List<ReceiptLine> lines;
   final String? company;
 
+  /// Raw barcodes scanned but never resolved to an item, kept so an
+  /// operator's "proceed anyway" isn't silently lost — noted in the
+  /// submitted document's `remarks` server-side.
+  final List<String> unresolvedScans;
+
   const ReceiptDraft({
     this.targetWarehouse,
     this.targetLocation,
@@ -75,6 +112,7 @@ class ReceiptDraft extends Equatable {
     this.todoName,
     this.lines = const [],
     this.company,
+    this.unresolvedScans = const [],
   });
 
   ReceiptDraft copyWith({
@@ -85,6 +123,7 @@ class ReceiptDraft extends Equatable {
     List<ReceiptLine>? lines,
     bool clearAgainstPo = false,
     Object? company = _sentinel,
+    List<String>? unresolvedScans,
   }) {
     return ReceiptDraft(
       targetWarehouse: targetWarehouse == _sentinel
@@ -97,6 +136,7 @@ class ReceiptDraft extends Equatable {
       todoName: todoName == _sentinel ? this.todoName : todoName as String?,
       lines: lines ?? this.lines,
       company: company == _sentinel ? this.company : company as String?,
+      unresolvedScans: unresolvedScans ?? this.unresolvedScans,
     );
   }
 
@@ -112,6 +152,7 @@ class ReceiptDraft extends Equatable {
         if (todoName != null) 'todo_name': todoName,
         'items': lines.map((l) => l.toJson()).toList(),
         if (company != null) 'company': company,
+        if (unresolvedScans.isNotEmpty) 'unresolved_scans': unresolvedScans,
       };
 
   @override
@@ -122,6 +163,7 @@ class ReceiptDraft extends Equatable {
         todoName,
         lines,
         company,
+        unresolvedScans,
       ];
 }
 

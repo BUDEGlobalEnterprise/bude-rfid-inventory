@@ -16,6 +16,7 @@ class AppSettings extends Equatable {
   final String? activeCompany;
   final double reconciliationVarianceThreshold; // 0.0 = disabled
   final double transferApprovalQtyThreshold; // 0.0 = disabled
+  final double receiptRejectedQtyApprovalThreshold; // 0.0 = disabled
 
   // Scanning
   final bool scanSound;
@@ -45,6 +46,7 @@ class AppSettings extends Equatable {
     this.activeCompany,
     this.reconciliationVarianceThreshold = 0.0,
     this.transferApprovalQtyThreshold = 0.0,
+    this.receiptRejectedQtyApprovalThreshold = 0.0,
     this.scanSound = true,
     this.scanVibration = true,
     this.continuousScanMode = false,
@@ -67,6 +69,7 @@ class AppSettings extends Equatable {
     Object? activeCompany = _sentinel,
     double? reconciliationVarianceThreshold,
     double? transferApprovalQtyThreshold,
+    double? receiptRejectedQtyApprovalThreshold,
     bool? scanSound,
     bool? scanVibration,
     bool? continuousScanMode,
@@ -96,6 +99,9 @@ class AppSettings extends Equatable {
           this.reconciliationVarianceThreshold,
       transferApprovalQtyThreshold:
           transferApprovalQtyThreshold ?? this.transferApprovalQtyThreshold,
+      receiptRejectedQtyApprovalThreshold:
+          receiptRejectedQtyApprovalThreshold ??
+              this.receiptRejectedQtyApprovalThreshold,
       scanSound: scanSound ?? this.scanSound,
       scanVibration: scanVibration ?? this.scanVibration,
       continuousScanMode: continuousScanMode ?? this.continuousScanMode,
@@ -124,6 +130,7 @@ class AppSettings extends Equatable {
         activeCompany,
         reconciliationVarianceThreshold,
         transferApprovalQtyThreshold,
+        receiptRejectedQtyApprovalThreshold,
         scanSound,
         scanVibration,
         continuousScanMode,

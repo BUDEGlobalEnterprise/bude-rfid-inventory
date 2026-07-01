@@ -106,6 +106,34 @@ class ReceiptDraftNotifier extends StateNotifier<ReceiptDraft> {
     );
   }
 
+  void updateException(
+    String itemCode, {
+    required double rejectedQty,
+    String? rejectedWarehouse,
+    String? damageNote,
+  }) {
+    state = state.copyWith(
+      lines: state.lines
+          .map(
+            (l) => l.itemCode == itemCode
+                ? l.copyWith(
+                    rejectedQty: rejectedQty,
+                    rejectedWarehouse: rejectedWarehouse,
+                    damageNote: damageNote,
+                  )
+                : l,
+          )
+          .toList(),
+    );
+  }
+
+  void addUnresolvedScans(List<String> barcodes) {
+    if (barcodes.isEmpty) return;
+    state = state.copyWith(
+      unresolvedScans: [...state.unresolvedScans, ...barcodes],
+    );
+  }
+
   void clear() {
     state = const ReceiptDraft();
   }

@@ -431,10 +431,31 @@ class _ApprovalControlsSection extends ConsumerWidget {
                 notifier.setTransferApprovalQtyThreshold(parsed ?? 0.0);
               },
             ),
+            const SizedBox(height: 12),
+            TextFormField(
+              decoration: const InputDecoration(
+                labelText: 'Receipt rejected-qty approval threshold',
+                hintText: '0 disables receipt-rejection approval',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.report_problem_outlined),
+              ),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              initialValue:
+                  settings.receiptRejectedQtyApprovalThreshold == 0.0
+                      ? ''
+                      : settings.receiptRejectedQtyApprovalThreshold
+                          .toString(),
+              onChanged: (v) {
+                final parsed = double.tryParse(v);
+                notifier.setReceiptRejectedQtyApprovalThreshold(parsed ?? 0.0);
+              },
+            ),
             const SizedBox(height: 8),
             Text(
-              'Transfers above the quantity threshold and counts above the '
-              'variance threshold queue for Stock Manager approval.',
+              'Transfers above the quantity threshold, counts above the '
+              'variance threshold, and receipts with rejected quantity above '
+              'their threshold queue for Stock Manager approval.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),

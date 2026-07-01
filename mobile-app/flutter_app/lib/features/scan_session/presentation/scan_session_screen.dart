@@ -81,6 +81,9 @@ class _ScanSessionScreenState extends ConsumerState<ScanSessionScreen> {
       _resolving.remove(barcode);
       result.fold(
         (failure) {
+          // Kept in the list (not discarded) so the operator can see it and
+          // either remove it or proceed with it logged as an exception.
+          _items.insert(0, ScannedItem(barcode: barcode, item: null));
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(context.l10n.barcodeNotFound)),
           );
@@ -184,6 +187,9 @@ class _ScanSessionScreenState extends ConsumerState<ScanSessionScreen> {
                       onRemove: () => setState(() => _items.removeAt(i)),
                       onQtyChanged: (q) => setState(() {
                         _items[i] = _items[i].copyWith(qty: q);
+                      }),
+                      onExceptionChanged: (updated) => setState(() {
+                        _items[i] = updated;
                       }),
                     ),
                   ),
@@ -302,16 +308,69 @@ class _ScannedItemTile extends StatelessWidget {
   final ScannedItem item;
   final VoidCallback onRemove;
   final ValueChanged<double> onQtyChanged;
+  final ValueChanged<ScannedItem> onExceptionChanged;
 
   const _ScannedItemTile({
     required this.item,
     required this.onRemove,
     required this.onQtyChanged,
+    required this.onExceptionChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+
+    if (item.isUnresolved) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: scheme.errorContainer.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: scheme.error.withValues(alpha: 0.5)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: scheme.error),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.unresolvedScan,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        item.barcode,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: context.l10n.removeItem,
+                  icon: const Icon(Icons.remove_circle_outline),
+                  onPressed: onRemove,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final resolved = item.item!;
+    final flagged = item.exceptionType != null;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -320,50 +379,152 @@ class _ScannedItemTile extends StatelessWidget {
           color: scheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: scheme.outlineVariant.withValues(alpha: 0.55),
+            color: flagged
+                ? scheme.error.withValues(alpha: 0.6)
+                : scheme.outlineVariant.withValues(alpha: 0.55),
           ),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.item.itemName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall,
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          resolved.itemName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          resolved.itemCode,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      item.item.itemCode,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
+                  ),
+                  const SizedBox(width: 8),
+                  BudeQuantityControl(
+                    value: item.qty,
+                    min: 0.01,
+                    onChanged: onQtyChanged,
+                  ),
+                  IconButton(
+                    tooltip: context.l10n.flagException,
+                    icon: Icon(
+                      flagged
+                          ? Icons.report_problem
+                          : Icons.report_problem_outlined,
+                      color: flagged ? scheme.error : null,
                     ),
-                  ],
+                    onPressed: () =>
+                        _showExceptionDialog(context, item, onExceptionChanged),
+                  ),
+                  IconButton(
+                    tooltip: context.l10n.removeItem,
+                    icon: const Icon(Icons.remove_circle_outline),
+                    onPressed: onRemove,
+                  ),
+                ],
+              ),
+              if (flagged)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: BudeStatusChip(
+                    label: item.exceptionType == ScanExceptionType.damage
+                        ? context.l10n.exceptionDamage
+                        : context.l10n.exceptionShortage,
+                    icon: Icons.report_problem_outlined,
+                    color: scheme.error,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              BudeQuantityControl(
-                value: item.qty,
-                min: 0.01,
-                onChanged: onQtyChanged,
-              ),
-              IconButton(
-                tooltip: context.l10n.removeItem,
-                icon: const Icon(Icons.remove_circle_outline),
-                onPressed: onRemove,
-              ),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+Future<void> _showExceptionDialog(
+  BuildContext context,
+  ScannedItem item,
+  ValueChanged<ScannedItem> onChanged,
+) async {
+  ScanExceptionType? type = item.exceptionType;
+  final noteCtrl = TextEditingController(text: item.exceptionNote ?? '');
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setState) => AlertDialog(
+        title: Text(dialogContext.l10n.flagException),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SegmentedButton<ScanExceptionType?>(
+              segments: [
+                ButtonSegment(
+                  value: null,
+                  label: Text(dialogContext.l10n.exceptionNone),
+                ),
+                ButtonSegment(
+                  value: ScanExceptionType.shortage,
+                  label: Text(dialogContext.l10n.exceptionShortage),
+                ),
+                ButtonSegment(
+                  value: ScanExceptionType.damage,
+                  label: Text(dialogContext.l10n.exceptionDamage),
+                ),
+              ],
+              selected: {type},
+              onSelectionChanged: (selection) =>
+                  setState(() => type = selection.first),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteCtrl,
+              maxLines: 2,
+              decoration: InputDecoration(
+                labelText: dialogContext.l10n.exceptionNoteLabel,
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(dialogContext.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(dialogContext.l10n.save),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (confirmed == true) {
+    final note = noteCtrl.text.trim();
+    onChanged(
+      item.copyWith(
+        exceptionType: type,
+        exceptionNote: note.isEmpty ? null : note,
+      ),
+    );
+  }
+  noteCtrl.dispose();
 }
