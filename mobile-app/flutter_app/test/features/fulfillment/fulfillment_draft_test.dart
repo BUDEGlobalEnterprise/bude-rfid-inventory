@@ -63,7 +63,10 @@ void main() {
   });
 
   test('payload matches backend create_delivery_note contract', () {
-    final draft = FulfillmentDraft.fromSalesOrder(order())
+    final draft = FulfillmentDraft.fromSalesOrder(
+      order(),
+      todoName: 'TODO-SO',
+    )
         .setSource('Stores - A')
         .setSourceLocation('Rack 1 - A')
         .addPickedItem('ITEM-1', 2)
@@ -75,6 +78,7 @@ void main() {
       'customer': 'Acme',
       'source_warehouse': 'Stores - A',
       'source_location': 'Rack 1 - A',
+      'todo_name': 'TODO-SO',
       'items': [
         {'sales_order_item': 'SOI-1', 'item_code': 'ITEM-1', 'qty': 2.0},
         {'sales_order_item': 'SOI-2', 'item_code': 'ITEM-2', 'qty': 1.0},

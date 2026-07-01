@@ -131,6 +131,7 @@ class FulfillmentDraft extends Equatable {
   final String salesOrder;
   final String? customer;
   final String? company;
+  final String? todoName;
   final String? sourceWarehouse;
   final String? sourceLocation;
   final FulfillmentStage stage;
@@ -140,17 +141,22 @@ class FulfillmentDraft extends Equatable {
     required this.salesOrder,
     this.customer,
     this.company,
+    this.todoName,
     this.sourceWarehouse,
     this.sourceLocation,
     this.stage = FulfillmentStage.pick,
     this.lines = const [],
   });
 
-  factory FulfillmentDraft.fromSalesOrder(SalesOrderDetail order) {
+  factory FulfillmentDraft.fromSalesOrder(
+    SalesOrderDetail order, {
+    String? todoName,
+  }) {
     return FulfillmentDraft(
       salesOrder: order.name,
       customer: order.customer,
       company: order.company,
+      todoName: todoName,
       lines: order.items.map(FulfillmentLine.fromSalesOrderLine).toList(),
     );
   }
@@ -158,6 +164,7 @@ class FulfillmentDraft extends Equatable {
   FulfillmentDraft copyWith({
     Object? sourceWarehouse = _sentinel,
     Object? sourceLocation = _sentinel,
+    Object? todoName = _sentinel,
     FulfillmentStage? stage,
     List<FulfillmentLine>? lines,
   }) {
@@ -165,6 +172,7 @@ class FulfillmentDraft extends Equatable {
       salesOrder: salesOrder,
       customer: customer,
       company: company,
+      todoName: todoName == _sentinel ? this.todoName : todoName as String?,
       sourceWarehouse: sourceWarehouse == _sentinel
           ? this.sourceWarehouse
           : sourceWarehouse as String?,
@@ -270,6 +278,7 @@ class FulfillmentDraft extends Equatable {
         'customer': customer,
         'source_warehouse': sourceWarehouse,
         if (sourceLocation != null) 'source_location': sourceLocation,
+        if (todoName != null) 'todo_name': todoName,
         'items': lines.map((line) => line.toPayloadJson()).toList(),
         if (company != null) 'company': company,
       };
@@ -278,6 +287,7 @@ class FulfillmentDraft extends Equatable {
         'sales_order': salesOrder,
         'customer': customer,
         'company': company,
+        'todo_name': todoName,
         'source_warehouse': sourceWarehouse,
         'source_location': sourceLocation,
         'stage': stage.name,
@@ -289,6 +299,7 @@ class FulfillmentDraft extends Equatable {
       salesOrder: json['sales_order'] as String,
       customer: json['customer'] as String?,
       company: json['company'] as String?,
+      todoName: json['todo_name'] as String?,
       sourceWarehouse: json['source_warehouse'] as String?,
       sourceLocation: json['source_location'] as String?,
       stage: FulfillmentStage.values.firstWhere(
@@ -307,6 +318,7 @@ class FulfillmentDraft extends Equatable {
         salesOrder,
         customer,
         company,
+        todoName,
         sourceWarehouse,
         sourceLocation,
         stage,

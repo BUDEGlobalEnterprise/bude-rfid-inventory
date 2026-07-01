@@ -54,9 +54,19 @@ class FulfillmentDraftNotifier extends StateNotifier<FulfillmentDraft?> {
   FulfillmentDraftNotifier(this.salesOrder, this.local)
       : super(local.get(salesOrder));
 
-  Future<void> ensureSeeded(SalesOrderDetail order) async {
-    if (state != null) return;
-    state = FulfillmentDraft.fromSalesOrder(order);
+  Future<void> ensureSeeded(SalesOrderDetail order, {String? todoName}) async {
+    final cleanTodo = (todoName ?? '').trim();
+    if (state != null) {
+      if (cleanTodo.isNotEmpty && state!.todoName != cleanTodo) {
+        state = state!.copyWith(todoName: cleanTodo);
+        await _save();
+      }
+      return;
+    }
+    state = FulfillmentDraft.fromSalesOrder(
+      order,
+      todoName: cleanTodo.isEmpty ? null : cleanTodo,
+    );
     await _save();
   }
 

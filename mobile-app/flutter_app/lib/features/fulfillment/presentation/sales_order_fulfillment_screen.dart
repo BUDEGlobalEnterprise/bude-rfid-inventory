@@ -16,7 +16,13 @@ import 'providers/fulfillment_providers.dart';
 
 class SalesOrderFulfillmentScreen extends ConsumerWidget {
   final String salesOrder;
-  const SalesOrderFulfillmentScreen({super.key, required this.salesOrder});
+  final String? todoName;
+
+  const SalesOrderFulfillmentScreen({
+    super.key,
+    required this.salesOrder,
+    this.todoName,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,7 +44,7 @@ class SalesOrderFulfillmentScreen extends ConsumerWidget {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             ref
                 .read(fulfillmentDraftProvider(salesOrder).notifier)
-                .ensureSeeded(order);
+                .ensureSeeded(order, todoName: todoName);
           });
           final effectiveDraft =
               draft ?? FulfillmentDraft.fromSalesOrder(order);
