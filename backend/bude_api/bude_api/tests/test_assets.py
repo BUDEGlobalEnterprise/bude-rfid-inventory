@@ -19,8 +19,10 @@ def _wire_exceptions(mock_frappe):
 @patch("bude_api.api.assets.frappe")
 def test_set_epc_saves_with_permissions(mock_frappe):
     _wire_exceptions(mock_frappe)
-    mock_frappe.db.exists.return_value = True
-    mock_frappe.get_list.return_value = []
+    mock_frappe.get_list.side_effect = [
+        [{"name": "AST-001"}],
+        [],
+    ]
     doc = MagicMock()
     mock_frappe.get_doc.return_value = doc
 
@@ -36,8 +38,10 @@ def test_set_epc_saves_with_permissions(mock_frappe):
 @patch("bude_api.api.assets.frappe")
 def test_set_epc_permission_error_returns_clean_envelope(mock_frappe):
     _wire_exceptions(mock_frappe)
-    mock_frappe.db.exists.return_value = True
-    mock_frappe.get_list.return_value = []
+    mock_frappe.get_list.side_effect = [
+        [{"name": "AST-001"}],
+        [],
+    ]
     doc = MagicMock()
     doc.save.side_effect = _FakePermissionError("no write")
     mock_frappe.get_doc.return_value = doc
@@ -52,11 +56,11 @@ def test_set_epc_permission_error_returns_clean_envelope(mock_frappe):
 @patch("bude_api.api.assets.frappe")
 def test_create_asset_movement_inserts_with_permissions(mock_frappe):
     _wire_exceptions(mock_frappe)
-    mock_frappe.db.get_value.return_value = {
+    mock_frappe.get_list.return_value = [{
         "location": "Stores",
         "custodian": None,
         "company": "Bude",
-    }
+    }]
     mock_frappe.utils.now_datetime.return_value = "2026-06-26"
     doc = MagicMock()
     doc.name = "MOV-001"
@@ -77,7 +81,7 @@ def test_create_asset_movement_inserts_with_permissions(mock_frappe):
 @patch("bude_api.api.assets.frappe")
 def test_create_asset_repair_validation_error_returns_clean_envelope(mock_frappe):
     _wire_exceptions(mock_frappe)
-    mock_frappe.db.exists.return_value = True
+    mock_frappe.get_list.return_value = [{"name": "AST-001"}]
     mock_frappe.utils.now_datetime.return_value = "2026-06-26"
     doc = MagicMock()
     doc.insert.side_effect = _FakeValidationError("Bad repair")
@@ -93,7 +97,7 @@ def test_create_asset_repair_validation_error_returns_clean_envelope(mock_frappe
 @patch("bude_api.api.assets.frappe")
 def test_complete_maintenance_log_saves_with_permissions(mock_frappe):
     _wire_exceptions(mock_frappe)
-    mock_frappe.db.exists.return_value = True
+    mock_frappe.get_list.return_value = [{"name": "LOG-001"}]
     mock_frappe.utils.nowdate.return_value = "2026-06-26"
     doc = MagicMock()
     doc.name = "LOG-001"

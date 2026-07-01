@@ -7,6 +7,15 @@ class _FakeValidationError(Exception):
     """Stand-in for frappe.ValidationError in unit tests (no Frappe installed)."""
 
 
+class _FakePermissionError(Exception):
+    """Stand-in for frappe.PermissionError in unit tests (no Frappe installed)."""
+
+
+def _grant_stock_role(mock_frappe):
+    mock_frappe.get_roles.return_value = ["Stock User"]
+    mock_frappe.session.user = "warehouse.user@example.com"
+
+
 def _get_list_with_companies(
     warehouse_companies: dict[str, str],
     items: set[str] | None = None,
@@ -99,7 +108,34 @@ def test_create_transfer_rejects_same_source_and_target():
 
 
 @patch("bude_api.api.stock.frappe")
+def test_stock_write_endpoints_require_stock_role(mock_frappe):
+    mock_frappe.get_roles.return_value = ["Sales User"]
+    mock_frappe.session.user = "sales.user@example.com"
+
+    transfer = stock_api.create_transfer(
+        items=[{"item_code": "A", "qty": 1}],
+        source_warehouse="Src - X",
+        target_warehouse="Tgt - X",
+    )
+    receipt = stock_api.create_receipt(
+        items=[{"item_code": "A", "qty": 1}],
+        target_warehouse="Tgt - X",
+    )
+    reconciliation = stock_api.create_reconciliation(
+        counts=[{"item_code": "A", "qty": 1}],
+        warehouse="Stores - X",
+    )
+
+    assert transfer["code"] == "PERMISSION_DENIED"
+    assert receipt["code"] == "PERMISSION_DENIED"
+    assert reconciliation["code"] == "PERMISSION_DENIED"
+    mock_frappe.get_list.assert_not_called()
+    mock_frappe.get_doc.assert_not_called()
+
+
+@patch("bude_api.api.stock.frappe")
 def test_create_transfer_rejects_unknown_source_warehouse(mock_frappe):
+    _grant_stock_role(mock_frappe)
     def get_list(doctype, **kwargs):
         if doctype == "Warehouse":
             filters = kwargs.get("filters", [])
@@ -108,7 +144,6 @@ def test_create_transfer_rejects_unknown_source_warehouse(mock_frappe):
         return []
 
     mock_frappe.get_list.side_effect = get_list
-    mock_frappe.get_all.side_effect = get_list
     result = stock_api.create_transfer(
         items=[{"item_code": "A", "qty": 1}],
         source_warehouse="Bad - X",
@@ -120,6 +155,7 @@ def test_create_transfer_rejects_unknown_source_warehouse(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_transfer_rejects_same_source_target_after_frappe(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.return_value = [{"name": "Same - X"}]
     result = stock_api.create_transfer(
         items=[{"item_code": "A", "qty": 1}],
@@ -132,6 +168,7 @@ def test_create_transfer_rejects_same_source_target_after_frappe(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_transfer_rejects_unknown_items(mock_frappe):
+    _grant_stock_role(mock_frappe)
     def get_list(doctype, **kwargs):
         if doctype == "Warehouse":
             return [{"name": "X"}]
@@ -140,7 +177,6 @@ def test_create_transfer_rejects_unknown_items(mock_frappe):
         return []
 
     mock_frappe.get_list.side_effect = get_list
-    mock_frappe.get_all.side_effect = get_list
     result = stock_api.create_transfer(
         items=[
             {"item_code": "A", "qty": 1},
@@ -156,6 +192,7 @@ def test_create_transfer_rejects_unknown_items(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_transfer_submits_stock_entry_on_happy_path(mock_frappe):
+    _grant_stock_role(mock_frappe)
     def get_list(doctype, **kwargs):
         if doctype == "Warehouse":
             return [{"name": "X"}]
@@ -202,6 +239,7 @@ def test_create_transfer_submits_stock_entry_on_happy_path(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_transfer_rejects_cross_company_warehouses(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_with_companies(
         {"Src - A": "Company A", "Tgt - B": "Company B"}
     )
@@ -220,6 +258,7 @@ def test_create_transfer_rejects_cross_company_warehouses(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_transfer_rejects_requested_company_mismatch(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_with_companies(
         {"Src - A": "Company A", "Tgt - A": "Company A"}
     )
@@ -239,6 +278,7 @@ def test_create_transfer_rejects_requested_company_mismatch(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_transfer_infers_company_from_warehouses(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_with_companies(
         {"Src - A": "Company A", "Tgt - A": "Company A"}
     )
@@ -260,6 +300,7 @@ def test_create_transfer_infers_company_from_warehouses(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_transfer_uses_valid_locations_as_effective_warehouses(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_with_companies(
         {
             "Src - A": "Company A",
@@ -294,6 +335,7 @@ def test_create_transfer_uses_valid_locations_as_effective_warehouses(mock_frapp
 
 @patch("bude_api.api.stock.frappe")
 def test_create_transfer_rejects_location_outside_parent_scope(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_with_companies(
         {
             "Src - A": "Company A",
@@ -316,6 +358,7 @@ def test_create_transfer_rejects_location_outside_parent_scope(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_transfer_converts_erpnext_validation_error(mock_frappe):
+    _grant_stock_role(mock_frappe)
     # ERPNext rejects the submit (e.g. insufficient stock). Frappe would raise
     # ValidationError → raw HTTP 417; we convert it to a clean envelope and
     # roll back the half-created draft.
@@ -345,6 +388,37 @@ def test_create_transfer_converts_erpnext_validation_error(mock_frappe):
     assert result["code"] == "VALIDATION_ERPNEXT"
     assert "Insufficient stock" in result["message"]
     doc.insert.assert_called_once()
+    mock_frappe.db.rollback.assert_called_once()
+
+
+@patch("bude_api.api.stock.frappe")
+def test_create_transfer_converts_permission_error(mock_frappe):
+    _grant_stock_role(mock_frappe)
+    mock_frappe.ValidationError = _FakeValidationError
+    mock_frappe.PermissionError = _FakePermissionError
+
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [{"name": "X"}]
+        if doctype == "Item":
+            return [{"item_code": "A"}]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
+    doc = MagicMock()
+    doc.submit.side_effect = _FakePermissionError("no submit")
+    mock_frappe.get_doc.return_value = doc
+
+    result = stock_api.create_transfer(
+        items=[{"item_code": "A", "qty": 1}],
+        source_warehouse="Finished Goods - BUDE",
+        target_warehouse="Stores - BUDE",
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "PERMISSION_DENIED"
+    doc.insert.assert_called_once_with(ignore_permissions=False)
+    doc.submit.assert_called_once()
     mock_frappe.db.rollback.assert_called_once()
 
 
@@ -379,6 +453,7 @@ def test_create_receipt_rejects_bad_qty():
 
 @patch("bude_api.api.stock.frappe")
 def test_create_receipt_rejects_unknown_warehouse(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.return_value = []  # no warehouse, no items
     result = stock_api.create_receipt(
         items=[{"item_code": "A", "qty": 1}],
@@ -390,6 +465,7 @@ def test_create_receipt_rejects_unknown_warehouse(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_receipt_material_receipt_happy_path(mock_frappe):
+    _grant_stock_role(mock_frappe)
     def get_list(doctype, **kwargs):
         if doctype == "Warehouse":
             return [{"name": "Tgt - X"}]
@@ -429,6 +505,7 @@ def test_create_receipt_material_receipt_happy_path(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_receipt_rejects_company_mismatch(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_with_companies(
         {"Receiving - A": "Company A"}
     )
@@ -445,6 +522,7 @@ def test_create_receipt_rejects_company_mismatch(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_receipt_infers_company_from_warehouse(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_with_companies(
         {"Receiving - A": "Company A"}
     )
@@ -465,6 +543,7 @@ def test_create_receipt_infers_company_from_warehouse(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_receipt_uses_valid_location_as_effective_warehouse(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_with_companies(
         {
             "Receiving - A": "Company A",
@@ -491,6 +570,7 @@ def test_create_receipt_uses_valid_location_as_effective_warehouse(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_receipt_against_po_rejects_unknown_po(mock_frappe):
+    _grant_stock_role(mock_frappe)
     def get_list(doctype, **kwargs):
         if doctype == "Warehouse":
             return [{"name": "Tgt - X"}]
@@ -499,7 +579,6 @@ def test_create_receipt_against_po_rejects_unknown_po(mock_frappe):
         return []
 
     mock_frappe.get_list.side_effect = get_list
-    mock_frappe.db.get_value.return_value = None
 
     result = stock_api.create_receipt(
         items=[{"item_code": "A", "qty": 1}],
@@ -513,21 +592,25 @@ def test_create_receipt_against_po_rejects_unknown_po(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_receipt_against_po_rejects_line_mismatch(mock_frappe):
+    _grant_stock_role(mock_frappe)
     def get_list(doctype, **kwargs):
         if doctype == "Warehouse":
             return [{"name": "Tgt - X"}]
         if doctype == "Item":
             return [{"item_code": "A"}, {"item_code": "B"}]
+        if doctype == "Purchase Order":
+            return [
+                {
+                    "name": "PO-001",
+                    "supplier": "Acme Supplies",
+                    "company": "Company A",
+                }
+            ]
         if doctype == "Purchase Order Item":
             return [{"name": "PO-001-1", "item_code": "A", "qty": 10}]
         return []
 
     mock_frappe.get_list.side_effect = get_list
-    mock_frappe.get_all.side_effect = get_list
-    mock_frappe.db.get_value.return_value = {
-        "name": "PO-001",
-        "supplier": "Acme Supplies",
-    }
 
     result = stock_api.create_receipt(
         items=[
@@ -545,14 +628,29 @@ def test_create_receipt_against_po_rejects_line_mismatch(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_receipt_against_po_rejects_company_mismatch(mock_frappe):
-    mock_frappe.get_list.side_effect = _get_list_with_companies(
-        {"Receiving - A": "Company A"}
-    )
-    mock_frappe.db.get_value.return_value = {
-        "name": "PO-001",
-        "supplier": "Acme Supplies",
-        "company": "Company B",
-    }
+    _grant_stock_role(mock_frappe)
+    def get_list(doctype, **kwargs):
+        if doctype == "Warehouse":
+            return [
+                {
+                    "name": "Receiving - A",
+                    "company": "Company A",
+                    "parent_warehouse": None,
+                }
+            ]
+        if doctype == "Item":
+            return [{"item_code": "A"}]
+        if doctype == "Purchase Order":
+            return [
+                {
+                    "name": "PO-001",
+                    "supplier": "Acme Supplies",
+                    "company": "Company B",
+                }
+            ]
+        return []
+
+    mock_frappe.get_list.side_effect = get_list
 
     result = stock_api.create_receipt(
         items=[{"item_code": "A", "qty": 1}],
@@ -566,21 +664,25 @@ def test_create_receipt_against_po_rejects_company_mismatch(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_receipt_against_po_happy_path(mock_frappe):
+    _grant_stock_role(mock_frappe)
     def get_list(doctype, **kwargs):
         if doctype == "Warehouse":
             return [{"name": "Tgt - X"}]
         if doctype == "Item":
             return [{"item_code": "A"}]
+        if doctype == "Purchase Order":
+            return [
+                {
+                    "name": "PO-001",
+                    "supplier": "Acme Supplies",
+                    "company": "Company A",
+                }
+            ]
         if doctype == "Purchase Order Item":
             return [{"name": "PO-001-1", "item_code": "A", "qty": 10}]
         return []
 
     mock_frappe.get_list.side_effect = get_list
-    mock_frappe.get_all.side_effect = get_list
-    mock_frappe.db.get_value.return_value = {
-        "name": "PO-001",
-        "supplier": "Acme Supplies",
-    }
     pr = MagicMock()
     pr.name = "PREC-2026-00001"
     pr.docstatus = 1
@@ -606,6 +708,7 @@ def test_create_receipt_against_po_happy_path(mock_frappe):
         "purchase_order_item": "PO-001-1",
     }
     pr.submit.assert_called_once()
+    mock_frappe.get_all.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -644,6 +747,7 @@ def test_create_reconciliation_rejects_negative_qty():
 
 @patch("bude_api.api.stock.frappe")
 def test_create_reconciliation_allows_zero_qty(mock_frappe):
+    _grant_stock_role(mock_frappe)
     def get_list(doctype, **kwargs):
         if doctype == "Warehouse":
             return [{"name": "Stores - X"}]
@@ -669,6 +773,7 @@ def test_create_reconciliation_allows_zero_qty(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_reconciliation_rejects_company_mismatch(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_with_companies(
         {"Stores - A": "Company A"}
     )
@@ -685,6 +790,7 @@ def test_create_reconciliation_rejects_company_mismatch(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_reconciliation_infers_company_from_warehouse(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_with_companies(
         {"Stores - A": "Company A"}
     )
@@ -705,6 +811,7 @@ def test_create_reconciliation_infers_company_from_warehouse(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_reconciliation_uses_valid_location_as_effective_warehouse(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_with_companies(
         {
             "Stores - A": "Company A",
@@ -731,6 +838,7 @@ def test_create_reconciliation_uses_valid_location_as_effective_warehouse(mock_f
 
 @patch("bude_api.api.stock.frappe")
 def test_create_reconciliation_rejects_unknown_item(mock_frappe):
+    _grant_stock_role(mock_frappe)
     def get_list(doctype, **kwargs):
         if doctype == "Warehouse":
             return [{"name": "Stores - X"}]
@@ -754,6 +862,7 @@ def test_create_reconciliation_rejects_unknown_item(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_create_reconciliation_happy_path_assembles_doc(mock_frappe):
+    _grant_stock_role(mock_frappe)
     def get_list(doctype, **kwargs):
         if doctype == "Warehouse":
             return [{"name": "Stores - X"}]

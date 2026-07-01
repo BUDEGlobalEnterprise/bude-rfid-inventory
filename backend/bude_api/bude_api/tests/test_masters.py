@@ -117,7 +117,7 @@ def test_create_record_permission_error(mock_frappe):
 @patch("bude_api.api.masters.frappe")
 def test_update_record_saves_cleaned_values(mock_frappe):
     _wire_exceptions(mock_frappe)
-    mock_frappe.db.exists.return_value = True
+    mock_frappe.get_list.return_value = [{"name": "Acme"}]
     doc = MagicMock()
     doc.name = "Acme"
     mock_frappe.get_doc.return_value = doc
@@ -136,7 +136,7 @@ def test_update_record_saves_cleaned_values(mock_frappe):
 @patch("bude_api.api.masters.frappe")
 def test_update_record_missing(mock_frappe):
     _wire_exceptions(mock_frappe)
-    mock_frappe.db.exists.return_value = False
+    mock_frappe.get_list.return_value = []
     result = masters_api.update_record("brand", "Nope", {"description": "x"})
     assert result["ok"] is False
     assert result["code"] == "NOT_FOUND"
@@ -145,7 +145,7 @@ def test_update_record_missing(mock_frappe):
 @patch("bude_api.api.masters.frappe")
 def test_set_disabled_uom_uses_inverted_enabled(mock_frappe):
     _wire_exceptions(mock_frappe)
-    mock_frappe.db.exists.return_value = True
+    mock_frappe.get_list.return_value = [{"name": "Box"}]
     doc = MagicMock()
     doc.name = "Box"
     mock_frappe.get_doc.return_value = doc

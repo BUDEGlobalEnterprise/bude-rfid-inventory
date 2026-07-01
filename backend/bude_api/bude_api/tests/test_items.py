@@ -58,18 +58,26 @@ def test_search_returns_name_and_barcode_matches_deduped(mock_frappe):
     assert result["ok"] is True
     codes = [r["item_code"] for r in result["data"]]
     assert codes == ["ITEM-A", "ITEM-B"]
+    mock_frappe.get_all.assert_not_called()
 
 
 @patch("bude_api.api.items.frappe")
 def test_search_respects_limit_bounds(mock_frappe):
     mock_frappe.get_list.return_value = []
-    mock_frappe.get_all.return_value = []
     items_api.search("x", limit=500)
-    args, kwargs = mock_frappe.get_list.call_args_list[0]
+    item_calls = [
+        call for call in mock_frappe.get_list.call_args_list
+        if call.args[0] == "Item"
+    ]
+    _, kwargs = item_calls[-1]
     assert kwargs["limit"] == 100
 
     items_api.search("x", limit=0)
-    args, kwargs = mock_frappe.get_list.call_args_list[1]
+    item_calls = [
+        call for call in mock_frappe.get_list.call_args_list
+        if call.args[0] == "Item"
+    ]
+    _, kwargs = item_calls[-1]
     assert kwargs["limit"] == 1
 
 
@@ -96,6 +104,22 @@ def test_get_by_barcode_returns_item(mock_frappe):
     result = items_api.get_by_barcode("ABC123")
     assert result["ok"] is True
     assert result["data"]["item_code"] == "ITEM-1"
+    mock_frappe.get_all.assert_not_called()
+
+
+@patch("bude_api.api.items.frappe")
+def test_list_groups_uses_permission_aware_get_list(mock_frappe):
+    mock_frappe.get_list.return_value = ["Products", "Raw Materials"]
+
+    result = items_api.list_groups()
+
+    assert result["ok"] is True
+    assert result["data"] == ["Products", "Raw Materials"]
+    mock_frappe.get_list.assert_called_once()
+    args, kwargs = mock_frappe.get_list.call_args
+    assert args[0] == "Item Group"
+    assert kwargs["filters"] == {"is_group": 0}
+    mock_frappe.get_all.assert_not_called()
 
 
 @patch("bude_api.api.items.frappe")

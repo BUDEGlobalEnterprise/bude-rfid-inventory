@@ -4,6 +4,11 @@ from bude_api.api import stock as stock_api
 from bude_api.api import tracking as tracking_api
 
 
+def _grant_stock_role(mock_frappe):
+    mock_frappe.get_roles.return_value = ["Stock User"]
+    mock_frappe.session.user = "warehouse.user@example.com"
+
+
 def _warehouse_and_items(*, expired_batch=False):
     def get_list(doctype, **kwargs):
         filters = kwargs.get("filters") or []
@@ -72,6 +77,7 @@ def test_batch_endpoint_filters_expired_batches(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_receipt_creates_new_batch_and_maps_allocation(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _warehouse_and_items()
     batch_doc = MagicMock()
     receipt_doc = MagicMock()
@@ -111,6 +117,7 @@ def test_receipt_creates_new_batch_and_maps_allocation(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_transfer_rejects_expired_outbound_batch(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.utils.nowdate.return_value = "2026-06-28"
     mock_frappe.get_list.side_effect = _warehouse_and_items(expired_batch=True)
 
@@ -132,6 +139,7 @@ def test_transfer_rejects_expired_outbound_batch(mock_frappe):
 
 @patch("bude_api.api.stock.frappe")
 def test_transfer_rejects_wrong_serial_count(mock_frappe):
+    _grant_stock_role(mock_frappe)
     def get_list(doctype, **kwargs):
         filters = kwargs.get("filters") or []
         if doctype == "Warehouse":

@@ -50,26 +50,37 @@ def _dispatch_items():
     ]
 
 
-def _get_all_side_effect(lines=None):
+def _grant_stock_role(mock_frappe):
+    mock_frappe.get_roles.return_value = ["Stock User"]
+    mock_frappe.session.user = "warehouse.user@example.com"
+
+
+def _get_list_side_effect(lines=None, sales_order=None):
     lines = lines or _so_lines()
+    sales_order = sales_order or _so_doc()
 
-    def get_all(doctype, **kwargs):
-        if doctype == "Sales Order Item":
-            return lines
-        return []
-
-    return get_all
-
-
-def _get_list_side_effect():
     def get_list(doctype, **kwargs):
         if doctype == "Sales Order":
-            return [_so_doc()]
+            return [sales_order]
+        if doctype == "Sales Order Item":
+            return lines
         if doctype == "Warehouse":
             filters = kwargs.get("filters") or []
             name = filters[0][2]
             parent = "Stores - A" if name == "Rack 1 - A" else None
             return [{"name": name, "company": "Company A", "parent_warehouse": parent}]
+        if doctype == "Item":
+            filters = kwargs.get("filters") or []
+            codes = filters[0][2] if filters else []
+            return [
+                {
+                    "item_code": code,
+                    "has_batch_no": 0,
+                    "has_serial_no": 0,
+                    "create_new_batch": 0,
+                }
+                for code in codes
+            ]
         return []
 
     return get_list
@@ -77,8 +88,7 @@ def _get_list_side_effect():
 
 @patch("bude_api.api.sales_orders.frappe")
 def test_list_open_filters_and_returns_pending_summary(mock_frappe):
-    mock_frappe.get_list.return_value = [_so_doc()]
-    mock_frappe.get_all.side_effect = _get_all_side_effect()
+    mock_frappe.get_list.side_effect = _get_list_side_effect()
 
     result = so_api.list_open(company="Company A", limit=10)
 
@@ -86,7 +96,11 @@ def test_list_open_filters_and_returns_pending_summary(mock_frappe):
     assert result["data"][0]["name"] == "SO-001"
     assert result["data"][0]["item_count"] == 2
     assert result["data"][0]["pending_qty"] == 4.0
-    _, kwargs = mock_frappe.get_list.call_args
+    sales_order_call = [
+        call for call in mock_frappe.get_list.call_args_list
+        if call.args[0] == "Sales Order"
+    ][0]
+    _, kwargs = sales_order_call
     assert ["company", "=", "Company A"] in kwargs["filters"]
     assert kwargs["limit_page_length"] == 10
 
@@ -100,8 +114,7 @@ def test_list_open_rejects_bad_limit(mock_frappe):
 
 @patch("bude_api.api.sales_orders.frappe")
 def test_get_returns_only_pending_lines(mock_frappe):
-    mock_frappe.db.get_value.return_value = _so_doc()
-    mock_frappe.get_all.side_effect = _get_all_side_effect(
+    mock_frappe.get_list.side_effect = _get_list_side_effect(
         _so_lines()
         + [
             {
@@ -122,10 +135,26 @@ def test_get_returns_only_pending_lines(mock_frappe):
 
 
 @patch("bude_api.api.sales_orders.frappe")
+def test_create_delivery_note_requires_stock_role(mock_frappe):
+    mock_frappe.get_roles.return_value = ["Sales User"]
+    mock_frappe.session.user = "sales.user@example.com"
+
+    result = so_api.create_delivery_note(
+        sales_order="SO-001",
+        source_warehouse="Stores - A",
+        items=_dispatch_items(),
+    )
+
+    assert result["ok"] is False
+    assert result["code"] == "PERMISSION_DENIED"
+    mock_frappe.get_list.assert_not_called()
+    mock_frappe.get_doc.assert_not_called()
+
+
+@patch("bude_api.api.sales_orders.frappe")
 def test_create_delivery_note_maps_sales_order_lines(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.ValidationError = _FakeValidationError
-    mock_frappe.db.get_value.return_value = _so_doc()
-    mock_frappe.get_all.side_effect = _get_all_side_effect()
     mock_frappe.get_list.side_effect = _get_list_side_effect()
     doc = MagicMock()
     doc.name = "DN-001"
@@ -153,7 +182,10 @@ def test_create_delivery_note_maps_sales_order_lines(mock_frappe):
 
 @patch("bude_api.api.sales_orders.frappe")
 def test_create_delivery_note_rejects_closed_sales_order(mock_frappe):
-    mock_frappe.db.get_value.return_value = _so_doc(status="Closed")
+    _grant_stock_role(mock_frappe)
+    mock_frappe.get_list.side_effect = _get_list_side_effect(
+        sales_order=_so_doc(status="Closed")
+    )
 
     result = so_api.create_delivery_note(
         sales_order="SO-001",
@@ -167,7 +199,10 @@ def test_create_delivery_note_rejects_closed_sales_order(mock_frappe):
 
 @patch("bude_api.api.sales_orders.frappe")
 def test_create_delivery_note_rejects_company_mismatch(mock_frappe):
-    mock_frappe.db.get_value.return_value = _so_doc(company="Company B")
+    _grant_stock_role(mock_frappe)
+    mock_frappe.get_list.side_effect = _get_list_side_effect(
+        sales_order=_so_doc(company="Company B")
+    )
 
     result = so_api.create_delivery_note(
         sales_order="SO-001",
@@ -182,8 +217,7 @@ def test_create_delivery_note_rejects_company_mismatch(mock_frappe):
 
 @patch("bude_api.api.sales_orders.frappe")
 def test_create_delivery_note_rejects_under_or_over_pick(mock_frappe):
-    mock_frappe.db.get_value.return_value = _so_doc()
-    mock_frappe.get_all.side_effect = _get_all_side_effect()
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_side_effect()
 
     result = so_api.create_delivery_note(
@@ -201,8 +235,7 @@ def test_create_delivery_note_rejects_under_or_over_pick(mock_frappe):
 
 @patch("bude_api.api.sales_orders.frappe")
 def test_create_delivery_note_rejects_missing_line(mock_frappe):
-    mock_frappe.db.get_value.return_value = _so_doc()
-    mock_frappe.get_all.side_effect = _get_all_side_effect()
+    _grant_stock_role(mock_frappe)
     mock_frappe.get_list.side_effect = _get_list_side_effect()
 
     result = so_api.create_delivery_note(
@@ -217,14 +250,18 @@ def test_create_delivery_note_rejects_missing_line(mock_frappe):
 
 @patch("bude_api.api.sales_orders.frappe")
 def test_create_delivery_note_rejects_bad_location_scope(mock_frappe):
-    mock_frappe.db.get_value.return_value = _so_doc()
-    mock_frappe.get_all.side_effect = _get_all_side_effect()
-
+    _grant_stock_role(mock_frappe)
     def get_list(doctype, **kwargs):
+        if doctype == "Sales Order":
+            return [_so_doc()]
+        if doctype == "Sales Order Item":
+            return _so_lines()
         if doctype == "Warehouse":
             name = kwargs["filters"][0][2]
             parent = "Other - A" if name == "Rack 1 - A" else None
             return [{"name": name, "company": "Company A", "parent_warehouse": parent}]
+        if doctype == "Item":
+            return []
         return []
 
     mock_frappe.get_list.side_effect = get_list
@@ -242,9 +279,8 @@ def test_create_delivery_note_rejects_bad_location_scope(mock_frappe):
 
 @patch("bude_api.api.sales_orders.frappe")
 def test_create_delivery_note_converts_erpnext_validation_error(mock_frappe):
+    _grant_stock_role(mock_frappe)
     mock_frappe.ValidationError = _FakeValidationError
-    mock_frappe.db.get_value.return_value = _so_doc()
-    mock_frappe.get_all.side_effect = _get_all_side_effect()
     mock_frappe.get_list.side_effect = _get_list_side_effect()
     doc = MagicMock()
     doc.submit.side_effect = _FakeValidationError("No stock")
