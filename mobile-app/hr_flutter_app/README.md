@@ -4,6 +4,8 @@ Bude HR is a separate Flutter employee self-service app for ERPNext and HRMS.
 It was bootstrapped from the MIT-licensed Momentous Bude HR App, then
 trimmed and reworked for Bude HR flows.
 
+See [ROADMAP.md](ROADMAP.md) for the staged HR app delivery plan.
+
 ## Scope
 
 - ERPNext/Frappe login using `bude_api.api.auth.login`
