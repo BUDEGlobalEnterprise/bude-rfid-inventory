@@ -14,11 +14,15 @@ class SubmitReconciliationUseCase {
 
   Future<String> callWithStatus(
     ReconciliationDraft draft,
-    OpStatus initialStatus,
+    OpStatus initialStatus, {
+    Map<String, dynamic> extraPayload = const {},
   ) {
     return queue.enqueue(
       type: kStockReconciliationOpType,
-      payload: draft.toPayload(),
+      payload: {
+        ...draft.toPayload(),
+        ...extraPayload,
+      },
       initialStatus: initialStatus,
     );
   }

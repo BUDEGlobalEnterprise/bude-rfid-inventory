@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/sync/pending_operation.dart';
 import '../../../core/sync/providers.dart';
 import '../../../core/utils/locale_ext.dart';
+import '../../audit/domain/audit_operation_summary.dart';
 import '../../authentication/presentation/providers/auth_notifier.dart';
 
 class ReconciliationApprovalScreen extends ConsumerStatefulWidget {
@@ -33,6 +35,9 @@ class _ReconciliationApprovalScreenState
 
   @override
   Widget build(BuildContext context) {
+    final op = ref.read(syncQueueProvider).getById(opId);
+    final summary = op == null ? null : summarizeOperation(op);
+
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.approvalRequired)),
       body: Padding(
@@ -47,16 +52,26 @@ class _ReconciliationApprovalScreenState
             ),
             const SizedBox(height: 24),
             Text(
-              context.l10n.approvalRequired,
+              summary?.title ?? context.l10n.approvalRequired,
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
-              context.l10n.approvalRequiredSubtitle(_varianceSummary(opId)),
+              op == null
+                  ? 'Queued operation was not found on this device.'
+                  : approvalMessageFor(op),
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
+            if (summary != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                summary.subtitle,
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: 32),
             TextField(
               controller: _userCtrl,
@@ -110,19 +125,13 @@ class _ReconciliationApprovalScreenState
     );
   }
 
-  String _varianceSummary(String id) {
-    final queue = ref.read(syncQueueProvider);
-    final op = queue.getById(id);
-    if (op == null) return '?';
-    final items = op.payload['items'] as List<dynamic>? ?? [];
-    final total = items.fold<double>(0.0, (sum, item) {
-      final diff = ((item as Map)['qty'] as num?)?.toDouble() ?? 0.0;
-      return sum + diff.abs();
-    });
-    return total.toStringAsFixed(1);
-  }
-
   Future<void> _approve() async {
+    final op = ref.read(syncQueueProvider).getById(opId);
+    if (op == null || op.status != OpStatus.pendingApproval) {
+      setState(() => _error = 'This operation is no longer awaiting approval.');
+      return;
+    }
+
     final user = _userCtrl.text.trim();
     final pwd = _pwdCtrl.text;
     if (user.isEmpty || pwd.isEmpty) {

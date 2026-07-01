@@ -70,14 +70,29 @@ class ReconciliationScreen extends ConsumerWidget {
     final draftWithCompany = draft.copyWith(company: company);
 
     final threshold = settings.reconciliationVarianceThreshold;
+    final totalVariance = draftWithCompany.totalVariance;
     final needsApproval =
-        threshold > 0 && draftWithCompany.totalVariance > threshold;
+        threshold > 0 && totalVariance > threshold;
+    final totalVarianceText = formatOperationalQty(totalVariance);
+    final thresholdText = formatOperationalQty(threshold);
 
     final initialStatus =
         needsApproval ? OpStatus.pendingApproval : OpStatus.pending;
     final id = await ref
         .read(submitReconciliationUseCaseProvider)
-        .callWithStatus(draftWithCompany, initialStatus);
+        .callWithStatus(
+          draftWithCompany,
+          initialStatus,
+          extraPayload: needsApproval
+              ? {
+                  'approval_reason':
+                      'Count variance $totalVarianceText exceeds threshold '
+                          '$thresholdText.',
+                  'approval_metric': 'count_variance',
+                  'approval_threshold': threshold,
+                }
+              : const {},
+        );
 
     ref.read(reconciliationDraftProvider.notifier).clear();
 
@@ -208,6 +223,9 @@ class _BodyState extends ConsumerState<_Body> {
     final seededItemCode = widget.initialItem?.itemCode;
     final seededItemInDraft = seededItemCode != null &&
         widget.draft.lines.any((line) => line.itemCode == seededItemCode);
+    final selectedWarehouse = widget.warehouses.contains(widget.draft.warehouse)
+        ? widget.draft.warehouse
+        : null;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -272,12 +290,8 @@ class _BodyState extends ConsumerState<_Body> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
-          key: ValueKey(
-            'warehouse-${widget.warehouses.contains(widget.draft.warehouse) ? widget.draft.warehouse : null}',
-          ),
-          initialValue: widget.warehouses.contains(widget.draft.warehouse)
-              ? widget.draft.warehouse
-              : null,
+          key: ValueKey('warehouse-$selectedWarehouse'),
+          initialValue: selectedWarehouse,
           decoration: InputDecoration(
             labelText: context.l10n.warehouse,
             border: const OutlineInputBorder(),
