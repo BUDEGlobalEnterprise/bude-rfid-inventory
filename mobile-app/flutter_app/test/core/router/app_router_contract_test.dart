@@ -1,4 +1,8 @@
 import 'package:bude_inventory/core/router/app_router.dart';
+import 'package:bude_inventory/features/fulfillment/domain/fulfillment_route_extra.dart';
+import 'package:bude_inventory/features/inventory/domain/entities/item.dart';
+import 'package:bude_inventory/features/labels/domain/label_request.dart';
+import 'package:bude_inventory/features/receipt/domain/receipt_route_extra.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -26,6 +30,7 @@ void main() {
       expect(isManagerOnlyLocation('/lookup'), isFalse);
       expect(isManagerOnlyLocation('/scan-session'), isFalse);
       expect(isManagerOnlyLocation('/sync'), isFalse);
+      expect(isManagerOnlyLocation('/labels'), isFalse);
       expect(isManagerOnlyLocation('/settings'), isFalse);
     });
   });
@@ -41,6 +46,43 @@ void main() {
       expect(reconciliationApprovalOpIdFromExtra(''), isNull);
       expect(reconciliationApprovalOpIdFromExtra(42), isNull);
       expect(reconciliationApprovalOpIdFromExtra({'op': 'op-123'}), isNull);
+    });
+  });
+
+  group('label route contract', () {
+    test('accepts only a label request extra', () {
+      const request = LabelRequest(
+        kind: LabelKind.item,
+        title: 'Widget',
+        primaryCode: 'ITEM-001',
+      );
+
+      expect(labelRequestFromRouteExtra(request), request);
+      expect(labelRequestFromRouteExtra(null), isNull);
+      expect(labelRequestFromRouteExtra({'code': 'ITEM-001'}), isNull);
+    });
+  });
+
+  group('task launcher route extras', () {
+    test('receipt route accepts task metadata and legacy item extras', () {
+      const item = Item(itemCode: 'ITEM-001', itemName: 'Widget');
+      const taskExtra = ReceiptRouteExtra(
+        againstPo: 'PO-001',
+        todoName: 'TODO-PO',
+      );
+
+      expect(receiptRouteExtraFromRouteExtra(taskExtra), taskExtra);
+      expect(receiptRouteExtraFromRouteExtra(item)?.initialItem, item);
+      expect(receiptRouteExtraFromRouteExtra(null), isNull);
+      expect(receiptRouteExtraFromRouteExtra({'against_po': 'PO-001'}), isNull);
+    });
+
+    test('fulfillment route accepts only fulfillment task metadata', () {
+      const extra = FulfillmentRouteExtra(todoName: 'TODO-SO');
+
+      expect(fulfillmentRouteExtraFromRouteExtra(extra), extra);
+      expect(fulfillmentRouteExtraFromRouteExtra(null), isNull);
+      expect(fulfillmentRouteExtraFromRouteExtra('TODO-SO'), isNull);
     });
   });
 }

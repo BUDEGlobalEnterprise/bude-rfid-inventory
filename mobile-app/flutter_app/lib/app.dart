@@ -9,6 +9,7 @@ import 'core/constants/app_strings.dart';
 import 'core/network/auth_interceptor.dart';
 import 'core/router/app_router.dart';
 import 'core/sync/providers.dart';
+import 'core/sync/pending_operation.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'features/assets/data/asset_op_submitters.dart';
@@ -16,6 +17,7 @@ import 'features/authentication/presentation/providers/auth_notifier.dart';
 import 'features/fulfillment/data/sales_order_dispatch_op_submitter.dart';
 import 'features/receipt/data/receipt_op_submitter.dart';
 import 'features/reconciliation/data/reconciliation_op_submitter.dart';
+import 'features/tasks/data/warehouse_task_remote_data_source.dart';
 import 'features/tenant/presentation/providers/tenant_notifier.dart';
 import 'features/transfer/data/transfer_op_submitter.dart';
 import 'l10n/app_localizations.dart';
@@ -53,6 +55,16 @@ class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
       engine.registerSubmitter(AssetMovementOpSubmitter(apiClient.dio));
       engine.registerSubmitter(AssetRepairOpSubmitter(apiClient.dio));
       engine.registerSubmitter(MaintenanceLogOpSubmitter(apiClient.dio));
+      final taskRemote = WarehouseTaskRemoteDataSource(apiClient.dio);
+      engine.registerSuccessHook((op, serverRef) async {
+        final todoName = op.payload['todo_name'];
+        if (todoName is! String || todoName.trim().isEmpty) return;
+        await taskRemote.complete(
+          todoName: todoName,
+          resultDoctype: _resultDoctypeForOp(op),
+          resultName: serverRef,
+        );
+      });
       engine.start();
 
       _authSub = ref.listenManual<AuthState>(authNotifierProvider, (
@@ -107,4 +119,17 @@ class _BudeInventoryAppState extends ConsumerState<BudeInventoryApp> {
       },
     );
   }
+}
+
+String? _resultDoctypeForOp(PendingOperation op) {
+  return switch (op.type) {
+    kStockReceiptOpType => op.payload['against_po'] == null
+        ? 'Stock Entry'
+        : 'Purchase Receipt',
+    kSalesOrderDispatchOpType => 'Delivery Note',
+    kMaintenanceLogOpType => 'Asset Maintenance Log',
+    kStockTransferOpType => 'Stock Entry',
+    kStockReconciliationOpType => 'Stock Reconciliation',
+    _ => null,
+  };
 }

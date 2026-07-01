@@ -84,6 +84,54 @@ void main() {
     expect(after.lastError, isNull);
   });
 
+  test('successful submit runs registered success hooks', () async {
+    when(() => network.isConnected).thenAnswer((_) async => true);
+
+    final submitter = _ConfigurableSubmitter(
+      type: 'stock_receipt',
+      results: const [SubmitSuccess('PREC-001')],
+    );
+    final engine = SyncEngine(
+      queue: queue,
+      networkInfo: network,
+      submitters: [submitter],
+    );
+    final calls = <String>[];
+    engine.registerSuccessHook((op, serverRef) async {
+      calls.add('${op.type}:${op.payload['todo_name']}:$serverRef');
+    });
+
+    await queue.enqueue(
+      type: 'stock_receipt',
+      payload: {'todo_name': 'TODO-001'},
+    );
+    await engine.kick();
+
+    expect(calls, ['stock_receipt:TODO-001:PREC-001']);
+  });
+
+  test('success hook failure does not undo succeeded operation', () async {
+    when(() => network.isConnected).thenAnswer((_) async => true);
+
+    final submitter = _ConfigurableSubmitter(
+      type: 'stock_receipt',
+      results: const [SubmitSuccess('PREC-001')],
+    );
+    final engine = SyncEngine(
+      queue: queue,
+      networkInfo: network,
+      submitters: [submitter],
+    );
+    engine.registerSuccessHook((_, __) async => throw StateError('hook boom'));
+
+    final id = await queue.enqueue(type: 'stock_receipt', payload: {});
+    await engine.kick();
+
+    final after = queue.getById(id)!;
+    expect(after.status, OpStatus.succeeded);
+    expect(after.serverRef, 'PREC-001');
+  });
+
   test('fatal failure marks op failed and does not retry', () async {
     when(() => network.isConnected).thenAnswer((_) async => true);
 

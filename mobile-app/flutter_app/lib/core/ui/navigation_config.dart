@@ -51,6 +51,15 @@ const allNavigationDestinations = <NavDest>[
     mobilePrimary: true,
   ),
   NavDest(
+    id: 'tasks',
+    label: 'Tasks',
+    icon: Icons.task_alt_outlined,
+    selectedIcon: Icons.task_alt,
+    route: '/tasks',
+    operationsOnly: true,
+    mobilePrimary: true,
+  ),
+  NavDest(
     id: 'transfer',
     label: 'Transfer',
     icon: Icons.swap_horiz_outlined,
@@ -80,6 +89,14 @@ const allNavigationDestinations = <NavDest>[
     icon: Icons.local_shipping_outlined,
     selectedIcon: Icons.local_shipping,
     route: '/fulfillment',
+    operationsOnly: true,
+  ),
+  NavDest(
+    id: 'labels',
+    label: 'Labels',
+    icon: Icons.print_outlined,
+    selectedIcon: Icons.print,
+    route: '/labels',
     operationsOnly: true,
   ),
   NavDest(

@@ -7,6 +7,11 @@ import 'op_submitter.dart';
 import 'pending_operation.dart';
 import 'sync_queue.dart';
 
+typedef SyncSuccessHook = Future<void> Function(
+  PendingOperation op,
+  String serverRef,
+);
+
 /// Background processor that drains [SyncQueue] when the device is online.
 ///
 /// Triggers:
@@ -21,6 +26,7 @@ class SyncEngine {
   final SyncQueue queue;
   final NetworkInfoImpl networkInfo;
   final Map<String, OpSubmitter> _submitters = {};
+  final List<SyncSuccessHook> _successHooks = [];
 
   StreamSubscription<bool>? _connectivitySub;
   Timer? _pollTimer;
@@ -39,6 +45,10 @@ class SyncEngine {
 
   void registerSubmitter(OpSubmitter submitter) {
     _submitters[submitter.type] = submitter;
+  }
+
+  void registerSuccessHook(SyncSuccessHook hook) {
+    _successHooks.add(hook);
   }
 
   Future<void> start() async {
@@ -128,6 +138,7 @@ class SyncEngine {
             clearNextRetry: true,
           ),
         );
+        await _runSuccessHooks(op, serverRef);
 
       case SubmitFatal(:final error):
         await queue.update(
@@ -161,6 +172,20 @@ class SyncEngine {
             ),
           );
         }
+    }
+  }
+
+  Future<void> _runSuccessHooks(PendingOperation op, String serverRef) async {
+    for (final hook in _successHooks) {
+      try {
+        await hook(op, serverRef);
+      } catch (e, st) {
+        appLogger.w(
+          'Sync success hook failed for ${op.type}.',
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
   }
 }

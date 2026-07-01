@@ -45,9 +45,12 @@ class SyncQueue {
   Future<void> approve(String id, {String? approvedBy}) async {
     final op = getById(id);
     if (op == null || op.status != OpStatus.pendingApproval) return;
-    final payload = approvedBy == null
-        ? op.payload
-        : {...op.payload, 'approved_by': approvedBy};
+    final approvedAt = DateTime.now().toUtc().toIso8601String();
+    final payload = {
+      ...op.payload,
+      if (approvedBy != null) 'approved_by': approvedBy,
+      'approved_at': approvedAt,
+    };
     await update(
       op.copyWith(
         payload: payload,

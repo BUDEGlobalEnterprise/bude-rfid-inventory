@@ -18,6 +18,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
   static const _defTgtWhKey = 'app_settings.default_target_wh';
   static const _activeCompanyKey = 'app_settings.active_company';
   static const _varianceThresholdKey = 'app_settings.variance_threshold';
+  static const _transferApprovalQtyThresholdKey =
+      'app_settings.transfer_approval_qty_threshold';
   static const _scanSoundKey = 'app_settings.scan_sound';
   static const _scanVibKey = 'app_settings.scan_vibration';
   static const _continuousScanKey = 'app_settings.continuous_scan';
@@ -47,6 +49,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
     final defTgt = prefs.getString(_defTgtWhKey);
     final activeCompany = prefs.getString(_activeCompanyKey);
     final varianceThreshold = prefs.getDouble(_varianceThresholdKey) ?? 0.0;
+    final transferApprovalQtyThreshold =
+        prefs.getDouble(_transferApprovalQtyThresholdKey) ?? 0.0;
     final scanSound = prefs.getBool(_scanSoundKey) ?? true;
     final scanVib = prefs.getBool(_scanVibKey) ?? true;
     final contScan = prefs.getBool(_continuousScanKey) ?? false;
@@ -68,6 +72,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
       defaultTargetWarehouse: defTgt,
       activeCompany: activeCompany,
       reconciliationVarianceThreshold: varianceThreshold,
+      transferApprovalQtyThreshold: transferApprovalQtyThreshold,
       scanSound: scanSound,
       scanVibration: scanVib,
       continuousScanMode: contScan,
@@ -118,6 +123,10 @@ class SettingsRepositoryImpl implements SettingsRepository {
     await prefs.setDouble(
       _varianceThresholdKey,
       settings.reconciliationVarianceThreshold,
+    );
+    await prefs.setDouble(
+      _transferApprovalQtyThresholdKey,
+      settings.transferApprovalQtyThreshold,
     );
     await prefs.setBool(_scanSoundKey, settings.scanSound);
     await prefs.setBool(_scanVibKey, settings.scanVibration);

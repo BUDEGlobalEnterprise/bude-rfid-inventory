@@ -6,14 +6,18 @@ import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/authentication/presentation/providers/auth_notifier.dart';
 import '../../features/barcode/presentation/scanner_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/fulfillment/domain/fulfillment_route_extra.dart';
 import '../../features/fulfillment/presentation/sales_order_fulfillment_screen.dart';
 import '../../features/fulfillment/presentation/sales_order_list_screen.dart';
 import '../../features/inventory/presentation/item_detail_screen.dart';
 import '../../features/inventory/presentation/item_search_screen.dart';
 import '../../features/inventory/domain/entities/item.dart';
+import '../../features/labels/domain/label_request.dart';
+import '../../features/labels/presentation/label_screen.dart';
 import '../../features/lookup/presentation/lookup_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/onboarding/presentation/company_setup_screen.dart';
+import '../../features/receipt/domain/receipt_route_extra.dart';
 import '../../features/receipt/presentation/receipt_screen.dart';
 import '../../features/reconciliation/presentation/reconciliation_screen.dart';
 import '../../features/scan_session/domain/scan_session_mode.dart';
@@ -40,6 +44,7 @@ import '../../features/warehouse/presentation/warehouse_list_screen.dart';
 import '../../features/masters/presentation/masters_hub_screen.dart';
 import '../../features/masters/presentation/master_records_screen.dart';
 import '../../features/masters/presentation/master_form_screen.dart';
+import '../../features/tasks/presentation/warehouse_task_screen.dart';
 import '../ui/app_shell.dart';
 import '../ui/navigation_config.dart';
 
@@ -57,6 +62,20 @@ String? reconciliationApprovalOpIdFromExtra(Object? extra) {
   if (extra is! String) return null;
   final trimmed = extra.trim();
   return trimmed.isEmpty ? null : trimmed;
+}
+
+LabelRequest? labelRequestFromRouteExtra(Object? extra) {
+  return extra is LabelRequest ? extra : null;
+}
+
+ReceiptRouteExtra? receiptRouteExtraFromRouteExtra(Object? extra) {
+  if (extra is ReceiptRouteExtra) return extra;
+  if (extra is Item) return ReceiptRouteExtra(initialItem: extra);
+  return null;
+}
+
+FulfillmentRouteExtra? fulfillmentRouteExtraFromRouteExtra(Object? extra) {
+  return extra is FulfillmentRouteExtra ? extra : null;
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -148,9 +167,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/receipt',
-        builder: (context, state) => ReceiptScreen(
-          initialItem: state.extra is Item ? state.extra! as Item : null,
-        ),
+        builder: (context, state) {
+          final extra = receiptRouteExtraFromRouteExtra(state.extra);
+          return ReceiptScreen(
+            initialItem: extra?.initialItem,
+            initialAgainstPo: extra?.againstPo,
+            initialTodoName: extra?.todoName,
+          );
+        },
       ),
       GoRoute(
         path: '/reconcile',
@@ -168,6 +192,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               salesOrder: Uri.decodeComponent(
                 state.pathParameters['salesOrder']!,
               ),
+              todoName: fulfillmentRouteExtraFromRouteExtra(state.extra)
+                  ?.todoName,
             ),
           ),
         ],
@@ -234,6 +260,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                   assetName: Uri.decodeComponent(
                     state.pathParameters['name']!,
                   ),
+                  focusMaintenanceLog: state.uri.queryParameters['log'],
+                  todoName: state.uri.queryParameters['todo'],
                 ),
               ),
             ],
@@ -316,6 +344,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/sync',
             builder: (context, state) => const PendingQueueScreen(),
+          ),
+          GoRoute(
+            path: '/tasks',
+            builder: (context, state) => const WarehouseTaskScreen(),
+          ),
+          GoRoute(
+            path: '/labels',
+            builder: (context, state) => LabelScreen(
+              initialRequest: labelRequestFromRouteExtra(state.extra),
+            ),
           ),
           GoRoute(
             path: '/settings',

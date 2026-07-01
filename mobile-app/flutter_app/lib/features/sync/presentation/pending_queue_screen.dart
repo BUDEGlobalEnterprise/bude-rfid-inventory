@@ -10,6 +10,7 @@ import '../../../core/ui/error_banner.dart';
 import '../../../core/ui/loading_shimmer.dart';
 import '../../../core/ui/operational_components.dart';
 import '../../../core/utils/locale_ext.dart';
+import '../../labels/domain/label_request_builders.dart';
 
 class PendingQueueScreen extends ConsumerWidget {
   const PendingQueueScreen({super.key});
@@ -389,6 +390,16 @@ class _OpCard extends ConsumerWidget {
                 const SizedBox(height: 10),
                 ErrorText(op.lastError!, maxLines: 3),
               ],
+              if (_string(op.payload['approval_reason']).isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Approval: ${_string(op.payload['approval_reason'])}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
               const SizedBox(height: 10),
               _OpActions(op: op),
             ],
@@ -420,6 +431,15 @@ class _OpActions extends ConsumerWidget {
             await ref.read(syncQueueProvider).retry(op.id);
             await ref.read(syncEngineProvider).kick();
           },
+        ),
+      if (op.type == 'stock_receipt')
+        TextButton.icon(
+          icon: const Icon(Icons.print_outlined),
+          label: const Text('Print label'),
+          onPressed: () => context.push(
+            '/labels',
+            extra: receiptLabelRequestFromOperation(op),
+          ),
         ),
       if (op.status != OpStatus.inflight)
         TextButton.icon(

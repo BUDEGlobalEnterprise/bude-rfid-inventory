@@ -46,6 +46,7 @@ void main() {
     expect(dests.map((d) => d.id), isNot(contains('reports')));
     expect(dests.map((d) => d.id), isNot(contains('masters')));
     expect(dests.map((d) => d.id), contains('transfer'));
+    expect(dests.map((d) => d.id), contains('tasks'));
   });
 
   test('hidden destinations are removed but mandatory destinations stay', () {
@@ -68,6 +69,7 @@ void main() {
     );
 
     expect(dests.length, lessThanOrEqualTo(5));
+    expect(dests.map((d) => d.id), contains('tasks'));
     expect(dests.last.id, 'settings');
   });
 

@@ -90,6 +90,24 @@ void main() {
     expect(after.nextRetryAt, isNull);
   });
 
+  test('approve promotes pending approval and records approver metadata', () async {
+    final id = await queue.enqueue(
+      type: 'stock_transfer',
+      payload: {'approval_reason': 'Needs manager approval.'},
+      initialStatus: OpStatus.pendingApproval,
+    );
+
+    await queue.approve(id, approvedBy: 'manager@example.com');
+
+    final after = queue.getById(id)!;
+    expect(after.status, OpStatus.pending);
+    expect(after.payload['approval_reason'], 'Needs manager approval.');
+    expect(after.payload['approved_by'], 'manager@example.com');
+    expect(after.payload['approved_at'], isA<String>());
+    expect(after.lastError, isNull);
+    expect(after.nextRetryAt, isNull);
+  });
+
   test('unresolvedCountStream emits on enqueue/update/delete', () async {
     final events = <int>[];
     final sub = queue.unresolvedCountStream().listen(events.add);
@@ -107,4 +125,3 @@ void main() {
     expect(events, [0, 1, 0, 0]);
   });
 }
-

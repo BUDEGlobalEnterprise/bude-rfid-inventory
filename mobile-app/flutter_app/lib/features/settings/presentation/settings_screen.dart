@@ -73,6 +73,8 @@ class _SettingsBody extends ConsumerWidget {
           notifier: notifier,
           warehousesAsync: warehousesAsync,
         ),
+        const BudeSectionHeader('Approval controls'),
+        const _ApprovalControlsSection(),
         if (canConfigureNavigation) ...[
           const BudeSectionHeader('Navigation'),
           const _NavigationSection(),
@@ -374,7 +376,26 @@ class _DefaultsSection extends ConsumerWidget {
               items: whItems,
               onChanged: n.setDefaultTargetWarehouse,
             ),
-            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ApprovalControlsSection extends ConsumerWidget {
+  const _ApprovalControlsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsNotifierProvider);
+    final notifier = ref.read(settingsNotifierProvider.notifier);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
             TextFormField(
               decoration: InputDecoration(
                 labelText: context.l10n.varianceThreshold,
@@ -384,13 +405,39 @@ class _DefaultsSection extends ConsumerWidget {
               ),
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              initialValue: s.reconciliationVarianceThreshold == 0.0
+              initialValue: settings.reconciliationVarianceThreshold == 0.0
                   ? ''
-                  : s.reconciliationVarianceThreshold.toString(),
+                  : settings.reconciliationVarianceThreshold.toString(),
               onChanged: (v) {
                 final parsed = double.tryParse(v);
-                n.setReconciliationVarianceThreshold(parsed ?? 0.0);
+                notifier.setReconciliationVarianceThreshold(parsed ?? 0.0);
               },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              decoration: const InputDecoration(
+                labelText: 'Transfer approval threshold (qty)',
+                hintText: '0 disables transfer approval',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.approval_outlined),
+              ),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              initialValue: settings.transferApprovalQtyThreshold == 0.0
+                  ? ''
+                  : settings.transferApprovalQtyThreshold.toString(),
+              onChanged: (v) {
+                final parsed = double.tryParse(v);
+                notifier.setTransferApprovalQtyThreshold(parsed ?? 0.0);
+              },
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Transfers above the quantity threshold and counts above the '
+              'variance threshold queue for Stock Manager approval.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
           ],
         ),
