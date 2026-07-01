@@ -56,7 +56,7 @@ def batches(
         ]
 
     if warehouse:
-        available = set(frappe.get_all(
+        available = set(frappe.get_list(
             "Stock Ledger Entry",
             filters=[
                 ["item_code", "=", item_code],

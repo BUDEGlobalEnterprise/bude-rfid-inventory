@@ -32,20 +32,24 @@ def asset_summary() -> dict:
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
-    total_assets = frappe.db.count("Asset")
-    in_maintenance = frappe.db.count(
-        "Asset", {"status": ["in", ["In Maintenance", "Out of Order"]]}
+    assets = frappe.get_list(
+        "Asset",
+        fields=["status", "value_after_depreciation"],
+        limit_page_length=10000,
     )
-    value_row = frappe.db.sql(
-        "SELECT COALESCE(SUM(value_after_depreciation), 0) AS v FROM `tabAsset`",
-        as_dict=True,
-    )
-    total_value = value_row[0]["v"] if value_row else 0
+    total_assets = len(assets)
+    in_maintenance = len([
+        row for row in assets
+        if row.get("status") in {"In Maintenance", "Out of Order"}
+    ])
+    total_value = sum(float(row.get("value_after_depreciation") or 0) for row in assets)
 
     horizon = frappe.utils.add_days(frappe.utils.nowdate(), 30)
-    upcoming = frappe.db.count(
+    upcoming_logs = frappe.get_list(
         "Asset Maintenance Log",
-        {"maintenance_status": "Planned", "due_date": ["<=", horizon]},
+        filters=[["maintenance_status", "=", "Planned"], ["due_date", "<=", horizon]],
+        fields=["name"],
+        limit_page_length=10000,
     )
 
     return success(
@@ -53,7 +57,7 @@ def asset_summary() -> dict:
             "total_assets": total_assets,
             "total_value": total_value,
             "in_maintenance": in_maintenance,
-            "upcoming_maintenance": upcoming,
+            "upcoming_maintenance": len(upcoming_logs),
         }
     )
 
@@ -77,7 +81,7 @@ def asset_register(
     if category:
         filters.append(["asset_category", "=", category])
 
-    rows = frappe.get_all(
+    rows = frappe.get_list(
         "Asset",
         filters=filters,
         fields=[
@@ -114,7 +118,7 @@ def maintenance_history(asset: str | None = None, limit: int = 100) -> dict:
         log_filters.append(["asset_name", "=", asset])
         repair_filters.append(["asset", "=", asset])
 
-    logs = frappe.get_all(
+    logs = frappe.get_list(
         "Asset Maintenance Log",
         filters=log_filters,
         fields=[
@@ -128,7 +132,7 @@ def maintenance_history(asset: str | None = None, limit: int = 100) -> dict:
         order_by="modified desc",
         limit_page_length=limit,
     )
-    repairs = frappe.get_all(
+    repairs = frappe.get_list(
         "Asset Repair",
         filters=repair_filters,
         fields=[
@@ -180,19 +184,42 @@ def asset_utilization(days: int = 90, limit: int = 100) -> dict:
     limit = max(1, min(int(limit), 500))
     since = frappe.utils.add_days(frappe.utils.nowdate(), -days)
 
-    rows = frappe.db.sql(
-        """
-        SELECT ami.asset, COUNT(*) AS moves, MAX(am.transaction_date) AS last_move
-        FROM `tabAsset Movement Item` ami
-        JOIN `tabAsset Movement` am ON am.name = ami.parent
-        WHERE am.transaction_date >= %(since)s AND am.docstatus = 1
-        GROUP BY ami.asset
-        ORDER BY moves DESC
-        LIMIT %(limit)s
-        """,
-        values={"since": since, "limit": limit},
-        as_dict=True,
+    movement_items = frappe.get_list(
+        "Asset Movement Item",
+        fields=["parent", "asset"],
+        limit_page_length=5000,
     )
+    parents = list({row["parent"] for row in movement_items})
+    movements = {}
+    if parents:
+        movement_rows = frappe.get_list(
+            "Asset Movement",
+            filters=[
+                ["name", "in", parents],
+                ["transaction_date", ">=", since],
+                ["docstatus", "=", 1],
+            ],
+            fields=["name", "transaction_date"],
+            limit_page_length=len(parents),
+        )
+        movements = {row["name"]: row.get("transaction_date") for row in movement_rows}
+
+    by_asset = {}
+    for item in movement_items:
+        parent = item["parent"]
+        if parent not in movements:
+            continue
+        asset = item["asset"]
+        bucket = by_asset.setdefault(asset, {"asset": asset, "moves": 0, "last_move": None})
+        bucket["moves"] += 1
+        last_move = movements[parent]
+        if bucket["last_move"] is None or str(last_move) > str(bucket["last_move"]):
+            bucket["last_move"] = last_move
+
+    rows = sorted(
+        by_asset.values(),
+        key=lambda row: (-row["moves"], row["asset"]),
+    )[:limit]
     for r in rows:
         r["last_move"] = str(r.get("last_move") or "")
     return success(rows)

@@ -39,43 +39,52 @@ def get_stock_aging(warehouse: str, threshold_days: int = 30, limit: int = 100) 
     limit = max(1, min(int(limit), 500))
 
     # Validate warehouse exists.
-    if not frappe.db.exists("Warehouse", warehouse):
+    warehouse_rows = frappe.get_list(
+        "Warehouse",
+        filters=[["name", "=", warehouse]],
+        fields=["name"],
+        limit=1,
+    )
+    if not warehouse_rows:
         return failure(f"Warehouse '{warehouse}' not found.", code="VALIDATION_UNKNOWN_WAREHOUSE")
 
-    rows = frappe.db.sql(
-        """
-        SELECT
-            b.item_code,
-            i.item_name,
-            b.actual_qty,
-            MAX(sle.posting_date) AS last_movement_date,
-            DATEDIFF(CURDATE(), MAX(sle.posting_date)) AS days_idle
-        FROM `tabBin` b
-        JOIN `tabItem` i ON i.name = b.item_code
-        LEFT JOIN `tabStock Ledger Entry` sle
-               ON sle.item_code = b.item_code
-              AND sle.warehouse  = %(warehouse)s
-              AND sle.is_cancelled = 0
-        WHERE b.warehouse = %(warehouse)s
-        GROUP BY b.item_code, i.item_name, b.actual_qty
-        HAVING days_idle >= %(threshold_days)s OR last_movement_date IS NULL
-        ORDER BY days_idle DESC, b.item_code ASC
-        LIMIT %(limit)s
-        """,
-        values={
-            "warehouse": warehouse,
-            "threshold_days": threshold_days,
-            "limit": limit,
-        },
-        as_dict=True,
+    bins = frappe.get_list(
+        "Bin",
+        filters=[["warehouse", "=", warehouse]],
+        fields=["item_code", "actual_qty"],
+        order_by="item_code asc",
+        limit_page_length=5000,
     )
+    item_codes = [row["item_code"] for row in bins]
+    item_names = _item_names(item_codes)
+    last_movement = _last_movement_dates(warehouse, item_codes)
+    today = _today()
 
+    rows = []
+    for row in bins:
+        item_code = row["item_code"]
+        last_date = last_movement.get(item_code)
+        days_idle = None if last_date is None else _days_between(today, last_date)
+        if days_idle is not None and days_idle < threshold_days:
+            continue
+        rows.append({
+            "item_code": item_code,
+            "item_name": item_names.get(item_code),
+            "actual_qty": row.get("actual_qty"),
+            "last_movement_date": str(last_date) if last_date else None,
+            "days_idle": days_idle,
+        })
+
+    rows.sort(
+        key=lambda row: (
+            -1 if row.get("days_idle") is None else -row["days_idle"],
+            row["item_code"],
+        )
+    )
+    rows = rows[:limit]
     for row in rows:
-        # Convert date objects to ISO strings for JSON serialisation.
-        if row.get("last_movement_date"):
-            row["last_movement_date"] = str(row["last_movement_date"])
         if row.get("days_idle") is None:
-            row["days_idle"] = None  # truly never moved
+            row["days_idle"] = None
 
     return success(rows)
 
@@ -107,7 +116,7 @@ def get_reconciliation_history(warehouse: str = None, limit: int = 20) -> dict:
 
     result = []
     for recon in recons:
-        items_raw = frappe.get_all(
+        items_raw = frappe.get_list(
             "Stock Reconciliation Item",
             filters={"parent": recon["name"]},
             fields=["item_code", "item_name", "qty", "current_qty", "warehouse"],
@@ -132,3 +141,55 @@ def get_reconciliation_history(warehouse: str = None, limit: int = 20) -> dict:
         })
 
     return success(result)
+
+
+def _item_names(item_codes: list[str]) -> dict[str, str | None]:
+    if not item_codes:
+        return {}
+    rows = frappe.get_list(
+        "Item",
+        filters=[["item_code", "in", item_codes]],
+        fields=["item_code", "item_name"],
+        limit=len(item_codes),
+    )
+    return {row["item_code"]: row.get("item_name") for row in rows}
+
+
+def _last_movement_dates(warehouse: str, item_codes: list[str]) -> dict[str, object]:
+    if not item_codes:
+        return {}
+    rows = frappe.get_list(
+        "Stock Ledger Entry",
+        filters=[
+            ["warehouse", "=", warehouse],
+            ["item_code", "in", item_codes],
+            ["is_cancelled", "=", 0],
+        ],
+        fields=["item_code", "posting_date"],
+        order_by="posting_date desc",
+        limit_page_length=5000,
+    )
+    latest = {}
+    for row in rows:
+        latest.setdefault(row["item_code"], row.get("posting_date"))
+    return latest
+
+
+def _today() -> str:
+    try:
+        return frappe.utils.nowdate()
+    except Exception:
+        from datetime import date
+
+        return date.today().isoformat()
+
+
+def _days_between(today, previous) -> int:
+    try:
+        return int(frappe.utils.date_diff(today, previous))
+    except Exception:
+        from datetime import date
+
+        current = date.fromisoformat(str(today))
+        earlier = date.fromisoformat(str(previous))
+        return (current - earlier).days

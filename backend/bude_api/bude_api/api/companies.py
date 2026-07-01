@@ -30,7 +30,7 @@ def list_companies(limit: int = 50) -> dict:
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
-    companies = frappe.get_all(
+    companies = frappe.get_list(
         "Company",
         fields=["name", "company_name", "default_currency", "country"],
         order_by="creation asc",

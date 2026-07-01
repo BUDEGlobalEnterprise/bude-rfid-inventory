@@ -366,7 +366,7 @@ def get_record(master, name):
         return err
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
-    if not frappe.db.exists(spec["doctype"], name):
+    if not _record_exists(spec["doctype"], name):
         return failure(f"{master} '{name}' not found.", code="NOT_FOUND")
 
     doc = frappe.get_doc(spec["doctype"], name)
@@ -426,7 +426,7 @@ def update_record(master, name, values):
         return err
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
-    if not frappe.db.exists(spec["doctype"], name):
+    if not _record_exists(spec["doctype"], name):
         return failure(f"{master} '{name}' not found.", code="NOT_FOUND")
 
     values = _clean(spec, values)
@@ -445,7 +445,7 @@ def set_disabled(master, name, disabled=True):
         )
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
-    if not frappe.db.exists(spec["doctype"], name):
+    if not _record_exists(spec["doctype"], name):
         return failure(f"{master} '{name}' not found.", code="NOT_FOUND")
 
     value = (
@@ -454,6 +454,16 @@ def set_disabled(master, name, disabled=True):
         else spec.get("enable_value", 0)
     )
     return _mutate(lambda: _save(spec, name, {field: value}))
+
+
+def _record_exists(doctype, name) -> bool:
+    rows = frappe.get_list(
+        doctype,
+        filters=[["name", "=", name]],
+        fields=["name"],
+        limit=1,
+    )
+    return bool(rows)
 
 
 def _save(spec, name, values):

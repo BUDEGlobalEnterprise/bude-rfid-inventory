@@ -103,7 +103,7 @@ def list_assets(
             ["item_code", "like", f"%{search}%"],
         ]
 
-    rows = frappe.get_all(
+    rows = frappe.get_list(
         "Asset",
         filters=filters,
         or_filters=or_filters,
@@ -124,15 +124,25 @@ def get_asset(name: str) -> dict:
         return failure("name is required.", code="VALIDATION_REQUIRED")
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
-    if not frappe.db.exists("Asset", name):
+    asset_rows = frappe.get_list(
+        "Asset",
+        filters=[["name", "=", name]],
+        fields=["name"],
+        limit=1,
+    )
+    if not asset_rows:
         return failure(f"Asset '{name}' not found.", code="VALIDATION_NOT_FOUND")
 
     doc = frappe.get_doc("Asset", name)
     custodian_name = None
     if doc.get("custodian"):
-        custodian_name = frappe.db.get_value(
-            "Employee", doc.custodian, "employee_name"
+        employee_rows = frappe.get_list(
+            "Employee",
+            filters=[["name", "=", doc.custodian]],
+            fields=["employee_name"],
+            limit=1,
         )
+        custodian_name = employee_rows[0]["employee_name"] if employee_rows else None
 
     # Depreciation schedule lives in the `schedules` child table when the asset
     # has calculate_depreciation enabled. Read it defensively across versions.
@@ -181,7 +191,7 @@ def get_asset_movements(asset: str, limit: int = 20) -> dict:
 
     limit = max(1, min(int(limit), 100))
     # Asset Movement Item child rows carry the per-asset source/target.
-    rows = frappe.get_all(
+    rows = frappe.get_list(
         "Asset Movement Item",
         filters=[["asset", "=", asset]],
         fields=[
@@ -198,7 +208,7 @@ def get_asset_movements(asset: str, limit: int = 20) -> dict:
     parents = {r["parent"] for r in rows}
     meta = {}
     if parents:
-        for m in frappe.get_all(
+        for m in frappe.get_list(
             "Asset Movement",
             filters=[["name", "in", list(parents)]],
             fields=["name", "transaction_date", "purpose"],
@@ -217,7 +227,7 @@ def list_locations(limit: int = 200) -> dict:
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
     limit = max(1, min(int(limit), 500))
-    rows = frappe.get_all(
+    rows = frappe.get_list(
         "Location",
         fields=[
             "name",
@@ -238,7 +248,7 @@ def list_asset_categories(limit: int = 200) -> dict:
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
     limit = max(1, min(int(limit), 500))
-    rows = frappe.get_all(
+    rows = frappe.get_list(
         "Asset Category",
         fields=["name"],
         order_by="name asc",
@@ -271,7 +281,13 @@ def set_epc(doctype: str, name: str, epc: str) -> dict:
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
-    if not frappe.db.exists(doctype, name):
+    existing = frappe.get_list(
+        doctype,
+        filters=[["name", "=", name]],
+        fields=["name"],
+        limit=1,
+    )
+    if not existing:
         return failure(f"{doctype} '{name}' not found.", code="VALIDATION_NOT_FOUND")
 
     taken = frappe.get_list(
@@ -342,9 +358,13 @@ def create_asset_movement(
     company = None
     rows = []
     for asset in asset_names:
-        current = frappe.db.get_value(
-            "Asset", asset, ["location", "custodian", "company"], as_dict=True
+        current_rows = frappe.get_list(
+            "Asset",
+            filters=[["name", "=", asset]],
+            fields=["location", "custodian", "company"],
+            limit=1,
         )
+        current = current_rows[0] if current_rows else None
         if not current:
             return failure(f"Asset '{asset}' not found.", code="VALIDATION_NOT_FOUND")
         company = company or current.get("company")
@@ -393,7 +413,13 @@ def create_asset_repair(
         return failure("asset is required.", code="VALIDATION_REQUIRED")
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
-    if not frappe.db.exists("Asset", asset):
+    existing = frappe.get_list(
+        "Asset",
+        filters=[["name", "=", asset]],
+        fields=["name"],
+        limit=1,
+    )
+    if not existing:
         return failure(f"Asset '{asset}' not found.", code="VALIDATION_NOT_FOUND")
 
     data = {
@@ -435,7 +461,7 @@ def list_maintenance_logs(
         filters.append(["maintenance_status", "=", status])
     if asset:
         filters.append(["asset_name", "=", asset])
-    rows = frappe.get_all(
+    rows = frappe.get_list(
         "Asset Maintenance Log",
         filters=filters,
         fields=[
@@ -466,7 +492,13 @@ def complete_maintenance_log(
         return failure("log is required.", code="VALIDATION_REQUIRED")
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
-    if not frappe.db.exists("Asset Maintenance Log", log):
+    existing = frappe.get_list(
+        "Asset Maintenance Log",
+        filters=[["name", "=", log]],
+        fields=["name"],
+        limit=1,
+    )
+    if not existing:
         return failure(
             f"Maintenance log '{log}' not found.", code="VALIDATION_NOT_FOUND"
         )

@@ -60,7 +60,7 @@ def list_alerts(limit: int = 200) -> dict:
 
 def _maintenance_due() -> list:
     today = frappe.utils.nowdate()
-    rows = frappe.get_all(
+    rows = frappe.get_list(
         "Asset Maintenance Log",
         filters=[
             ["maintenance_status", "in", ["Planned", "Overdue"]],
@@ -84,7 +84,7 @@ def _maintenance_due() -> list:
 
 
 def _assets_in_maintenance() -> list:
-    rows = frappe.get_all(
+    rows = frappe.get_list(
         "Asset",
         filters=[["status", "in", ["In Maintenance", "Out of Order"]]],
         fields=["name", "asset_name", "status", "location"],
@@ -105,33 +105,39 @@ def _assets_in_maintenance() -> list:
 
 
 def _stock_alerts() -> list:
-    # Out of stock: any Bin at or below zero.
-    out_rows = frappe.db.sql(
-        """
-        SELECT b.item_code, b.warehouse, b.actual_qty
-        FROM `tabBin` b
-        WHERE b.actual_qty <= 0
-        ORDER BY b.actual_qty ASC
-        LIMIT %(limit)s
-        """,
-        values={"limit": _PER_CATEGORY},
-        as_dict=True,
+    bins = frappe.get_list(
+        "Bin",
+        fields=["item_code", "warehouse", "actual_qty"],
+        order_by="actual_qty asc",
+        limit_page_length=500,
     )
-    # Low stock: on-hand positive but at/below the item's safety stock.
-    low_rows = frappe.db.sql(
-        """
-        SELECT b.item_code, b.warehouse, b.actual_qty, i.safety_stock
-        FROM `tabBin` b
-        JOIN `tabItem` i ON i.name = b.item_code
-        WHERE i.safety_stock > 0
-          AND b.actual_qty > 0
-          AND b.actual_qty <= i.safety_stock
-        ORDER BY b.actual_qty ASC
-        LIMIT %(limit)s
-        """,
-        values={"limit": _PER_CATEGORY},
-        as_dict=True,
-    )
+    item_codes = list({row["item_code"] for row in bins})
+    safety_stock = {}
+    if item_codes:
+        item_rows = frappe.get_list(
+            "Item",
+            filters=[["item_code", "in", item_codes]],
+            fields=["item_code", "safety_stock"],
+            limit=len(item_codes),
+        )
+        safety_stock = {
+            row["item_code"]: float(row.get("safety_stock") or 0)
+            for row in item_rows
+        }
+
+    out_rows = [
+        row for row in bins
+        if float(row.get("actual_qty") or 0) <= 0
+    ][:_PER_CATEGORY]
+    low_rows = [
+        {
+            **row,
+            "safety_stock": safety_stock.get(row["item_code"], 0),
+        }
+        for row in bins
+        if 0 < float(row.get("actual_qty") or 0)
+        and float(row.get("actual_qty") or 0) <= safety_stock.get(row["item_code"], 0)
+    ][:_PER_CATEGORY]
 
     out = [
         _alert(

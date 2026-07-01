@@ -16,6 +16,7 @@ except ImportError:
     frappe = None
 
 from ..utils.response import failure, success
+from .permissions import permission_denied, require_stock_execution_role
 from .stock_tracking import expand_stock_rows
 
 
@@ -40,6 +41,9 @@ def _insert_and_submit(doc_data: dict) -> dict:
     except frappe.ValidationError as exc:
         frappe.db.rollback()
         return failure(_erpnext_message(exc), code="VALIDATION_ERPNEXT")
+    except frappe.PermissionError:
+        frappe.db.rollback()
+        return permission_denied()
     return success({"name": doc.name, "docstatus": doc.docstatus})
 
 
@@ -75,6 +79,10 @@ def create_transfer(
 
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
+
+    permission_error = require_stock_execution_role(frappe)
+    if permission_error is not None:
+        return permission_error
 
     source_or_error = _resolve_effective_warehouse(
         source_warehouse,
@@ -348,6 +356,10 @@ def create_receipt(
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
+    permission_error = require_stock_execution_role(frappe)
+    if permission_error is not None:
+        return permission_error
+
     target_or_error = _resolve_effective_warehouse(
         target_warehouse,
         target_location,
@@ -430,12 +442,13 @@ def _create_material_receipt(items, target_warehouse, posting_date, company=None
 
 
 def _create_purchase_receipt(items, target_warehouse, against_po, posting_date, company=None) -> dict:
-    po_doc = frappe.db.get_value(
+    po_rows = frappe.get_list(
         "Purchase Order",
-        {"name": against_po, "docstatus": 1},
-        fieldname=["name", "supplier", "company"],
-        as_dict=True,
+        filters=[["name", "=", against_po], ["docstatus", "=", 1]],
+        fields=["name", "supplier", "company"],
+        limit=1,
     )
+    po_doc = po_rows[0] if po_rows else None
     if not po_doc:
         return failure(
             f"Purchase Order '{against_po}' not found or not submitted.",
@@ -451,7 +464,7 @@ def _create_purchase_receipt(items, target_warehouse, against_po, posting_date, 
     company = company or po_company
 
     # Build a lookup of {item_code: po_detail_name, po_qty} from the PO lines.
-    po_lines = frappe.get_all(
+    po_lines = frappe.get_list(
         "Purchase Order Item",
         filters=[["parent", "=", against_po]],
         fields=["name", "item_code", "qty"],
@@ -528,6 +541,10 @@ def create_reconciliation(
 
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
+
+    permission_error = require_stock_execution_role(frappe)
+    if permission_error is not None:
+        return permission_error
 
     warehouse_or_error = _resolve_effective_warehouse(
         warehouse,

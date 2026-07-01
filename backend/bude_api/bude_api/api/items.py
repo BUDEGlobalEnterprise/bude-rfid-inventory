@@ -74,7 +74,7 @@ def search(
         bin_filters: list = [["actual_qty", ">", 0]]
         if warehouse:
             bin_filters.append(["warehouse", "=", warehouse])
-        stocked = frappe.get_all(
+        stocked = frappe.get_list(
             "Bin", filters=bin_filters, pluck="item_code", limit=1000,
         )
         if not stocked:
@@ -84,7 +84,7 @@ def search(
     # Exact barcode match — only on page 0, barcode hits always come first
     barcode_matches: list[dict] = []
     if query and page == 0:
-        barcode_rows = frappe.get_all(
+        barcode_rows = frappe.get_list(
             "Item Barcode",
             filters=[["barcode", "=", query]],
             fields=["parent"],
@@ -140,7 +140,7 @@ def list_groups() -> dict:
     """Return all leaf Item Groups (is_group=0) for the filter chip."""
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
-    groups = frappe.get_all(
+    groups = frappe.get_list(
         "Item Group",
         filters={"is_group": 0},
         pluck="name",
@@ -159,7 +159,7 @@ def get_by_barcode(barcode: str) -> dict:
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
-    rows = frappe.get_all(
+    rows = frappe.get_list(
         "Item Barcode",
         filters=[["barcode", "=", barcode]],
         fields=["parent"],

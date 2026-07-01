@@ -11,7 +11,7 @@ except ImportError:
 
 from ..utils.response import failure, success
 from . import stock as stock_api
-
+from .permissions import require_stock_execution_role
 
 _CLOSED_STATUSES = {"Closed", "Completed", "Cancelled"}
 _QTY_EPSILON = 0.000001
@@ -109,6 +109,10 @@ def create_delivery_note(
     if frappe is None:
         return failure("Frappe not available.", code="ENV_NO_FRAPPE")
 
+    permission_error = require_stock_execution_role(frappe)
+    if permission_error is not None:
+        return permission_error
+
     so = _sales_order(sales_order, company=company)
     if isinstance(so, dict) and so.get("ok") is False:
         return so
@@ -163,10 +167,10 @@ def create_delivery_note(
 
 
 def _sales_order(name: str, company: str | None = None) -> dict:
-    row = frappe.db.get_value(
+    rows = frappe.get_list(
         "Sales Order",
-        {"name": name, "docstatus": 1},
-        fieldname=[
+        filters=[["name", "=", name], ["docstatus", "=", 1]],
+        fields=[
             "name",
             "customer",
             "transaction_date",
@@ -174,8 +178,9 @@ def _sales_order(name: str, company: str | None = None) -> dict:
             "status",
             "company",
         ],
-        as_dict=True,
+        limit=1,
     )
+    row = rows[0] if rows else None
     if not row:
         return failure(
             f"Sales Order '{name}' not found or not submitted.",
@@ -198,7 +203,7 @@ def _sales_order(name: str, company: str | None = None) -> dict:
 def _pending_summary_by_order(names: list[str]) -> dict[str, dict]:
     if not names:
         return {}
-    lines = frappe.get_all(
+    lines = frappe.get_list(
         "Sales Order Item",
         filters=[["parent", "in", names]],
         fields=["parent", "qty", "delivered_qty"],
@@ -216,7 +221,7 @@ def _pending_summary_by_order(names: list[str]) -> dict[str, dict]:
 
 
 def _pending_lines(sales_order: str) -> list[dict]:
-    rows = frappe.get_all(
+    rows = frappe.get_list(
         "Sales Order Item",
         filters=[["parent", "=", sales_order]],
         fields=[
