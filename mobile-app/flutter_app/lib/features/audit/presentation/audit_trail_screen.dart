@@ -6,14 +6,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/sync/pending_operation.dart';
 import '../../../core/sync/providers.dart';
 import '../../../core/utils/locale_ext.dart';
+import '../domain/audit_operation_summary.dart';
 import '../../tenant/presentation/providers/tenant_notifier.dart';
-
-const _kTransferType = 'stock_transfer';
-const _kReceiptType = 'stock_receipt';
-const _kReconciliationType = 'stock_reconciliation';
 
 // Sentinel for "All" filter (empty string, not null, so SegmentedButton<String> works).
 const _kFilterAll = '';
+const _kFilterApproval = '__approval__';
+const _kFilterFailed = '__failed__';
 
 class AuditTrailScreen extends ConsumerStatefulWidget {
   const AuditTrailScreen({super.key});
@@ -48,7 +47,15 @@ class _AuditTrailScreenState extends ConsumerState<AuditTrailScreen> {
               data: (ops) {
                 final filtered = _typeFilter == _kFilterAll
                     ? ops
-                    : ops.where((o) => o.type == _typeFilter).toList();
+                    : ops.where((o) {
+                        if (_typeFilter == _kFilterApproval) {
+                          return o.status == OpStatus.pendingApproval;
+                        }
+                        if (_typeFilter == _kFilterFailed) {
+                          return o.status == OpStatus.failed;
+                        }
+                        return o.type == _typeFilter;
+                      }).toList();
                 final sorted = [...filtered]
                   ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
                 if (sorted.isEmpty) {
@@ -87,15 +94,23 @@ class _FilterBar extends StatelessWidget {
         segments: [
           ButtonSegment(value: _kFilterAll, label: Text(context.l10n.all)),
           ButtonSegment(
-            value: _kTransferType,
+            value: _kFilterApproval,
+            label: const Text('Approval'),
+          ),
+          ButtonSegment(
+            value: _kFilterFailed,
+            label: const Text('Failed'),
+          ),
+          ButtonSegment(
+            value: kStockTransferAuditType,
             label: Text(context.l10n.stockTransferLabel),
           ),
           ButtonSegment(
-            value: _kReceiptType,
+            value: kStockReceiptAuditType,
             label: Text(context.l10n.goodsReceiptLabel),
           ),
           ButtonSegment(
-            value: _kReconciliationType,
+            value: kStockReconciliationAuditType,
             label: Text(context.l10n.stockCountLabel),
           ),
         ],
@@ -143,17 +158,27 @@ class _AuditTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fmt = DateFormat.yMMMd().add_jm();
-    final label = _typeLabel(context, op.type);
+    final summary = summarizeOperation(op);
     final erpUrl = _buildErpUrl(tenantUrl, op);
 
     return ListTile(
       leading: Icon(_typeIcon(op.type)),
-      title: Text(label),
+      title: Text(summary.title),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(summary.subtitle),
           Text(fmt.format(op.createdAt.toLocal())),
+          Text('Op ${op.id}', style: Theme.of(context).textTheme.bodySmall),
           if (op.attempts > 0) Text('Attempts: ${op.attempts}'),
+          if (op.lastError != null && op.lastError!.isNotEmpty)
+            Text('Error: ${op.lastError}'),
+          if (summary.approvalReason != null)
+            Text('Approval: ${summary.approvalReason}'),
+          if (summary.approvedBy != null)
+            Text('Approved by: ${summary.approvedBy}'),
+          if (summary.approvedAt != null)
+            Text('Approved at: ${summary.approvedAt}'),
           if (erpUrl != null)
             TextButton(
               style: TextButton.styleFrom(
@@ -168,33 +193,21 @@ class _AuditTile extends StatelessWidget {
             ),
         ],
       ),
-      isThreeLine: op.attempts > 0 || erpUrl != null,
+      isThreeLine: true,
       trailing: _StatusChip(status: op.status),
     );
   }
 
-  String _typeLabel(BuildContext context, String type) => switch (type) {
-        _kTransferType => context.l10n.stockTransferLabel,
-        _kReceiptType => context.l10n.goodsReceiptLabel,
-        _kReconciliationType => context.l10n.stockCountLabel,
-        _ => type,
-      };
-
   IconData _typeIcon(String type) => switch (type) {
-        _kTransferType => Icons.swap_horiz,
-        _kReceiptType => Icons.input,
-        _kReconciliationType => Icons.fact_check,
+        kStockTransferAuditType => Icons.swap_horiz,
+        kStockReceiptAuditType => Icons.input,
+        kStockReconciliationAuditType => Icons.fact_check,
         _ => Icons.sync,
       };
 
   String? _buildErpUrl(String? base, PendingOperation op) {
     if (base == null || op.serverRef == null) return null;
-    final segment = switch (op.type) {
-      _kTransferType => 'stock-entry',
-      _kReceiptType => 'purchase-receipt',
-      _kReconciliationType => 'stock-reconciliation',
-      _ => null,
-    };
+    final segment = erpRouteSegmentForOperation(op.type);
     if (segment == null) return null;
     return '$base/app/$segment/${op.serverRef}';
   }
