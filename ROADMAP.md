@@ -173,7 +173,7 @@ Quality-of-life features for high-throughput warehouse operators.
 |---------|-------------|
 | **Command palette** | Keyboard / search shortcut (`⌘K` or swipe) to jump to any screen or barcode | 💡 |
 | **Drag-and-drop dashboard** | Operator can re-order, pin, or hide nav cards | 💡 |
-| **Print labels** | Generate ZPL / PDF label for a scanned item or bin | 💡 |
+| **Print labels** | Generate ZPL / PDF labels for items, bins, pallets, and receipts | ✅ |
 | **Batch RFID inventory** | Continuous UHF tag reads → auto-populate reconciliation list | 💡 |
 | **Push notifications** | Server-side webhook → FCM/APNs for low-stock alerts or PO arrivals | 💡 |
 | **Plugin marketplace** | Third-party bude_api modules discoverable and installable from the app | 💡 |
@@ -192,10 +192,10 @@ Every release candidate must pass these flows on a clean install and on an exist
 |------|------------|----------------------|--------|
 | **Tenant + login** | Configure ERPNext URL, verify health, login, restore session after restart | Invalid URL, bad credentials, expired session, tenant reset | PLANNED |
 | **Dashboard command center** | Dashboard loads KPIs, alerts, quick actions, sync status, role-aware nav | Offline dashboard uses cached counts and clear empty/error states | PLANNED |
-| **Item lookup** | Search item, scan barcode, read RFID EPC, open item/asset detail | Scanner unavailable, unknown EPC/barcode, network failure | IN PROGRESS |
-| **Stock transfer** | Scan multiple items, edit qty, choose warehouses, queue transfer, sync to ERPNext | Offline queue, failed sync retry, duplicate barcode handling | PLANNED |
-| **Goods receipt** | Receive free items or against PO, validate warehouse/PO lines, queue and sync | PO mismatch, unknown item, failed submission retry | PLANNED |
-| **Stock reconciliation** | Batch scan/count, compare expected qty, supervisor approval when needed | Large variance approval, failed retry, offline count preservation | PLANNED |
+| **Item lookup** | Search item, scan barcode, read RFID EPC, open item/asset detail | Scanner unavailable, unknown EPC/barcode, network failure | DONE |
+| **Stock transfer** | Scan multiple items, edit qty, choose warehouses, queue transfer, sync to ERPNext | Offline queue, failed sync retry, duplicate barcode handling | DONE |
+| **Goods receipt** | Receive free items or against PO, validate warehouse/PO lines, queue and sync | PO mismatch, unknown item, failed submission retry | DONE |
+| **Stock reconciliation** | Batch scan/count, compare expected qty, supervisor approval when needed | Large variance approval, failed retry, offline count preservation | DONE |
 | **Asset operations** | Find asset, move asset, create repair, view maintenance state | Unknown asset, failed queue op, offline repair/movement draft | PLANNED |
 | **Audit + reporting** | Review submitted/pending/failed ops, export CSV, open ERP references | Missing ERP link, no file permission, empty report states | PLANNED |
 | **Hardware** | Camera fallback, Chainway barcode, Chainway UHF read/write/inventory | SDK missing, device unsupported, reader busy, permission failure | IN PROGRESS |
@@ -204,6 +204,10 @@ Note: physical RFID validation is blocked until a reader is available. Until the
 
 ### Stability Workstream
 
+- Lookup hardening done: notifier tests now cover item/asset/serial/unregistered matches, offline/network mapping, auth/server errors, and bind-then-resolve; widget tests cover manual lookup, barcode handoff, RFID read, demo reader banner, unavailable reader, and retry.
+- Stock-transfer hardening done: golden-flow widget coverage now verifies scan-session handoff, duplicate quantity merge, inline quantity edit, same-warehouse validation, queue-first submit, company/location/tracking payload shape, warehouse-load failure, empty-lines state, and failed sync retry.
+- Goods-receipt hardening done: golden-flow widget coverage now verifies scan-session handoff, duplicate quantity merge, inline quantity edit, target warehouse requirement, optional PO and location payload shape, tracking allocations, warehouse/PO error states, empty-lines state, and failed sync retry.
+- Stock-reconciliation hardening done: golden-flow widget coverage now verifies warehouse-required state, scan-session handoff, expected quantity/variance display, duplicate quantity merge, inline count edit, location/tracking payload shape, queue-first submit, supervisor approval promotion, warehouse/empty states, and failed sync retry.
 - Add smoke/widget tests for the golden screens: splash, onboarding, login, dashboard, lookup, scan session, transfer, receipt, reconciliation, assets, sync, settings.
 - Add route-contract tests for every `GoRoute`, including required `extra` values such as reconciliation approval.
 - Add sync queue recovery tests for app restart, duplicate operation IDs, failed operation retry, and pending-approval state.
@@ -248,7 +252,7 @@ Note: physical RFID validation is blocked until a reader is available. Until the
 
 ---
 
-## Phase 10 - Market-Driven Warehouse Execution PLANNED
+## Phase 10 - Market-Driven Warehouse Execution IN PROGRESS
 
 Positioning: sell this as an **ERPNext Warehouse Execution Mobile Pack**, not only an RFID app. The paid value is faster warehouse work, fewer stock mistakes, stronger controls, and mobile execution that can later become RFID-assisted.
 
@@ -257,13 +261,21 @@ Positioning: sell this as an **ERPNext Warehouse Execution Mobile Pack**, not on
 | 1 | **Bin / rack / shelf / staging location execution** | Operators can receive, count, move, and stage stock at the real physical location level while still using standard ERPNext warehouse structures | DONE |
 | 2 | **Picking, packing, and dispatch from Sales Orders** | Turns Sales Orders into guided mobile fulfillment work with fewer missed or wrong shipments | DONE |
 | 3 | **Batch, serial, lot, and expiry support** | Supports regulated, perishable, warranty, and high-value inventory workflows that customers expect to pay for | DONE |
-| 4 | **Label printing for items, bins, pallets, and receipts** | Makes mobile execution tangible on the floor through barcode/RFID-ready labels and receiving documents | PLANNED |
-| 5 | **Approval and audit controls** | Gives managers confidence around variance, high-value movement, and compliance-sensitive changes | PLANNED |
-| 6 | **Backend permission hardening** | Ensures mobile convenience never bypasses ERPNext roles, companies, warehouses, or document permissions | PLANNED |
-| 7 | **Guided warehouse task queue** | Converts open ERP work into assigned, prioritized mobile tasks for operators and supervisors | PLANNED |
+| 4 | **Label printing for items, bins, pallets, and receipts** | Makes mobile execution tangible on the floor through barcode/RFID-ready labels and receiving documents | DONE |
+| 5 | **Approval and audit controls** | Gives managers confidence around variance, high-value movement, and compliance-sensitive changes | DONE |
+| 6 | **Backend permission hardening** | Ensures mobile convenience never bypasses ERPNext roles, companies, warehouses, or document permissions | DONE |
+| 7 | **Guided warehouse task queue** | Converts open ERP work into assigned, prioritized mobile tasks for operators and supervisors | DONE |
 | 8 | **Exception handling workflows** | Captures shortages, damages, unknown scans, substitutions, and blocked stock without leaving the floor | PLANNED |
 | 9 | **ROI / value dashboard** | Shows management measurable gains: faster receiving, fewer adjustments, pick accuracy, and inventory variance reduction | PLANNED |
 | 10 | **Admin onboarding console** | Helps customers configure companies, warehouses, default roles, devices, and pilot workflows without developer help | PLANNED |
+
+Phase 10 label-printing V1 is done: the Flutter app now has `/labels`, item/bin-location/pallet/receipt label requests, PDF generation and system print preview, ZPL export/share, label size and quantity controls, ad-hoc pallet IDs, and entry points from item detail, warehouse locations, receipt queued confirmations, and receipt rows in the sync queue.
+
+Phase 10 approval and audit controls V1 is done: Settings exposes count variance and transfer quantity approval thresholds, counts and transfers above those thresholds queue as `pendingApproval`, supervisor approval records `approved_by` and `approved_at`, pending queue cards show approval reasons, and audit summaries include locations, quantities, tracking, retry/error state, approval metadata, and ERP links.
+
+Phase 10 backend permission hardening is done: stock execution endpoints now require ERPNext stock roles, permission failures return a clean `PERMISSION_DENIED` envelope, and mobile-facing backend reads use permission-aware Frappe APIs instead of bypassing document permissions.
+
+Phase 10 guided warehouse task queue is done: backend `warehouse_tasks.list_open` aggregates open Purchase Orders, Sales Orders, planned Asset Maintenance Logs, and supported Frappe `ToDo` assignments with permission-aware reads; mobile `/tasks` groups and filters work, deep-links into receipt, fulfillment, and asset maintenance, and closes standard ToDos after related queued operations sync successfully.
 
 Execution rule: implement these one by one. Start with optional bin/location execution using standard ERPNext warehouse/bin concepts; do not add custom DocTypes unless standard ERPNext cannot represent the workflow.
 

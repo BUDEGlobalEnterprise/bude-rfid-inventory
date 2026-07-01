@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-Bude RFID Inventory is a mobile-first, offline-capable warehouse management companion built on **ERPNext / Frappe** with a native **Flutter** Android app. It extends standard ERPNext inventory workflows with barcode scanning and UHF RFID hardware support — without adding custom DocTypes or breaking existing processes.
+Bude RFID Inventory is a mobile-first, offline-capable warehouse management companion built on **ERPNext / Frappe** with a native **Flutter** Android app. It extends standard ERPNext inventory workflows with barcode scanning, RFID-assisted lookup, and UHF RFID hardware support — without adding custom DocTypes or breaking existing processes.
 
 A warehouse operator can scan items, move stock between locations, receive goods against a purchase order, and count shelves — all from a handheld device, with or without network connectivity. Operations queue locally and sync to ERPNext the moment the connection returns.
 
@@ -27,16 +27,16 @@ A warehouse operator can scan items, move stock between locations, receive goods
 
 | # | Capability area | Status | Where to find it |
 |---|-----------------|--------|-----------------|
-| 1 | **Core Inventory** — item search, barcode scan, stock transfer, receipt, reconciliation | ✅ Live | *Home* dashboard, scan screens |
+| 1 | **Core Inventory** — item search, barcode/RFID lookup, stock transfer, receipt, reconciliation | ✅ Live | *Home* dashboard, scan screens |
 | 2 | **Offline Sync** — Hive queue, SyncEngine, pending-ops viewer | ✅ Live | *Sync Queue* screen |
 | 3 | **Hardware Abstraction Layer** — barcode + RFID adapters, vendor stubs | ✅ Live | `lib/core/hardware/` |
 | 4 | **Enterprise Foundation** — Material 3 theming, i18n EN/AR RTL, settings | ✅ Live | *Settings* screen |
 | 5 | **Operational Intelligence** — item ledger history, warehouse stock overview, bulk scan sessions | ✅ Live | *Warehouses*, *Item Detail* |
 | 6 | **Analytics & Reporting** — stock aging, variance dashboard, transfer throughput, CSV export | ✅ Live | *Analytics* screen |
-| 7 | **RFID Hardware Integration** — no-reader demo mode live; real readers pending hardware | 🔄 In Progress | Phase 4 |
+| 7 | **RFID Hardware Integration** — no-reader demo mode and lookup hardening live; real readers pending hardware | 🔄 In Progress | Phase 4 |
 | 8 | **Role-Based Access & Multi-Entity** — role-scoped screens, multi-company, biometric | 🔲 Planned | Phase 6 |
 | 9 | **Additional ERP Connectors** — Zoho, SAP B1, NetSuite, Dynamics 365 | 💡 Idea | Phase 7 |
-| 10 | **Power-User Experience** — command palette, print labels, batch RFID count, push notifications | 💡 Idea | Phase 8 |
+| 10 | **Power-User Experience** — label printing live; command palette, batch RFID count, and push notifications under consideration | 🔄 In Progress | Phase 8 / 10 |
 
 Legend: ✅ shipped on `main` · 🔲 scoped, not yet started · 💡 under consideration.
 
@@ -56,9 +56,26 @@ An operator opens the app, searches for an item by name or scans its barcode, se
 
 **Batch, serial, lot, and expiry support** uses standard ERPNext **Batch** and **Serial No** records. In BUDE, "lot" means ERPNext Batch; mobile receipt, transfer, count, and Sales Order dispatch payloads carry optional tracking allocations that sync offline-first.
 
+**Label printing V1** generates item, bin/location, pallet, and receipt labels without custom DocTypes. Operators can open the *Labels* screen, print/share PDF labels, or export ZPL for thermal label printers. Item detail, warehouse locations, receipt queued confirmations, and receipt rows in the sync queue can launch label printing with the relevant local payload.
+
+**Approval and audit controls V1** route high-variance counts and high-quantity transfers into the existing pending-approval queue. A Stock Manager must approve with second-user credentials before sync, and the audit trail records approval reason, approver, approval time, operation summary, retry/error state, and ERP links when available.
+
+**Guided warehouse task queue V1** turns open Purchase Orders, Sales Orders, Asset Maintenance Logs, and supported Frappe ToDo assignments into a mobile *Tasks* queue. Operators can filter assigned work, open the right receipt/fulfillment/maintenance workflow, and let the offline sync queue close related ToDos after successful ERP sync.
+
 **Bulk scan sessions** let operators scan multiple items continuously before committing: the camera viewfinder stays open, duplicates increment quantity, and the operator edits counts inline before hitting *Use N items* to pass the list to any operation screen.
 
 **Offline-first sync queue** (Hive) stores every pending operation locally. The `SyncEngine` retries on connectivity restore. The *Pending Queue* screen shows status, errors, and lets operators retry or discard individual operations.
+
+**Phase 9 hardening status**
+
+- **Item lookup hardening is done.** The lookup flow keeps `Read RFID` visible even when no reader is available, shows an inline reader-unavailable error, resolves manual input, barcode handoff, and RFID EPC reads, supports demo RFID mode, maps network failures to retryable offline UI, and covers bind-then-resolve behavior in tests.
+- **Stock transfer hardening is done.** The queue-first transfer flow has golden-flow coverage for scan-session handoff, duplicate scan quantity merge, inline quantity editing, source/target validation, warehouse-load failure, empty-lines state, failed sync retry, and queued payload shape including company, locations, and tracking allocations.
+- **Goods receipt hardening is done.** The receipt flow has golden-flow coverage for free and PO-backed receipt payloads, scan-session handoff, duplicate quantity merge, inline quantity editing, target warehouse requirement, warehouse and PO load failures, empty-lines state, failed sync retry, and queued payload shape including company, location, PO, quantities, and tracking allocations.
+- **Stock reconciliation hardening is done.** The count flow has golden-flow coverage for warehouse-required state, scan-session handoff, expected quantity and variance display, duplicate quantity merge, inline count editing, supervisor approval promotion, empty/error states, failed sync retry, and queued payload shape including company, location, quantities, and tracking allocations.
+- **Label printing V1 is done.** The app now has `/labels`, request builders, PDF and ZPL generation, quantity/size/format controls, pallet ID generation, item/bin/pallet/receipt forms, and tests for generators, validation, route extras, and launch points from item detail, warehouse locations, receipt queue snackbar, and pending queue receipt rows.
+- **Approval and audit controls V1 is done.** Transfer and count approval thresholds live in Settings, pending approvals reuse the existing supervisor route, approvals add `approved_by` and `approved_at` metadata, and audit summaries expose approval reasons, quantities, locations, tracking, status, retry errors, and ERP links.
+- **Backend permission hardening is done.** Stock execution endpoints now require ERPNext stock roles, permission failures return a clean `PERMISSION_DENIED` envelope, and mobile-facing backend reads use permission-aware Frappe APIs instead of bypassing document permissions.
+- **Guided warehouse task queue is done.** Backend task aggregation uses permission-aware ERPNext/Frappe reads for Purchase Orders, Sales Orders, Asset Maintenance Logs, and supported ToDos; mobile `/tasks` groups and filters work, launches existing queue-first workflows, and closes standard ToDos only after the related sync operation succeeds.
 
 ---
 
@@ -150,6 +167,7 @@ All hardware-specific code lives in `lib/core/hardware/vendors/`. Business code 
 | `stock` | `create_transfer`, `create_receipt`, `create_reconciliation` |
 | `purchase_orders` | `list_open` |
 | `analytics` | `get_stock_aging`, `get_reconciliation_history` |
+| `warehouse_tasks` | `list_open`, `complete` — mobile task queue aggregation and ToDo completion |
 | `branding` | `get` — feature flags from installed apps |
 | `health` | `ping` — version probe |
 
