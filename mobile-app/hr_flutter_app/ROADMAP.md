@@ -153,7 +153,7 @@ Acceptance checks:
 - [x] Add notifications shortcut.
 - [x] Add manager section placeholder for eligible roles only.
 - [x] Add refresh action.
-- [ ] Add dashboard loading skeleton.
+- [x] Add dashboard loading skeleton. ✓ LoadingSkeleton component with placeholder cards.
 - [x] Add dashboard empty state for missing HR data.
 - [x] Add dashboard error state with retry.
 - [x] Add widget test for normal employee dashboard.
