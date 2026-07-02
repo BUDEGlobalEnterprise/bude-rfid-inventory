@@ -243,12 +243,12 @@ Acceptance checks:
 
 - [x] Add backend endpoint for expense type list.
 - [x] Add backend endpoint for expense claim detail.
-- [ ] Add backend endpoint for expense attachment upload.
+- [x] Add backend endpoint for expense attachment upload. ✓ `upload_expense_attachment` + `expense_attachments`, owned-claim scoped, type/size validated.
 - [x] Add Flutter model for expense types.
 - [x] Add Flutter model for expense claim detail.
 - [x] Add repository method for expense types.
 - [x] Add repository method for expense detail.
-- [ ] Add repository method for attachment upload.
+- [x] Add repository method for attachment upload. ✓ `ExpenseRepository.uploadAttachment`.
 - [x] Add expense type picker.
 - [x] Add expense date field.
 - [x] Add amount validation.
@@ -315,7 +315,7 @@ Acceptance checks:
 - [ ] Add profile update status list.
 - [x] Add empty state for no documents.
 - [x] Add model parsing tests for profile details and employee documents.
-- [ ] Add widget test for profile detail sections.
+- [x] Add widget test for profile detail sections. ✓ Sections, documents, empty and missing states.
 - [x] Add backend tests for profile and document permission safety.
 
 Acceptance checks:
@@ -357,7 +357,7 @@ Acceptance checks:
 - [x] Add backend endpoint for pending expense approvals.
 - [x] Add backend endpoint for approve/reject leave.
 - [x] Add backend endpoint for approve/reject expense.
-- [ ] Add backend endpoint for team attendance exceptions.
+- [x] Add backend endpoint for team attendance exceptions. ✓ `manager_team_attendance_exceptions`, scoped to direct reports.
 - [x] Add mobile manager dashboard.
 - [x] Add direct reports screen.
 - [x] Add pending leave approvals screen.

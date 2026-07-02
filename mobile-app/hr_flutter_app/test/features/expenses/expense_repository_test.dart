@@ -70,6 +70,44 @@ void main() {
     expect(error, isNull);
     expect(await repository.pendingDrafts(), isEmpty);
   });
+
+  test('uploadAttachment returns the stored file url', () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = ExpenseRepository(
+      _RespondingApiClient(
+        ok: true,
+        responseData: {'file_url': '/private/files/receipt.jpg'},
+      ),
+      _FixedSessionStore(session),
+      PendingOperationsQueue(),
+    );
+
+    final url = await repository.uploadAttachment(
+      claimName: 'EXP-001',
+      fileName: 'receipt.jpg',
+      contentBase64: 'aGVsbG8=',
+    );
+
+    expect(url, '/private/files/receipt.jpg');
+  });
+
+  test('uploadAttachment throws when the backend rejects it', () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = ExpenseRepository(
+      _RespondingApiClient(ok: false),
+      _FixedSessionStore(session),
+      PendingOperationsQueue(),
+    );
+
+    expect(
+      repository.uploadAttachment(
+        claimName: 'EXP-001',
+        fileName: 'receipt.jpg',
+        contentBase64: 'aGVsbG8=',
+      ),
+      throwsException,
+    );
+  });
 }
 
 class _FixedSessionStore extends SecureSessionStore {
@@ -88,10 +126,11 @@ class _FixedSessionStore extends SecureSessionStore {
 }
 
 class _RespondingApiClient extends HrApiClient {
-  _RespondingApiClient({required this.ok})
+  _RespondingApiClient({required this.ok, this.responseData})
       : super(_FixedSessionStore(_dummySession));
 
   final bool ok;
+  final Map<String, dynamic>? responseData;
 
   static const _dummySession = HrSession(
     baseUrl: 'https://erp.example.com',
@@ -108,6 +147,8 @@ class _RespondingApiClient extends HrApiClient {
     String path, {
     Map<String, dynamic>? data,
   }) async {
-    return ok ? {'ok': true} : {'ok': false, 'message': 'Server error.'};
+    return ok
+        ? {'ok': true, if (responseData != null) 'data': responseData}
+        : {'ok': false, 'message': 'Server error.'};
   }
 }

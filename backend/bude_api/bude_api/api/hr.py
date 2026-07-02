@@ -5,6 +5,8 @@ clean-room implementation inspired by common ESS flows, not copied from the
 reference HR apps in the repository.
 """
 
+from datetime import date, timedelta
+
 try:
     import frappe
 except ImportError:
@@ -523,6 +525,93 @@ def expense_claim_detail(name: str) -> dict:
     })
 
 
+# Receipt uploads: images and PDFs only, ~5MB decoded.
+ATTACHMENT_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "heic", "pdf"}
+MAX_ATTACHMENT_BASE64_LENGTH = 7_000_000
+
+
+def _owned_expense_claim(name: str) -> tuple[dict | None, dict | None]:
+    employee, error = _employee_or_failure()
+    if error:
+        return None, error
+    rows = frappe.get_list(
+        "Expense Claim",
+        filters=[["name", "=", name], ["employee", "=", employee["name"]]],
+        fields=["name"],
+        limit_page_length=1,
+    )
+    if not rows:
+        return None, failure("Expense claim not found.", code="HR_EXPENSE_NOT_FOUND")
+    return rows[0], None
+
+
+@_whitelist(["POST"])
+def upload_expense_attachment(
+    claim_name: str,
+    file_name: str,
+    content_base64: str,
+) -> dict:
+    extension = (file_name or "").rsplit(".", 1)[-1].lower()
+    if not file_name or "." not in file_name or extension not in ATTACHMENT_EXTENSIONS:
+        return failure(
+            "A receipt file name ending in jpg, jpeg, png, webp, heic, or pdf is required.",
+            code="VALIDATION_REQUIRED",
+        )
+    if not content_base64 or len(content_base64) > MAX_ATTACHMENT_BASE64_LENGTH:
+        return failure(
+            "Attachment content is missing or larger than 5MB.",
+            code="VALIDATION_REQUIRED",
+        )
+    claim, error = _owned_expense_claim(claim_name)
+    if error:
+        return error
+    try:
+        doc = frappe.get_doc({
+            "doctype": "File",
+            "file_name": file_name,
+            "attached_to_doctype": "Expense Claim",
+            "attached_to_name": claim["name"],
+            "is_private": 1,
+            "content": content_base64,
+            "decode": True,
+        })
+        doc.insert(ignore_permissions=False)
+        frappe.db.commit()
+    except frappe.PermissionError:
+        frappe.db.rollback()
+        return failure("You do not have permission for this action.", code="PERMISSION_DENIED")
+    except frappe.ValidationError as exc:
+        frappe.db.rollback()
+        return failure(str(exc), code="VALIDATION_ERPNEXT")
+    return success({"name": doc.name, "file_url": doc.get("file_url") or ""})
+
+
+@_whitelist(["GET", "POST"])
+def expense_attachments(claim_name: str, limit: int = 20) -> dict:
+    claim, error = _owned_expense_claim(claim_name)
+    if error:
+        return error
+    rows = frappe.get_list(
+        "File",
+        filters=[
+            ["attached_to_doctype", "=", "Expense Claim"],
+            ["attached_to_name", "=", claim["name"]],
+        ],
+        fields=["name", "file_name", "file_url", "is_private"],
+        order_by="creation desc",
+        limit_page_length=max(1, min(int(limit), 50)),
+    )
+    return success([
+        {
+            "name": row.get("name"),
+            "file_name": row.get("file_name") or "",
+            "file_url": row.get("file_url") or "",
+            "is_private": bool(row.get("is_private")),
+        }
+        for row in rows
+    ])
+
+
 @_whitelist(["GET", "POST"])
 def salary_slips(limit: int = 24) -> dict:
     employee, error = _employee_or_failure()
@@ -841,6 +930,55 @@ def manager_direct_reports(limit: int = 100) -> dict:
             "designation": row.get("designation") or "",
             "company_email": row.get("company_email") or "",
             "cell_number": row.get("cell_number") or "",
+        }
+        for row in rows
+    ])
+
+
+@_whitelist(["GET", "POST"])
+def manager_team_attendance_exceptions(days: int = 7, limit: int = 100) -> dict:
+    """Absent / half-day / on-leave attendance for direct reports."""
+    denied = _require_manager()
+    if denied:
+        return denied
+    manager = _current_employee()
+    if not manager:
+        return failure(
+            "No active Employee record is linked to this user.",
+            code="HR_EMPLOYEE_NOT_FOUND",
+        )
+    reports = frappe.get_list(
+        "Employee",
+        filters=[
+            ["reports_to", "=", manager["name"]],
+            ["status", "=", "Active"],
+        ],
+        fields=["name"],
+        limit_page_length=200,
+    )
+    if not reports:
+        return success([])
+    window_days = max(1, min(int(days), 60))
+    cutoff = (date.today() - timedelta(days=window_days)).isoformat()
+    rows = frappe.get_list(
+        "Attendance",
+        filters=[
+            ["employee", "in", [row["name"] for row in reports]],
+            ["status", "in", ["Absent", "Half Day", "On Leave"]],
+            ["attendance_date", ">=", cutoff],
+            ["docstatus", "=", 1],
+        ],
+        fields=["name", "employee", "employee_name", "attendance_date", "status"],
+        order_by="attendance_date desc",
+        limit_page_length=max(1, min(int(limit), 200)),
+    )
+    return success([
+        {
+            "name": row.get("name"),
+            "employee": row.get("employee"),
+            "employee_name": row.get("employee_name") or "",
+            "attendance_date": str(row.get("attendance_date") or ""),
+            "status": row.get("status") or "",
         }
         for row in rows
     ])

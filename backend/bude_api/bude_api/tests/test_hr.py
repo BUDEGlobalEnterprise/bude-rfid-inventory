@@ -546,6 +546,8 @@ _HR_ENDPOINTS = [
     ("expense_types", (), {}),
     ("expense_claim_detail", ("EXP-001",), {}),
     ("submit_expense_claim", ("Travel", 10), {}),
+    ("upload_expense_attachment", ("EXP-001", "receipt.jpg", "aGVsbG8="), {}),
+    ("expense_attachments", ("EXP-001",), {}),
     ("salary_slips", (), {}),
     ("salary_slip_detail", ("SAL-001",), {}),
     ("salary_slip_pdf_url", ("SAL-001",), {}),
@@ -556,6 +558,7 @@ _HR_ENDPOINTS = [
     ("manager_pending_expenses", (), {}),
     ("manager_summary", (), {}),
     ("manager_direct_reports", (), {}),
+    ("manager_team_attendance_exceptions", (), {}),
     ("decide_leave", ("LV-001", True), {}),
     ("decide_expense", ("EXP-001", True), {}),
 ]
@@ -579,6 +582,7 @@ _MANAGER_ENDPOINTS = [
     ("manager_pending_leaves", (), {}),
     ("manager_pending_expenses", (), {}),
     ("manager_summary", (), {}),
+    ("manager_team_attendance_exceptions", (), {}),
     ("decide_leave", ("LV-001", True), {}),
     ("decide_expense", ("EXP-001", True), {}),
 ]
@@ -661,3 +665,129 @@ def test_decide_expense_hides_unassigned_claim(mock_frappe):
     assert result["ok"] is False
     assert result["code"] == "HR_APPROVAL_NOT_FOUND"
     mock_frappe.get_doc.assert_not_called()
+
+
+@patch("bude_api.api.hr.frappe")
+def test_upload_expense_attachment_rejects_bad_extension(mock_frappe):
+    _wire(mock_frappe)
+
+    result = hr_api.upload_expense_attachment("EXP-001", "malware.exe", "aGVsbG8=")
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_REQUIRED"
+    mock_frappe.get_doc.assert_not_called()
+
+
+@patch("bude_api.api.hr.frappe")
+def test_upload_expense_attachment_rejects_oversized_content(mock_frappe):
+    _wire(mock_frappe)
+    oversized = "a" * (hr_api.MAX_ATTACHMENT_BASE64_LENGTH + 1)
+
+    result = hr_api.upload_expense_attachment("EXP-001", "receipt.jpg", oversized)
+
+    assert result["ok"] is False
+    assert result["code"] == "VALIDATION_REQUIRED"
+    mock_frappe.get_doc.assert_not_called()
+
+
+@patch("bude_api.api.hr.frappe")
+def test_upload_expense_attachment_hides_foreign_claim(mock_frappe):
+    _wire(mock_frappe)
+    mock_frappe.get_list.side_effect = [
+        [_employee()],
+        [],
+    ]
+
+    result = hr_api.upload_expense_attachment("EXP-999", "receipt.jpg", "aGVsbG8=")
+
+    assert result["ok"] is False
+    assert result["code"] == "HR_EXPENSE_NOT_FOUND"
+    mock_frappe.get_doc.assert_not_called()
+
+
+@patch("bude_api.api.hr.frappe")
+def test_upload_expense_attachment_creates_private_file(mock_frappe):
+    _wire(mock_frappe)
+    mock_frappe.get_list.side_effect = [
+        [_employee()],
+        [{"name": "EXP-001"}],
+    ]
+    doc = MagicMock()
+    doc.name = "FILE-001"
+    doc.get.return_value = "/private/files/receipt.jpg"
+    mock_frappe.get_doc.return_value = doc
+
+    result = hr_api.upload_expense_attachment("EXP-001", "receipt.jpg", "aGVsbG8=")
+
+    assert result["ok"] is True
+    assert result["data"]["file_url"] == "/private/files/receipt.jpg"
+    payload = mock_frappe.get_doc.call_args.args[0]
+    assert payload["doctype"] == "File"
+    assert payload["attached_to_doctype"] == "Expense Claim"
+    assert payload["attached_to_name"] == "EXP-001"
+    assert payload["is_private"] == 1
+    assert payload["decode"] is True
+    doc.insert.assert_called_once_with(ignore_permissions=False)
+
+
+@patch("bude_api.api.hr.frappe")
+def test_expense_attachments_scoped_to_owned_claim(mock_frappe):
+    _wire(mock_frappe)
+    mock_frappe.get_list.side_effect = [
+        [_employee()],
+        [{"name": "EXP-001"}],
+        [{
+            "name": "FILE-001",
+            "file_name": "receipt.jpg",
+            "file_url": "/private/files/receipt.jpg",
+            "is_private": 1,
+        }],
+    ]
+
+    result = hr_api.expense_attachments("EXP-001")
+
+    assert result["ok"] is True
+    assert result["data"][0]["file_name"] == "receipt.jpg"
+    assert result["data"][0]["is_private"] is True
+    _, kwargs = mock_frappe.get_list.call_args
+    assert ["attached_to_name", "=", "EXP-001"] in kwargs["filters"]
+
+
+@patch("bude_api.api.hr.frappe")
+def test_manager_team_attendance_exceptions_scoped_to_reports(mock_frappe):
+    _wire(mock_frappe, roles=["HR Manager"])
+    mock_frappe.get_list.side_effect = [
+        [_employee()],
+        [{"name": "EMP-002"}, {"name": "EMP-003"}],
+        [{
+            "name": "ATT-001",
+            "employee": "EMP-002",
+            "employee_name": "Bob",
+            "attendance_date": "2026-07-01",
+            "status": "Absent",
+        }],
+    ]
+
+    result = hr_api.manager_team_attendance_exceptions()
+
+    assert result["ok"] is True
+    assert result["data"][0]["status"] == "Absent"
+    _, kwargs = mock_frappe.get_list.call_args
+    assert ["employee", "in", ["EMP-002", "EMP-003"]] in kwargs["filters"]
+    assert ["status", "in", ["Absent", "Half Day", "On Leave"]] in kwargs["filters"]
+
+
+@patch("bude_api.api.hr.frappe")
+def test_manager_team_attendance_exceptions_empty_without_reports(mock_frappe):
+    _wire(mock_frappe, roles=["HR Manager"])
+    mock_frappe.get_list.side_effect = [
+        [_employee()],
+        [],
+    ]
+
+    result = hr_api.manager_team_attendance_exceptions()
+
+    assert result["ok"] is True
+    assert result["data"] == []
+    # No Attendance query should run when there are no direct reports.
+    assert mock_frappe.get_list.call_count == 2

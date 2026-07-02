@@ -20,6 +20,8 @@ class HrApiEndpoints {
       '/api/method/bude_api.api.hr.expense_claim_detail';
   static const submitExpenseClaim =
       '/api/method/bude_api.api.hr.submit_expense_claim';
+  static const uploadExpenseAttachment =
+      '/api/method/bude_api.api.hr.upload_expense_attachment';
   static const salarySlips = '/api/method/bude_api.api.hr.salary_slips';
   static const salarySlipDetail =
       '/api/method/bude_api.api.hr.salary_slip_detail';

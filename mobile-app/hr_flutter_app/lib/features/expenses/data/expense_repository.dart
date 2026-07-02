@@ -85,6 +85,34 @@ class ExpenseRepository {
     }
   }
 
+  /// Uploads a base64-encoded receipt to an owned claim and returns the
+  /// stored file URL. Callers convert picked files to base64.
+  Future<String> uploadAttachment({
+    required String claimName,
+    required String fileName,
+    required String contentBase64,
+  }) async {
+    final session = await _sessionStore.read();
+    if (session == null) throw StateError('Not signed in.');
+    final response = await _client.post(
+      session.baseUrl,
+      HrApiEndpoints.uploadExpenseAttachment,
+      data: {
+        'claim_name': claimName,
+        'file_name': fileName,
+        'content_base64': contentBase64,
+      },
+    );
+    final envelope = ApiEnvelope<Map<String, dynamic>>.fromJson(
+      response,
+      (value) => Map<String, dynamic>.from(value as Map? ?? const {}),
+    );
+    if (!envelope.ok) {
+      throw Exception(envelope.message ?? 'Unable to upload attachment.');
+    }
+    return envelope.data?['file_url'] as String? ?? '';
+  }
+
   Future<List<PendingHrOperation>> pendingDrafts() =>
       _queue.readByType(PendingOperationType.expenseDraft);
 
