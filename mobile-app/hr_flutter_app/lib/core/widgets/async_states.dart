@@ -49,3 +49,58 @@ class ErrorRetry extends StatelessWidget {
     );
   }
 }
+
+/// Loading skeleton placeholder mimicking dashboard card layout.
+class LoadingSkeleton extends StatelessWidget {
+  const LoadingSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.surfaceContainerHighest;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(height: 24, width: 200, color: color),
+        const SizedBox(height: 16),
+        _SkeletonCard(),
+        const SizedBox(height: 12),
+        _SkeletonCard(),
+        const SizedBox(height: 12),
+        _SkeletonCard(),
+        const SizedBox(height: 12),
+        _SkeletonCard(),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: List.filled(
+            6,
+            Container(width: 160, height: 112, color: color),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SkeletonCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.surfaceContainerHighest;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(height: 16, width: 150, color: color),
+            const SizedBox(height: 12),
+            Container(height: 12, width: double.infinity, color: color),
+            const SizedBox(height: 4),
+            Container(height: 12, width: 200, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+}
