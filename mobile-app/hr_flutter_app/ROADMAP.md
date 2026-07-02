@@ -288,8 +288,8 @@ Acceptance checks:
 - [ ] Add download action.
 - [ ] Add share action.
 - [ ] Avoid long-term unencrypted storage of salary PDFs.
-- [ ] Add widget test for salary list.
-- [ ] Add widget test for permission denied state.
+- [x] Add widget test for salary list. ✓ Renders list, empty, and error states.
+- [x] Add widget test for permission denied state. ✓ Tests error handling.
 - [x] Add backend tests for permission-safe salary list and detail reads.
 
 Acceptance checks:
@@ -339,7 +339,7 @@ Acceptance checks:
 - [x] Add empty state for no notifications.
 - [x] Add failed load retry.
 - [ ] Add push notification groundwork after notification routing is stable.
-- [ ] Add widget test for notifications list.
+- [x] Add widget test for notifications list. ✓ Tests list, empty, error, and styling.
 - [x] Add backend tests for notification list/detail/read state.
 
 Acceptance checks:
