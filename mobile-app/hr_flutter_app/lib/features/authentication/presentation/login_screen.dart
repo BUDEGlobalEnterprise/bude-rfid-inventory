@@ -46,6 +46,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 32),
                   TextField(
                     controller: _baseUrl,
+                    keyboardType: TextInputType.url,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'ERPNext URL',
                       prefixIcon: Icon(Icons.link),
@@ -54,6 +56,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: _username,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Email or username',
                       prefixIcon: Icon(Icons.person_outline),
@@ -63,6 +67,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextField(
                     controller: _password,
                     obscureText: true,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) =>
+                        ref.read(authControllerProvider.notifier).login(
+                              _baseUrl.text,
+                              _username.text,
+                              _password.text,
+                            ),
                     decoration: const InputDecoration(
                       labelText: 'Password',
                       prefixIcon: Icon(Icons.lock_outline),

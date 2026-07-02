@@ -34,3 +34,47 @@ flutter run
 
 Flutter was not available in the implementation environment, so run the above
 commands locally before release work.
+
+## Versioning
+
+Use semantic app versions with monotonically increasing build numbers:
+
+```text
+version: <major>.<minor>.<patch>+<build>
+```
+
+Examples:
+
+- `0.1.0+1` for the first internal build
+- `0.1.1+2` for a patch build
+- `0.2.0+3` for the next feature build
+
+Update `pubspec.yaml` before every APK/AAB submitted to internal testing or
+Play Store review.
+
+## Android Signing
+
+The Android release build currently uses the debug signing config as a
+placeholder in `android/app/build.gradle.kts`. Before any production or Play
+Store release:
+
+- create a Bude HR upload keystore
+- store keystore credentials outside git
+- wire release signing through Gradle properties or CI secrets
+- verify `flutter build appbundle --release` uses the release signing config
+
+Never commit keystore files or signing passwords.
+
+## Release Build
+
+Android is the first production target:
+
+```bash
+flutter pub get
+flutter analyze
+flutter test
+flutter build apk --debug
+flutter build appbundle --release
+```
+
+Run these from `mobile-app/hr_flutter_app` with Flutter installed.

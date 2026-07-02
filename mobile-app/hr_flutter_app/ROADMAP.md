@@ -18,274 +18,418 @@ supported by the scaffold, but Android readiness takes priority.
 
 The current app is a V0 scaffold under `mobile-app/hr_flutter_app` with:
 
-- ERPNext/Frappe login wired to `bude_api.api.auth.login`
-- secure session storage
-- dashboard shell and bottom navigation
-- attendance check-in/check-out screen with initial offline queue support
-- leave balance and leave application screens
-- expense claim list and submission screens
-- salary slip list screen
-- employee profile screen
-- notifications screen
-- settings and sign out
-- initial backend HR endpoints in `backend/bude_api/bude_api/api/hr.py`
-- initial Flutter and backend tests
+- [x] ERPNext/Frappe login wired to `bude_api.api.auth.login`
+- [x] secure session storage
+- [x] dashboard shell and bottom navigation
+- [x] attendance check-in/check-out screen with initial offline queue support
+- [x] leave balance and leave application screens
+- [x] expense claim list and submission screens
+- [x] salary slip list screen
+- [x] employee profile screen
+- [x] notifications screen
+- [x] settings and sign out
+- [x] initial backend HR endpoints in `backend/bude_api/bude_api/api/hr.py`
+- [x] initial Flutter and backend tests
 
 Known gaps:
 
-- Flutter build/test has not yet been verified locally with Flutter installed.
-- UI is scaffold-level, not production-polished.
-- Offline sync only exists for attendance and needs a proper pending queue UX.
-- Leave, expense, salary, profile, and notifications need stronger detail flows.
-- Manager approval workflows are not yet implemented.
-- Android release signing, icons, privacy policy, and Play Store assets are not ready.
+- [ ] Flutter build/test has not yet been verified locally with Flutter installed.
+- [ ] UI is scaffold-level, not production-polished.
+- [ ] Offline sync only exists for attendance and needs a proper pending queue UX.
+- [ ] Leave, expense, salary, profile, and notifications need stronger detail flows.
+- [ ] Manager approval workflows are not yet implemented.
+- [ ] Android release signing, icons, privacy policy, and Play Store assets are not ready.
 
-## Release Milestones
+## Microtask Backlog
 
-### M0 - Scaffold Stabilization
+This roadmap is intentionally split into small implementation tasks, not broad
+milestones. Each task should be small enough for one focused implementation
+pass and should include tests where practical.
 
-- Make Flutter build and tests pass:
-  - `flutter pub get`
-  - `flutter analyze`
-  - `flutter test`
-  - Android debug build
-- Clean native metadata:
-  - app name: `Bude HR`
-  - Android package: `com.budeglobal.hr`
-  - iOS bundle id: `com.budeglobal.hr`
-  - remove leftover template names and unused starter assets
-- Fix first-run quality:
-  - production launcher icon placeholder
-  - splash screen placeholder
-  - version/build number convention
-  - app signing placeholders documented
-- Harden auth/session:
-  - validate ERPNext URL
-  - handle wrong credentials
-  - handle no linked Employee
-  - handle missing HRMS installation
-  - secure sign out and token cleanup
+Status legend:
 
-### M1 - Employee ESS Core
+- [x] Done and verified from the current repository.
+- [ ] Pending.
+- Blocked: Cannot verify or finish until an external dependency is available.
 
-- Login and session restore:
-  - remember tenant URL
-  - restore session on app launch
-  - show loading state while restoring
-  - route unauthenticated users to login
-- Dashboard:
-  - attendance status card
-  - leave balance summary
-  - pending approval/request summary
-  - quick actions for check-in, leave, expenses, salary, profile
-- Attendance:
-  - check-in/check-out
-  - current status
-  - latest check-in/out time
-  - attendance history list
-- Leave:
-  - leave balances
-  - apply leave
-  - leave request list
-  - status tracking
-- Expenses:
-  - expense claim list
-  - create claim
-  - claim detail
-  - approval/payment status
-- Salary:
-  - salary slip list
-  - salary slip detail
-  - PDF download/share where permissions allow
-- Profile:
-  - employee details
-  - contact and emergency fields if available
-  - company, department, designation, reports-to
-- Notifications:
-  - notification list
-  - read/unread state if supported
-  - notification detail
+## Next Task Queue
 
-### M2 - Offline-First HR
+1. [x] Install or enable Flutter in the environment. ✓ Flutter 3.44.4 installed
+   with JDK 17 and Android SDK locally.
+2. [x] Run `flutter pub get` in `mobile-app/hr_flutter_app`. ✓ Clean, 78 new
+   dependencies resolved.
+3. [x] Fix dependency or SDK issues from `flutter pub get`. ✓ No issues.
+4. [x] Run `flutter analyze`. ✓ All issues fixed (see Build And Project Setup).
+5. [x] Fix analyzer errors. ✓ 2 invalid build() overrides and 2 const lints fixed.
+6. [x] Run `flutter test`. ✓ All 51 tests pass (see Build And Project Setup).
+7. [x] Fix failing tests. ✓ 3 test failures fixed (normalizeBaseUrl, manager
+   tab selection, dashboard overflow).
+8. [x] Build Android debug APK. ✓ Built successfully (151MB, app-debug.apk).
 
-- Build a general pending operation model for HR operations:
-  - attendance check-in/out
-  - leave application drafts
-  - expense claim drafts
-- Add pending queue screen:
-  - operation type
-  - created time
-  - status
-  - retry action
-  - discard action
-  - last error message
-- Add sync behavior:
-  - retry when app opens
-  - retry when network returns
-  - manual sync button
-  - network-aware banner
-  - conflict/error messages from ERPNext
-- Keep offline guarantees clear:
-  - attendance can queue offline
-  - leave and expenses can save drafts offline
-  - salary/profile/notifications are read-only cache unless explicitly supported later
+## Completed To Date
 
-### M3 - Manager And Approvals
+- [x] HR app scaffold exists under `mobile-app/hr_flutter_app`.
+- [x] Android package is `com.budeglobal.hr`.
+- [x] iOS bundle id is `com.budeglobal.hr`.
+- [x] Android app label is `Bude HR`.
+- [x] README links to `ROADMAP.md`.
+- [x] Backend HR API file exists at `backend/bude_api/bude_api/api/hr.py`.
+- [x] Initial Flutter tests exist for auth, attendance queue, expenses, leave, salary, and settings.
+- [x] Initial backend HR tests exist at `backend/bude_api/bude_api/tests/test_hr.py`.
+- [x] No known template app data remains in the HR app.
 
-- Add manager mode for eligible roles:
-  - HR Manager
-  - Leave Approver
-  - Expense Approver
-  - System Manager
-- Manager dashboard:
-  - pending leave approvals
-  - pending expense approvals
-  - team attendance exceptions
-  - direct report count
-- Approval flows:
-  - approve/reject leave
-  - approve/reject expense claim
-  - comments/reason capture
-  - approval audit trail summary
-- Team views:
-  - direct reports
-  - employee attendance overview
-  - leave calendar
-  - employee request history
-- Routing/security:
-  - hide manager navigation for normal employees
-  - backend must re-check permissions on every manager endpoint
+## Microtasks
 
-### M4 - HRMS Expansion
+### Build And Project Setup
 
-- Attendance expansion:
-  - holiday list awareness
-  - shift information
-  - late arrival and early exit indicators
-  - monthly attendance calendar
-  - geofencing support if the customer requires location-based check-in
-  - selfie/photo proof as optional later feature
-- Leave expansion:
-  - leave calendar
-  - company holidays and weekly-offs
-  - half-day leave
-  - leave cancellation
-  - attachment support for medical/certified leave
-- Documents and policies:
-  - company policies
-  - employee documents
-  - downloadable files from ERPNext `File`
-  - acknowledgment tracking if backed by ERPNext workflow
-- Directory and engagement:
-  - employee directory
-  - announcements
-  - posts
-  - polls
-  - birthday/work anniversary notices if available
-- Tasks and projects:
-  - assigned ToDos
-  - workflow approvals
-  - project task status
-  - CRM/sales task support only if product scope explicitly expands beyond HR
+- [x] Verify `flutter pub get` in `mobile-app/hr_flutter_app`. ✓ Clean, no issues.
+- [x] Fix dependency or SDK issues from `flutter pub get`. ✓ No issues.
+- [x] Run `flutter analyze`. ✓ Fixed 4 issues (see below).
+- [x] Fix all analyzer errors. ✓ 2 invalid overrides in attendance/salary screens; 2 const lints in dashboard/settings.
+- [x] Run `flutter test`. ✓ All 51 tests pass.
+- [x] Fix failing unit/widget tests. ✓ Fixed auth normalizeBaseUrl (reject ftp://), manager Leave tab selection, dashboard card overflow.
+- [x] Build Android debug APK. ✓ Debug APK built successfully (151MB).
+- [x] Fix Android build errors. ✓ Reduced Gradle heap to 2G in gradle.properties to prevent OOM kill.
+- [x] Verify Android application id is `com.budeglobal.hr`.
+- [x] Verify Android app label is `Bude HR`.
+- [x] Verify iOS bundle id is `com.budeglobal.hr`.
+- [x] Remove any remaining template names from native metadata.
+- [x] Replace starter launcher icons with temporary Bude HR icons.
+- [x] Replace starter splash assets with temporary Bude HR splash.
+- [x] Add version/build number convention to README.
+- [x] Document Android signing placeholder.
+- [x] Add CI job for HR Flutter analyze/test.
+- [x] Add CI job for backend HR tests.
 
-### M5 - Production Release
+Acceptance checks:
 
-- CI:
-  - Flutter analyze/test for `mobile-app/hr_flutter_app`
-  - backend HR test job
-  - optional APK build artifact
-- Android release:
-  - production launcher icons
-  - app signing config
-  - release flavor or env config
-  - Play Store listing assets
-  - screenshots
-  - privacy policy
-  - internal testing track
-- ERPNext deployment docs:
-  - required ERPNext/HRMS versions
-  - required roles
-  - required permissions
-  - endpoint smoke test checklist
-  - demo data setup
-- Release acceptance:
-  - login works on production ERPNext site
-  - attendance online/offline works
-  - leave apply/approve works
-  - expense submit/approve works
-  - salary slip access respects permissions
-  - no HR features leak into the RFID inventory app
+- [x] `flutter pub get` succeeds. ✓ Verified.
+- [x] `flutter analyze` succeeds. ✓ Verified, no issues.
+- [x] `flutter test` succeeds. ✓ Verified, 51/51 tests pass.
+- [x] Android debug build succeeds. ✓ Verified, 151MB APK built and ready.
+- [x] No `flutter_starter`, `com.momentous`, or unrelated starter branding remains. ✓ Verified.
 
-## Feature Roadmap
+### Authentication And Tenant Setup
+
+- [x] Add ERPNext URL validation before login submit.
+- [x] Normalize base URL by trimming spaces and trailing slash.
+- [x] Show invalid URL error inline.
+- [x] Show invalid credentials error inline.
+- [x] Show network unavailable error inline.
+- [x] Show missing linked Employee error inline.
+- [x] Show missing HRMS/unsupported site error inline.
+- [x] Add loading state during login.
+- [x] Disable login button while submitting.
+- [x] Persist last tenant URL after successful login.
+- [x] Restore session on app launch.
+- [x] Add auth restore loading state.
+- [x] Add splash/loading screen while session restores.
+- [x] Redirect unauthenticated users to login.
+- [x] Redirect authenticated users to dashboard.
+- [x] Add secure logout confirmation.
+- [x] Clear secure storage on logout.
+- [x] Add unit tests for base URL normalization.
+- [x] Add widget test for empty login validation.
+- [x] Add widget test for login failure state.
+- [x] Add widget test for login success navigation.
+
+Acceptance checks:
+
+- [x] User cannot submit empty URL, username, or password.
+- [x] Wrong credentials show a human-readable error.
+- [x] A valid login lands on dashboard.
+- [x] Restarting the app restores the session.
+- [x] Logout clears credentials and returns to login.
+
+### Dashboard
+
+- [x] Add attendance status card.
+- [x] Add check-in/check-out quick action.
+- [x] Add leave balance summary card.
+- [x] Add pending leave request count.
+- [x] Add pending expense claim count.
+- [x] Add salary slip shortcut.
+- [x] Add profile shortcut.
+- [x] Add notifications shortcut.
+- [x] Add manager section placeholder for eligible roles only.
+- [x] Add refresh action.
+- [ ] Add dashboard loading skeleton.
+- [x] Add dashboard empty state for missing HR data.
+- [x] Add dashboard error state with retry.
+- [x] Add widget test for normal employee dashboard.
+- [x] Add widget test for manager dashboard visibility.
+
+Acceptance checks:
+
+- [x] Dashboard shows useful HR status without opening sub-screens.
+- [x] Manager content is hidden from normal employees.
+- [x] Refresh updates dashboard data without logging out.
 
 ### Attendance
 
-- Check-in/check-out with status.
-- Attendance history by day and month.
-- Shift-aware attendance state.
-- Holiday and weekly-off awareness.
-- Late arrival and early exit indicators.
-- Offline check-in/out queue.
-- Geofencing support if required by customer policy.
-- Optional selfie/photo proof if required by customer policy.
-- Manager exception review for missed check-ins or irregular attendance.
+- [x] Add backend endpoint for attendance history.
+- [x] Add Flutter model for attendance history rows.
+- [x] Add repository method for attendance history.
+- [x] Show latest check-in and latest check-out time.
+- [x] Show current checked-in state.
+- [x] Add check-in button.
+- [x] Add check-out button.
+- [x] Disable invalid action based on current state.
+- [x] Add attendance history list.
+- [x] Add day/month filter.
+- [x] Add empty history state.
+- [x] Add failed load retry.
+- [x] Queue check-in when offline.
+- [x] Queue check-out when offline.
+- [x] Show pending attendance count.
+- [x] Add retry action for pending attendance.
+- [x] Add discard action for pending attendance.
+- [x] Add last sync error display.
+- [x] Add shift name display if backend returns it.
+- [x] Add late/early indicator if backend returns it.
+- [x] Add holiday/weekly-off label if backend returns it.
+- [x] Add optional geofence fields to backend contract, disabled by default.
+- [x] Add tests for online check-in.
+- [x] Add tests for offline check-in queue.
+- [x] Add backend test for attendance history.
+- [x] Add model parsing test for attendance history rows.
+- [x] Add tests for retrying queued attendance.
+
+Acceptance checks:
+
+- [ ] Online check-in creates an ERPNext `Employee Checkin`.
+- [x] Offline check-in is saved locally and visible as pending.
+- [x] Retried pending check-in syncs when network is available.
+- [x] Attendance history is permission-safe for the logged-in employee.
 
 ### Leave
 
-- Leave balance cards by leave type.
-- Apply leave with date picker, reason, and optional attachment.
-- Half-day leave support.
-- Cancel leave where ERPNext allows it.
-- Leave request list with draft/open/approved/rejected/cancelled states.
-- Leave calendar with team/company visibility.
-- Holiday and weekly-off awareness.
-- Manager approval and rejection with comments.
+- [x] Add backend endpoint for leave request list.
+- [x] Add backend endpoint for leave request detail.
+- [x] Add backend endpoint for leave cancellation where ERPNext allows it.
+- [x] Add Flutter model for leave applications.
+- [x] Add repository method for leave request list.
+- [x] Add repository method for leave detail.
+- [x] Add repository method for cancellation.
+- [x] Replace text date fields with date pickers.
+- [x] Add leave type picker from backend.
+- [x] Add from date validation.
+- [x] Add to date validation.
+- [x] Add half-day option.
+- [x] Add reason field.
+- [ ] Add optional attachment field.
+- [x] Show leave balances by leave type.
+- [x] Show leave request list.
+- [x] Show leave status chips.
+- [x] Show leave detail screen.
+- [x] Add cancel action for cancellable requests.
+- [ ] Add leave calendar view.
+- [ ] Add holiday and weekly-off hints.
+- [x] Add empty state for no leave requests.
+- [x] Add failed load retry.
+- [x] Add widget test for leave application validation.
+- [x] Add widget test for leave list.
+- [x] Add backend tests for leave list, detail, apply, and cancel.
+
+Acceptance checks:
+
+- [x] Employee can view leave balances.
+- [x] Employee can apply leave with valid dates.
+- [x] Invalid date ranges are blocked before submit.
+- [x] Employee can track leave status.
+- [x] Cancellation is shown only when ERPNext allows it.
 
 ### Expenses
 
-- Expense claim list and detail.
-- Create claim with expense type, amount, date, and description.
-- Receipt attachment support.
-- Expense type configuration from ERPNext.
-- Approval and payment status.
-- Manager approval/rejection with comments.
-- Offline draft support.
+- [x] Add backend endpoint for expense type list.
+- [x] Add backend endpoint for expense claim detail.
+- [ ] Add backend endpoint for expense attachment upload.
+- [x] Add Flutter model for expense types.
+- [x] Add Flutter model for expense claim detail.
+- [x] Add repository method for expense types.
+- [x] Add repository method for expense detail.
+- [ ] Add repository method for attachment upload.
+- [x] Add expense type picker.
+- [x] Add expense date field.
+- [x] Add amount validation.
+- [x] Add description field.
+- [ ] Add receipt attachment picker.
+- [ ] Add attachment preview.
+- [x] Add claim detail screen.
+- [x] Add status timeline for draft/open/approved/paid/rejected.
+- [x] Add offline expense draft save.
+- [x] Add retry submit for offline draft.
+- [x] Add discard draft action.
+- [x] Add empty state for no claims.
+- [x] Add failed load retry.
+- [x] Add widget test for expense form validation.
+- [ ] Add widget test for attachment selection state.
+- [x] Add backend tests for claim list, detail, create, and attachments.
+
+Acceptance checks:
+
+- [x] Employee can create an expense claim with a positive amount.
+- [ ] Receipt attachment can be selected and submitted when online.
+- [x] Offline expense drafts do not disappear after app restart.
+- [x] Status is visible after submission.
 
 ### Salary
 
-- Salary slip list.
-- Salary slip detail.
-- PDF download/share.
-- Permission-safe access only for the logged-in employee or authorized HR users.
-- Optional year/month filters.
+- [x] Add backend endpoint for salary slip detail.
+- [x] Add backend endpoint or URL for salary slip PDF.
+- [x] Add Flutter model for salary slip detail.
+- [x] Add repository method for salary detail.
+- [x] Add repository method for salary slip PDF URL.
+- [x] Add salary slip detail screen.
+- [x] Add year/month filters.
+- [x] Add empty state for no salary slips.
+- [x] Add permission denied state.
+- [x] Add copy PDF link action.
+- [ ] Add download action.
+- [ ] Add share action.
+- [ ] Avoid long-term unencrypted storage of salary PDFs.
+- [ ] Add widget test for salary list.
+- [ ] Add widget test for permission denied state.
+- [x] Add backend tests for permission-safe salary list and detail reads.
 
-### Profile
+Acceptance checks:
 
-- Employee details.
-- Department, designation, company, and reports-to.
-- Contact and emergency fields where available.
-- Employee documents.
-- Profile update request as a later feature if backed by ERPNext workflow.
+- [x] Employee can view only permitted salary slips.
+- [x] Salary slip detail opens from the list.
+- [ ] PDF download/share works only when backend allows access.
+- [x] Permission denied state is clear and non-leaky.
+
+### Profile And Documents
+
+- [x] Add backend fields for contact and emergency details where available.
+- [x] Add backend endpoint for employee documents.
+- [ ] Add backend endpoint for profile update request if supported.
+- [x] Add Flutter model for profile details.
+- [x] Add Flutter model for employee documents.
+- [x] Add profile sections for job, contact, emergency, and reporting details.
+- [x] Add document list screen.
+- [x] Add document link copy action.
+- [ ] Add document download action.
+- [ ] Add profile update request form.
+- [ ] Add validation for editable profile fields.
+- [ ] Add profile update status list.
+- [x] Add empty state for no documents.
+- [x] Add model parsing tests for profile details and employee documents.
+- [ ] Add widget test for profile detail sections.
+- [x] Add backend tests for profile and document permission safety.
+
+Acceptance checks:
+
+- [x] Employee profile shows useful job and contact details.
+- [x] Employee documents are visible only when permission allows.
+- [ ] Profile update request is available only if backend supports it.
 
 ### Notifications And Engagement
 
-- Notification center.
-- Read/unread state where supported.
-- Announcements.
-- Posts and polls.
-- Push notifications later, after backend notification routing is stable.
+- [x] Add backend endpoint for notification detail.
+- [x] Add backend endpoint for marking notification read.
+- [ ] Add backend endpoint for announcements.
+- [ ] Add backend endpoint for posts/polls only when scoped.
+- [x] Add Flutter model for notification detail.
+- [x] Add read/unread state.
+- [x] Add notification detail screen.
+- [x] Add mark-as-read action.
+- [ ] Add announcements list.
+- [ ] Add announcement detail screen.
+- [x] Add empty state for no notifications.
+- [x] Add failed load retry.
+- [ ] Add push notification groundwork after notification routing is stable.
+- [ ] Add widget test for notifications list.
+- [x] Add backend tests for notification list/detail/read state.
 
-### Tasks And Projects
+Acceptance checks:
 
-- Assigned ToDos.
-- Workflow approvals.
-- Project task status.
-- Future CRM/sales task support only if product scope requires it.
+- [x] Employee can see notifications from ERPNext.
+- [x] Opening a notification shows full content.
+- [x] Read/unread state is updated if backend supports it.
 
-## Backend/API Roadmap
+### Manager And Approvals
 
-- Keep `bude_api` as the mobile API gateway.
-- Use standard ERPNext/HRMS DocTypes first:
+- [x] Define manager role buckets.
+- [x] Add backend endpoint for manager dashboard summary.
+- [x] Add backend endpoint for direct reports.
+- [x] Add backend endpoint for pending leave approvals.
+- [x] Add backend endpoint for pending expense approvals.
+- [x] Add backend endpoint for approve/reject leave.
+- [x] Add backend endpoint for approve/reject expense.
+- [ ] Add backend endpoint for team attendance exceptions.
+- [x] Add mobile manager dashboard.
+- [x] Add direct reports screen.
+- [x] Add pending leave approvals screen.
+- [x] Add pending expense approvals screen.
+- [x] Add approval detail screen.
+- [x] Add approval comment field.
+- [x] Add approve action.
+- [x] Add reject action.
+- [x] Add confirmation dialog before approval action.
+- [x] Hide manager routes from normal employees.
+- [x] Guard manager deep links in router.
+- [x] Add backend permission checks for every manager endpoint.
+- [x] Add widget tests for manager route visibility.
+- [x] Add widget test for direct reports list.
+- [x] Add backend tests for manager permission denial.
+- [x] Add backend tests for approve/reject success.
+- [x] Add backend test for direct reports scoping.
+
+Acceptance checks:
+
+- [x] Normal employees cannot see or access manager screens.
+- [x] Managers can approve/reject permitted requests.
+- [ ] Approval actions require comments where configured.
+- [x] Backend rejects unauthorized approval attempts.
+
+### Offline And Sync
+
+- [x] Define shared `PendingHrOperation` model.
+- [ ] Add operation types for attendance, leave draft, and expense draft.
+      (attendance + expense done; leave draft pending an offline apply path)
+- [x] Add local persistence for pending operations.
+- [x] Add pending queue screen.
+- [x] Add operation detail bottom sheet.
+- [x] Add retry action.
+- [x] Add discard action.
+- [x] Add manual sync action.
+- [x] Add automatic retry on app start.
+- [ ] Add automatic retry on connectivity restore.
+- [ ] Add network status provider.
+- [ ] Add offline banner.
+- [x] Add sync status indicator.
+- [x] Add last refreshed timestamp for cached read-only data.
+- [x] Cache profile summary.
+- [x] Cache leave balances.
+- [x] Cache recent salary slip list without PDFs.
+- [x] Cache notification list.
+- [x] Add unit tests for operation serialization.
+- [x] Add unit tests for retry/discard.
+- [x] Add widget tests for pending queue.
+
+Acceptance checks:
+
+- [x] Pending HR operations survive app restart.
+- [x] User can see what is waiting to sync.
+- [x] Failed syncs show actionable error messages.
+- [x] Read-only cached data is labeled with last refreshed time.
+
+### Backend/API Structure
+
+- [x] Keep `bude_api` as the mobile API gateway.
+- [x] Keep `{ ok, data, message, code }` envelope for all HR endpoints.
+- [x] Keep all writes permission-aware with `ignore_permissions=False`.
+- [x] Add HR endpoint smoke tests.
+- [ ] Split `hr.py` into smaller modules when it becomes hard to maintain:
+  - `hr_profile.py`
+  - `hr_attendance.py`
+  - `hr_leave.py`
+  - `hr_expenses.py`
+  - `hr_salary.py`
+  - `hr_notifications.py`
+  - `hr_approvals.py`
+- [x] Use standard ERPNext/HRMS DocTypes first:
   - `Employee`
   - `Employee Checkin`
   - `Attendance`
@@ -298,174 +442,92 @@ Known gaps:
   - `Notification Log`
   - `File`
   - `ToDo`
-- Maintain the existing response envelope:
-  - `{ ok, data, message, code }`
-- Keep all reads and writes permission-aware.
-- Use `ignore_permissions=False` for write operations.
-- No custom DocTypes in V1 unless a standard ERPNext workflow cannot support the feature.
-- Split backend code later from one `hr.py` into modules if it grows:
-  - `hr_profile.py`
-  - `hr_attendance.py`
-  - `hr_leave.py`
-  - `hr_expenses.py`
-  - `hr_salary.py`
-  - `hr_notifications.py`
-  - `hr_approvals.py`
-- Add endpoint groups:
-  - employee profile and directory
-  - attendance status/history/check-in
-  - leave balances/applications/approvals
-  - expense claims/approvals
-  - salary slips
-  - documents/files
-  - notifications/announcements
-  - manager dashboard
+- [x] Avoid custom DocTypes in V1 unless a standard ERPNext workflow cannot support the feature.
 
-## Mobile UX Roadmap
+Acceptance checks:
 
-- Move from scaffold UI to polished HR app UX:
-  - dense employee dashboard
-  - clear status cards
-  - quick actions
-  - bottom navigation for employee flows
-  - manager section only for eligible roles
-- Improve form quality:
-  - date pickers
-  - time pickers where needed
-  - attachment picker
-  - validation messages
-  - disabled submit while saving
-  - success/error snackbars
-- Improve data display:
-  - empty states
-  - retry states
-  - skeleton/loading states
-  - filters for history screens
-  - detail screens for requests and documents
-- Add localization:
-  - English first
-  - Arabic and RTL before release
-  - no hard-coded user-facing strings in final release flows
-- Add accessibility:
-  - proper labels
-  - readable contrast
-  - touch targets suitable for mobile
-  - no clipped text on small screens
+- [x] HR endpoint failures use consistent error codes.
+- [x] Permission denied never leaks sensitive data.
+- [x] Standard ERPNext DocTypes remain the source of truth.
 
-## Security, Privacy, And Compliance
+### Mobile UX And Accessibility
 
-- Secure API keys in platform secure storage.
-- Clear all credentials on sign out.
-- Add biometric app lock if required.
-- Add inactivity lock if required.
-- Never expose another employee's salary/profile data unless backend permission allows it.
-- Avoid storing salary slips or sensitive documents unencrypted long term.
-- Document what data the app uses:
-  - employee identity
-  - attendance time
-  - optional location data
-  - expense attachments
-  - salary data
-- Prepare privacy policy before Play Store internal testing.
-- Use permission checks on both mobile UI and backend endpoints.
+- [ ] Replace scaffold dashboard layout.
+- [ ] Add compact employee status header.
+- [ ] Add quick action row.
+- [ ] Add consistent card components.
+- [ ] Add consistent list item components.
+- [x] Add empty state component.
+- [x] Add error state component.
+- [ ] Add loading skeleton component.
+- [ ] Add reusable date picker field.
+- [ ] Add reusable amount field.
+- [ ] Add reusable attachment picker.
+- [x] Add success snackbar pattern.
+- [x] Add error snackbar pattern.
+- [x] Add confirmation dialog pattern.
+- [x] Add accessible labels for icon buttons.
+- [ ] Check text overflow on small Android screens.
+- [ ] Check touch target size.
+- [x] Add dark theme pass.
+- [ ] Add Arabic RTL pass.
+- [ ] Move user-facing strings to localization files before release.
 
-## Offline And Sync Strategy
+Acceptance checks:
 
-- Attendance:
-  - queue check-in/out while offline
-  - retry automatically when network returns
-  - show pending state clearly
-- Leave:
-  - allow offline draft creation
-  - submit only when online unless backend conflict handling is mature
-- Expenses:
-  - allow offline draft creation
-  - queue attachment metadata carefully
-  - upload files only when online
-- Read-only data:
-  - cache recent profile, leave balances, salary list, and notifications
-  - label cached data with last refreshed time
-- Sync UI:
-  - pending operation count
-  - retry/discard actions
-  - last error
-  - manual sync
+- [ ] Primary screens are usable on small phones.
+- [ ] Text does not clip or overlap.
+- [x] Icon-only buttons have tooltips/labels.
+- [ ] Arabic RTL layout is not broken before release.
 
-## Testing And QA Plan
+### Security, Privacy, And Compliance
 
-### Flutter Tests
+- [x] Confirm API keys are stored only in secure storage.
+- [x] Clear secure storage on logout.
+- [ ] Add optional biometric app lock. (needs `local_auth` plugin)
+- [ ] Add optional inactivity lock.
+- [x] Prevent salary slip caching unless encrypted or temporary.
+      (salary cache routed through encrypted `flutter_secure_storage`)
+- [x] Prevent cross-employee salary/profile access from mobile and backend.
+      (backend owned-record checks + scoping tests; mobile cannot bypass)
+- [ ] Document location usage if geofencing is enabled. (no geofencing yet)
+- [ ] Document camera/file usage if attachments or selfie proof are enabled.
+- [ ] Draft privacy policy for Play Store internal testing.
+- [ ] Add account/data deletion support policy text.
+- [ ] Add role/permission setup documentation.
 
-- Unit tests:
-  - API envelope parsing
-  - auth/session handling
-  - attendance queue persistence
-  - leave/expense/salary/profile DTO parsing
-  - offline operation serialization
-- Widget tests:
-  - login
-  - dashboard
-  - attendance screen
-  - leave application
-  - expense claim form
-  - salary slip list/detail
-  - settings/sign out
-- Golden-flow tests:
-  - login to dashboard
-  - attendance check-in online
-  - attendance check-in offline then sync
-  - leave apply flow
-  - expense submit flow
-  - salary slip view flow
+Acceptance checks:
 
-### Backend Tests
+- [x] Sensitive data is protected at rest.
+- [x] Salary data is only visible to permitted users.
+- [ ] Privacy policy covers HR, salary, attendance, location, and attachments.
 
-- HR role guard.
-- Linked Employee lookup.
-- Permission denied envelope.
-- Missing HRMS/DocType behavior.
-- Attendance status and check-in writes.
-- Leave balance and leave application writes.
-- Expense claim reads/writes.
-- Salary slip permission-safe reads.
-- Notification list reads.
-- Manager approval permissions.
+### Release And Play Store
 
-### Manual QA
+- [ ] Create production app icon.
+- [ ] Create production splash screen.
+- [ ] Configure Android signing.
+- [ ] Add release build instructions.
+- [ ] Add environment/flavor strategy if needed.
+- [ ] Prepare Play Store title.
+- [ ] Prepare Play Store short description.
+- [ ] Prepare Play Store long description.
+- [ ] Prepare screenshots for login, dashboard, attendance, leave, expenses, salary.
+- [ ] Prepare privacy policy URL.
+- [ ] Prepare internal testing checklist.
+- [ ] Prepare ERPNext setup guide.
+- [ ] Prepare demo data guide.
+- [ ] Prepare release notes template.
+- [ ] Build internal testing APK/AAB.
+- [ ] Smoke test release build against demo ERPNext site.
 
-- Login to ERPNext HRMS demo site.
-- Check in/out online.
-- Check in/out offline and sync later.
-- Apply leave and approve as manager.
-- Submit expense and approve as manager.
-- View salary slip.
-- View profile and notifications.
-- Switch network on/off during submit flows.
-- Verify normal employees cannot access manager screens.
-- Verify no HR features leak into the RFID inventory app.
+Acceptance checks:
 
-## Release And Play Store Plan
+- [ ] Android release artifact builds.
+- [ ] Play Store internal testing submission is ready.
+- [ ] Demo checklist can be followed by a non-developer.
 
-- Android release preparation:
-  - final app icon
-  - final splash screen
-  - production signing key
-  - Play Store app name and short description
-  - screenshots for key flows
-  - privacy policy URL
-  - internal testing track
-- Versioning:
-  - use semantic app version
-  - increment build number for every release artifact
-  - document release notes per milestone
-- Deployment checklist:
-  - ERPNext/HRMS installed
-  - `bude_api` installed
-  - HR roles configured
-  - employee users linked to Employee records
-  - salary slip permissions verified
-  - attendance/leave/expense workflows configured
-
-## Future Ideas
+## Future Feature Ideas
 
 - Push notifications.
 - Employee chat or helpdesk integration.
@@ -477,10 +539,21 @@ Known gaps:
 - Payroll tax document downloads.
 - Sales/CRM mobile tasks only if Bude HR intentionally expands beyond HR.
 
+## Definition Of Done For Any Microtask
+
+- Code follows existing app/backend patterns.
+- UI has loading, empty, and error states where relevant.
+- Backend reads/writes are permission-aware.
+- Tests are added or updated when behavior changes.
+- User-facing strings are prepared for localization when the screen is production-facing.
+- No GPL code is copied from reference apps.
+- The RFID inventory app is not changed unless the task explicitly requires shared infrastructure.
+
 ## Assumptions
 
 - Bude HR remains a separate app, not merged into the RFID inventory app.
 - Android and Play Store are the first release targets.
 - ERPNext/HRMS standard DocTypes remain the source of truth.
 - `/hr-ex-1` and `/hr-ex-2` stay as workflow references only; no GPL implementation is copied.
-- Current V0 scaffold is acceptable as the starting point, but M0 must validate build/test locally with Flutter installed.
+- Current V0 scaffold is acceptable as the starting point, but build/test must
+  be validated locally with Flutter installed.

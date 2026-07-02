@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../../../core/config/hr_api_endpoints.dart';
 import '../../../core/network/api_envelope.dart';
 import '../../../core/network/hr_api_client.dart';
@@ -39,7 +41,33 @@ class AuthRepository {
       throw AuthFailure('An HR role is required to use Bude HR.');
     }
     await _sessionStore.write(session);
+    await _validateEmployeeProfile(baseUrl);
     return session;
+  }
+
+  Future<void> _validateEmployeeProfile(String baseUrl) async {
+    try {
+      final response = await _client.get(baseUrl, HrApiEndpoints.profile);
+      final envelope = ApiEnvelope<Map<String, dynamic>>.fromJson(
+        response,
+        (value) => Map<String, dynamic>.from(value as Map? ?? const {}),
+      );
+      if (envelope.ok) return;
+      await _sessionStore.clear();
+      if (envelope.code == 'HR_EMPLOYEE_NOT_FOUND') {
+        throw AuthFailure('No active Employee record is linked to this user.');
+      }
+      if (envelope.code == 'ENV_NO_FRAPPE') {
+        throw AuthFailure('Bude HR API is not available on this site.');
+      }
+      throw AuthFailure(envelope.message ?? 'Unable to validate HR access.');
+    } on DioException catch (error) {
+      await _sessionStore.clear();
+      if (error.response?.statusCode == 404) {
+        throw AuthFailure('Bude HR API is not installed on this ERPNext site.');
+      }
+      rethrow;
+    }
   }
 }
 

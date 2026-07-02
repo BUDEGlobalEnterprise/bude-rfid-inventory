@@ -36,3 +36,7 @@ jobs:
       - name: Pytest
         working-directory: backend
         run: pytest -q
+
+      - name: Pytest HR API
+        working-directory: backend/bude_api
+        run: pytest -q bude_api/tests/test_hr.py

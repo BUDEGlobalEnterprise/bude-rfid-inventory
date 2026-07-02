@@ -11,13 +11,20 @@ on:
       - 'mobile-app/**'
       - '.github/workflows/flutter-ci.yml'
 
-defaults:
-  run:
-    working-directory: mobile-app/flutter_app
-
 jobs:
   analyze-and-test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - mobile-app/flutter_app
+          - mobile-app/hr_flutter_app
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -26,14 +33,14 @@ jobs:
           channel: stable
           cache: true
 
-      - name: flutter pub get
+      - name: flutter pub get (${{ matrix.app }})
         run: flutter pub get
 
-      - name: flutter analyze
+      - name: flutter analyze (${{ matrix.app }})
         run: flutter analyze --no-pub
 
-      - name: flutter test
+      - name: flutter test (${{ matrix.app }})
         run: flutter test --no-pub
 
-      - name: Android debug build
+      - name: Android debug build (${{ matrix.app }})
         run: flutter build apk --debug --no-pub

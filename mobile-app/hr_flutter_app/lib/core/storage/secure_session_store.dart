@@ -25,6 +25,10 @@ class HrSession {
   bool get canUseHr =>
       user == 'Administrator' ||
       roles.any({'Employee', 'HR User', 'HR Manager', 'System Manager'}.contains);
+
+  bool get isManager =>
+      user == 'Administrator' ||
+      roles.any({'HR Manager', 'HR User', 'System Manager'}.contains);
 }
 
 class SecureSessionStore {
